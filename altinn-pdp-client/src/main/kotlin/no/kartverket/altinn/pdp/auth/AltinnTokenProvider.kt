@@ -1,11 +1,12 @@
 package no.kartverket.altinn.pdp.auth
 
+import java.time.Duration
 import java.time.Instant
 
 /**
- * Placeholder seam until the Maskinporten/token-exchange chain is ported - just enough for
- * `PdpClient` to depend on an abstraction rather than a concrete token source. A caller can
- * already implement this directly (or fake it in tests) without waiting on that port.
+ * A source of a valid Altinn token. [MaskinportenAltinnTokenProvider] is the real implementation
+ * (Maskinporten + token exchange); this interface is the seam `PdpClient` depends on so a caller
+ * can supply their own token source instead, or fake it in tests.
  */
 interface AltinnTokenProvider {
     suspend fun getAltinnToken(): AccessToken
@@ -13,6 +14,9 @@ interface AltinnTokenProvider {
 
 /** An access token with its expiry. */
 data class AccessToken(val value: String, val expiresAt: Instant) {
+    /** Whether the token has expired, or expires within [leeway]. */
+    fun isExpired(now: Instant, leeway: Duration): Boolean = !now.plus(leeway).isBefore(expiresAt)
+
     /** Masks the token value so it does not end up in logs by accident. */
     override fun toString(): String = "AccessToken[value=***, expiresAt=$expiresAt]"
 }

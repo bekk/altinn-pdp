@@ -1,16 +1,15 @@
 package no.kartverket.altinn.pdp.client
 
-import java.io.IOException
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import java.time.Duration
-import kotlinx.coroutines.future.await
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import no.kartverket.altinn.pdp.AltinnEnvironment
 import no.kartverket.altinn.pdp.auth.AltinnTokenProvider
 import no.kartverket.altinn.pdp.exception.PdpException
+import no.kartverket.altinn.pdp.http.Http
 import no.kartverket.altinn.pdp.model.XacmlAuthorizationRequest
 import no.kartverket.altinn.pdp.model.XacmlAuthorizationResponse
 
@@ -35,17 +34,17 @@ class PdpClient(
     platformBaseUrl: String,
     private val tokenProvider: AltinnTokenProvider,
     private val subscriptionKey: String,
-    private val httpClient: HttpClient = defaultHttpClient(),
+    private val httpClient: HttpClient = Http.defaultClient(),
 ) {
     /** Calls [environment] instead of an arbitrary URL - the common case outside of tests. */
     constructor(
         environment: AltinnEnvironment,
         tokenProvider: AltinnTokenProvider,
         subscriptionKey: String,
-        httpClient: HttpClient = defaultHttpClient(),
+        httpClient: HttpClient = Http.defaultClient(),
     ) : this(environment.platformBaseUrl, tokenProvider, subscriptionKey, httpClient)
 
-    private val authorizeUrl: URI = URI.create(platformBaseUrl.withoutTrailingSlash() + AUTHORIZE_PATH)
+    private val authorizeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + AUTHORIZE_PATH)
 
     /**
      * @param systemuserId the systembruker id from the token's `authorization_details`
@@ -76,11 +75,13 @@ class PdpClient(
             .header(SUBSCRIPTION_KEY_HEADER, subscriptionKey)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
-            .timeout(DEFAULT_TIMEOUT)
+            .timeout(Http.DEFAULT_TIMEOUT)
             .POST(HttpRequest.BodyPublishers.ofString(body))
             .build()
 
-        val response = send(request)
+        val response = Http.send(httpClient, request, "Altinn PDP") { message, cause ->
+            PdpException(message, cause = cause)
+        }
         if (response.statusCode() != 200) {
             throw PdpException(
                 "Altinn responded ${response.statusCode()} to the PDP authorization request",
@@ -98,13 +99,6 @@ class PdpClient(
         organizationNumber: String,
         action: String,
     ): Boolean = authorize(systemuserId, resourceId, organizationNumber, action).isPermit
-
-    private suspend fun send(request: HttpRequest): HttpResponse<String> =
-        try {
-            httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).await()
-        } catch (e: IOException) {
-            throw PdpException("Call to Altinn PDP failed: ${e.message}", cause = e)
-        }
 
     private fun decisionOf(response: HttpResponse<String>): PdpDecision {
         val parsed = try {
@@ -132,18 +126,9 @@ class PdpClient(
         /** The external `/authorize` endpoint sits behind Azure API Management, which needs this. */
         const val SUBSCRIPTION_KEY_HEADER = "Ocp-Apim-Subscription-Key"
 
-        private val DEFAULT_TIMEOUT: Duration = Duration.ofSeconds(10)
-
         // The PDP response carries fields we don't model (status, obligations, ...); ignore them.
         // Case (Response/response, Decision/decision) is handled per-field via @JsonNames on the
         // response model instead of a blanket case-insensitive mode.
         private val json = Json { ignoreUnknownKeys = true }
-
-        private fun defaultHttpClient(): HttpClient = HttpClient.newBuilder()
-            .connectTimeout(DEFAULT_TIMEOUT)
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .build()
     }
 }
-
-private fun String.withoutTrailingSlash(): String = if (endsWith("/")) dropLast(1) else this
