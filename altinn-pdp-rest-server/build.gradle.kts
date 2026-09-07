@@ -4,7 +4,7 @@ plugins {
 }
 
 application {
-    mainClass = "io.ktor.server.netty.EngineMain"
+    mainClass = "no.bekk.altinnpdp.restserver.MainKt"
 }
 
 dependencies {
@@ -28,7 +28,7 @@ jib {
         image = findProperty("dockerImage")?.toString() ?: "altinn-pdp-rest-server:local"
     }
     container {
-        mainClass = "io.ktor.server.netty.EngineMain"
+        mainClass = "no.bekk.altinnpdp.restserver.MainKt"
         ports = listOf("8080")
     }
 }
