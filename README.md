@@ -8,7 +8,8 @@ Create the ignored local secrets file from the committed template:
 cp .env.example .env
 ```
 
-Fill in `.env`, then start Ktor:
+The template has no variables yet; they are added as the app starts reading them.
+Fill in `.env` when it does, then start Ktor:
 
 ```shell
 ./scripts/dev.sh
