@@ -144,10 +144,9 @@ class PdpClient(
         private var httpClient: HttpClient? = null
         private var tokenProvider: AltinnTokenProvider? = null
 
-        private var maskinportenTokenUrl: String = "https://test.maskinporten.no/token"
+        private var maskinportenTokenUrl: String? = null
         private var maskinportenClientId: String? = null
         private var maskinportenJwk: String? = null
-        private var maskinportenScopes: List<String> = listOf(AltinnScopes.AUTHORIZE)
         private var maskinportenResource: String? = null
 
         fun environment(environment: AltinnEnvironment): Builder = apply { this.environment = environment }
@@ -160,17 +159,15 @@ class PdpClient(
         /** Supply your own token source instead of Maskinporten - the `maskinporten*` setters are then ignored. */
         fun tokenProvider(tokenProvider: AltinnTokenProvider): Builder = apply { this.tokenProvider = tokenProvider }
 
-        /** Defaults to Maskinporten's TT02 token endpoint. */
+        /** Defaults to [environment]'s own Maskinporten token endpoint; override only for a local test server. */
         fun maskinportenTokenUrl(tokenUrl: String): Builder = apply { this.maskinportenTokenUrl = tokenUrl }
 
         fun maskinportenClientId(clientId: String): Builder = apply { this.maskinportenClientId = clientId }
 
         fun maskinportenJwk(jwk: String): Builder = apply { this.maskinportenJwk = jwk }
 
-        /** Defaults to the one scope [PdpClient] itself needs, [AltinnScopes.AUTHORIZE]. */
-        fun maskinportenScopes(scopes: List<String>): Builder = apply { this.maskinportenScopes = scopes }
-
-        fun maskinportenResource(resource: String?): Builder = apply { this.maskinportenResource = resource }
+        /** Defaults to [environment]'s own `resource` claim; override only if Maskinporten requires something else. */
+        fun maskinportenResource(resource: String): Builder = apply { this.maskinportenResource = resource }
 
         fun build(): PdpClient {
             val env = requireNotNull(environment) { "environment is required" }
@@ -179,15 +176,17 @@ class PdpClient(
 
             val provider = tokenProvider ?: MaskinportenAltinnTokenProvider(
                 maskinportenConfig = MaskinportenConfig(
-                    tokenUrl = maskinportenTokenUrl,
+                    tokenUrl = maskinportenTokenUrl ?: env.maskinportenTokenUrl,
                     clientId = requireNotNull(maskinportenClientId) {
                         "maskinportenClientId is required (or call tokenProvider(...) directly)"
                     },
                     jwk = requireNotNull(maskinportenJwk) {
                         "maskinportenJwk is required (or call tokenProvider(...) directly)"
                     },
-                    scopes = maskinportenScopes,
-                    resource = maskinportenResource,
+                    // Not configurable: PdpClient only ever calls /authorize, and AUTHORIZE is the
+                    // one scope that operation needs - not exposed as a builder override.
+                    scopes = listOf(AltinnScopes.AUTHORIZE),
+                    resource = maskinportenResource ?: env.maskinportenResource,
                 ),
                 environment = env,
                 httpClient = client,
