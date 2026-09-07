@@ -25,6 +25,7 @@ data class MaskinportenConfig(
     val audience: String = deriveAudience(tokenUrl),
 ) {
     init {
+        require(tokenUrl.isNotBlank()) { "tokenUrl is required" }
         require(clientId.isNotBlank()) { "clientId is required" }
         require(jwk.isNotBlank()) { "jwk is required" }
         require(scopes.isNotEmpty()) { "at least one scope is required" }
