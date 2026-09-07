@@ -25,7 +25,23 @@ Requires JDK 21 (or let the Gradle toolchain resolver provision one).
 ./gradlew build
 ```
 
-Calling a real Maskinporten/Altinn environment needs real credentials: copy `.env.example` to `.env` and fill in a client id, JWK, and subscription key. `.env` is gitignored.
+Builds and tests every module - this is also what CI runs (see below).
+
+## Local secrets
+
+Create the ignored local secrets file from the committed template:
+
+```shell
+cp .env.example .env
+```
+
+The template has no variables yet; they are added as the app starts reading them. Fill in `.env` when it does, then start Ktor:
+
+```shell
+./scripts/dev.sh
+```
+
+Do not commit `.env` or print secrets in logs.
 
 ## CI
 
