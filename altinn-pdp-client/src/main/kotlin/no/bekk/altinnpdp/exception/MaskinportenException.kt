@@ -1,7 +1,7 @@
-package no.kartverket.altinn.pdp.exception
+package no.bekk.altinnpdp.exception
 
-/** Failure while exchanging a Maskinporten token for an Altinn token. */
-class AltinnException(
+/** Failure while fetching a token from Maskinporten. */
+class MaskinportenException(
     message: String,
     statusCode: Int? = null,
     responseBody: String? = null,

@@ -1,10 +1,10 @@
-package no.kartverket.altinn.pdp.auth
+package no.bekk.altinnpdp.auth
 
 import java.net.http.HttpClient
 import java.time.Clock
 import java.time.Duration
-import no.kartverket.altinn.pdp.AltinnEnvironment
-import no.kartverket.altinn.pdp.http.Http
+import no.bekk.altinnpdp.AltinnEnvironment
+import no.bekk.altinnpdp.http.Http
 
 /**
  * The real [AltinnTokenProvider]: fetches a token from Maskinporten and exchanges it for an

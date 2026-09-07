@@ -1,4 +1,4 @@
-package no.kartverket.altinn.pdp.auth
+package no.bekk.altinnpdp.auth
 
 import com.nimbusds.jwt.JWTParser
 import java.net.URI
@@ -7,9 +7,9 @@ import java.net.http.HttpRequest
 import java.text.ParseException
 import java.time.Clock
 import java.time.Instant
-import no.kartverket.altinn.pdp.AltinnEnvironment
-import no.kartverket.altinn.pdp.exception.AltinnException
-import no.kartverket.altinn.pdp.http.Http
+import no.bekk.altinnpdp.AltinnEnvironment
+import no.bekk.altinnpdp.exception.AltinnException
+import no.bekk.altinnpdp.http.Http
 
 /**
  * Exchanges a Maskinporten token for an Altinn token.

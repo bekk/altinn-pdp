@@ -1,4 +1,4 @@
-package no.kartverket.altinn.pdp.http
+package no.bekk.altinnpdp.http
 
 import java.io.IOException
 import java.net.http.HttpClient
@@ -6,7 +6,7 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 import kotlinx.coroutines.future.await
-import no.kartverket.altinn.pdp.exception.AltinnPdpException
+import no.bekk.altinnpdp.exception.AltinnPdpException
 
 /** Small helpers around [HttpClient] shared by every outbound call this library makes. */
 internal object Http {

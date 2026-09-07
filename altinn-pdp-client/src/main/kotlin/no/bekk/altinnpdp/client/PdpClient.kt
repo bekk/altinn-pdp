@@ -1,4 +1,4 @@
-package no.kartverket.altinn.pdp.client
+package no.bekk.altinnpdp.client
 
 import java.net.URI
 import java.net.http.HttpClient
@@ -6,12 +6,12 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import no.kartverket.altinn.pdp.AltinnEnvironment
-import no.kartverket.altinn.pdp.auth.AltinnTokenProvider
-import no.kartverket.altinn.pdp.exception.PdpException
-import no.kartverket.altinn.pdp.http.Http
-import no.kartverket.altinn.pdp.model.XacmlAuthorizationRequest
-import no.kartverket.altinn.pdp.model.XacmlAuthorizationResponse
+import no.bekk.altinnpdp.AltinnEnvironment
+import no.bekk.altinnpdp.auth.AltinnTokenProvider
+import no.bekk.altinnpdp.exception.PdpException
+import no.bekk.altinnpdp.http.Http
+import no.bekk.altinnpdp.model.XacmlAuthorizationRequest
+import no.bekk.altinnpdp.model.XacmlAuthorizationResponse
 
 /**
  * Calls Altinn's PDP (`POST /authorization/api/v1/authorize`) to check whether a systembruker

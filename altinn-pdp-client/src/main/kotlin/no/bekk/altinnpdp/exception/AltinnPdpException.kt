@@ -1,4 +1,4 @@
-package no.kartverket.altinn.pdp.exception
+package no.bekk.altinnpdp.exception
 
 /**
  * Base class for every error this library throws.

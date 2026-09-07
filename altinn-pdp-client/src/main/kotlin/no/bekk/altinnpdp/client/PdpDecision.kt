@@ -1,4 +1,4 @@
-package no.kartverket.altinn.pdp.client
+package no.bekk.altinnpdp.client
 
 /** The XACML `Decision` a PDP call resolves to. */
 enum class PdpDecision {

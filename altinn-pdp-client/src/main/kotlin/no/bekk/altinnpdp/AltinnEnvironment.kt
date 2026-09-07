@@ -1,4 +1,4 @@
-package no.kartverket.altinn.pdp
+package no.bekk.altinnpdp
 
 /** Which Altinn platform environment to call - determines the base URL for every request. */
 enum class AltinnEnvironment(internal val platformBaseUrl: String) {

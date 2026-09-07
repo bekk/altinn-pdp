@@ -1,7 +1,10 @@
-package no.kartverket.altinn.pdp.exception
+package no.bekk.altinnpdp.exception
 
-/** Failure while fetching a token from Maskinporten. */
-class MaskinportenException(
+/**
+ * Failure while asking the Altinn PDP (`POST /authorization/api/v1/authorize`) whether a subject
+ * has access to a resource - a non-2xx response, or a response that could not be parsed.
+ */
+class PdpException(
     message: String,
     statusCode: Int? = null,
     responseBody: String? = null,
