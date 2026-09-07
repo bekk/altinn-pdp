@@ -112,7 +112,16 @@ class PdpClient(
                 statusCode = response.statusCode(),
                 responseBody = response.body(),
             )
-        return PdpDecision.fromXacmlValue(decision)
+        return try {
+            PdpDecision.fromXacmlValue(decision)
+        } catch (e: IllegalArgumentException) {
+            throw PdpException(
+                "Unknown XACML decision \"$decision\" in PDP response",
+                statusCode = response.statusCode(),
+                responseBody = response.body(),
+                cause = e,
+            )
+        }
     }
 
     private fun required(value: String, name: String): String {
