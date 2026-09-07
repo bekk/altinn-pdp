@@ -7,7 +7,7 @@ plugins {
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
 
-    group = "no.bekk.altinnpdp"
+    group = "no.kartverket"
     version = "0.1.0-SNAPSHOT"
 
     extensions.configure<KotlinJvmProjectExtension> {
