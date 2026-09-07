@@ -7,7 +7,10 @@ import java.net.http.HttpResponse
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import no.bekk.altinnpdp.AltinnEnvironment
+import no.bekk.altinnpdp.auth.AltinnScopes
 import no.bekk.altinnpdp.auth.AltinnTokenProvider
+import no.bekk.altinnpdp.auth.MaskinportenAltinnTokenProvider
+import no.bekk.altinnpdp.auth.MaskinportenConfig
 import no.bekk.altinnpdp.exception.PdpException
 import no.bekk.altinnpdp.http.Http
 import no.bekk.altinnpdp.model.XacmlAuthorizationRequest
@@ -129,6 +132,71 @@ class PdpClient(
         return value
     }
 
+    /**
+     * Builds a [PdpClient] from raw config values, so a caller only ever needs to depend on
+     * [PdpClient] and [PdpClient.Builder] - not [MaskinportenConfig], [MaskinportenAltinnTokenProvider],
+     * or [AltinnTokenProvider] directly. Call [tokenProvider] instead of the `maskinporten*`
+     * setters to supply a token source of your own (or a fake, in tests).
+     */
+    class Builder {
+        private var environment: AltinnEnvironment? = null
+        private var subscriptionKey: String? = null
+        private var httpClient: HttpClient? = null
+        private var tokenProvider: AltinnTokenProvider? = null
+
+        private var maskinportenTokenUrl: String = "https://test.maskinporten.no/token"
+        private var maskinportenClientId: String? = null
+        private var maskinportenJwk: String? = null
+        private var maskinportenScopes: List<String> = listOf(AltinnScopes.AUTHORIZE)
+        private var maskinportenResource: String? = null
+
+        fun environment(environment: AltinnEnvironment): Builder = apply { this.environment = environment }
+
+        fun subscriptionKey(subscriptionKey: String): Builder = apply { this.subscriptionKey = subscriptionKey }
+
+        /** Defaults to a plain [Http.defaultClient]; override to share a client/connection pool. */
+        fun httpClient(httpClient: HttpClient): Builder = apply { this.httpClient = httpClient }
+
+        /** Supply your own token source instead of Maskinporten - the `maskinporten*` setters are then ignored. */
+        fun tokenProvider(tokenProvider: AltinnTokenProvider): Builder = apply { this.tokenProvider = tokenProvider }
+
+        /** Defaults to Maskinporten's TT02 token endpoint. */
+        fun maskinportenTokenUrl(tokenUrl: String): Builder = apply { this.maskinportenTokenUrl = tokenUrl }
+
+        fun maskinportenClientId(clientId: String): Builder = apply { this.maskinportenClientId = clientId }
+
+        fun maskinportenJwk(jwk: String): Builder = apply { this.maskinportenJwk = jwk }
+
+        /** Defaults to the one scope [PdpClient] itself needs, [AltinnScopes.AUTHORIZE]. */
+        fun maskinportenScopes(scopes: List<String>): Builder = apply { this.maskinportenScopes = scopes }
+
+        fun maskinportenResource(resource: String?): Builder = apply { this.maskinportenResource = resource }
+
+        fun build(): PdpClient {
+            val env = requireNotNull(environment) { "environment is required" }
+            val key = requireNotNull(subscriptionKey) { "subscriptionKey is required" }
+            val client = httpClient ?: Http.defaultClient()
+
+            val provider = tokenProvider ?: MaskinportenAltinnTokenProvider(
+                maskinportenConfig = MaskinportenConfig(
+                    tokenUrl = maskinportenTokenUrl,
+                    clientId = requireNotNull(maskinportenClientId) {
+                        "maskinportenClientId is required (or call tokenProvider(...) directly)"
+                    },
+                    jwk = requireNotNull(maskinportenJwk) {
+                        "maskinportenJwk is required (or call tokenProvider(...) directly)"
+                    },
+                    scopes = maskinportenScopes,
+                    resource = maskinportenResource,
+                ),
+                environment = env,
+                httpClient = client,
+            )
+
+            return PdpClient(env, provider, key, client)
+        }
+    }
+
     companion object {
         const val AUTHORIZE_PATH = "/authorization/api/v1/authorize"
 
@@ -139,5 +207,7 @@ class PdpClient(
         // Case (Response/response, Decision/decision) is handled per-field via @JsonNames on the
         // response model instead of a blanket case-insensitive mode.
         private val json = Json { ignoreUnknownKeys = true }
+
+        fun builder(): Builder = Builder()
     }
 }
