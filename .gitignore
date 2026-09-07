@@ -4,7 +4,7 @@
 .gradle/
 build/
 .kotlin/
-altinnpdp-restserver/docs/
+altinn-pdp-rest-server/docs/
 docs/
 
 # VS Code

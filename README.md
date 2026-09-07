@@ -6,10 +6,10 @@ Tools for asking Altinn's Policy Decision Point (PDP) whether a systembruker has
 
 | Module | What it is | Published as |
 | --- | --- | --- |
-| [`altinnpdp-client`](altinnpdp-client) | Kotlin library that talks to Maskinporten and the Altinn PDP directly | a package, for other services to depend on |
-| [`altinnpdp-restserver`](altinnpdp-restserver) | Ktor server exposing a simplified REST/JSON API over `altinnpdp-client` | a Docker image (via [Jib](https://github.com/GoogleContainerTools/jib)) |
+| [`altinn-pdp-client`](altinn-pdp-client) | Kotlin library that talks to Maskinporten and the Altinn PDP directly | a package, for other services to depend on |
+| [`altinn-pdp-rest-server`](altinn-pdp-rest-server) | Ktor server exposing a simplified REST/JSON API over `altinn-pdp-client` | a Docker image (via [Jib](https://github.com/GoogleContainerTools/jib)) |
 
-`altinnpdp-restserver` is the intended consumer of `altinnpdp-client`, so other systems can ask "is this allowed?" over plain JSON without speaking Maskinporten/XACML themselves. It's still an early scaffold (Ktor's default routing) and doesn't call the PDP yet.
+`altinn-pdp-rest-server` is the intended consumer of `altinn-pdp-client`, so other systems can ask "is this allowed?" over plain JSON without speaking Maskinporten/XACML themselves. It's still an early scaffold (Ktor's default routing) and doesn't call the PDP yet.
 
 ## Key concepts
 
@@ -27,7 +27,7 @@ Requires JDK 21 (or let the Gradle toolchain resolver provision one).
 
 Builds and tests every module - this is also what CI runs (see below).
 
-To run `altinnpdp-restserver` locally, first create the ignored local secrets file from the
+To run `altinn-pdp-rest-server` locally, first create the ignored local secrets file from the
 committed template:
 
 ```shell
