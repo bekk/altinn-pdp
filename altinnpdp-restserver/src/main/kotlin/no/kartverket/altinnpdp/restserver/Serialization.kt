@@ -1,4 +1,4 @@
-package no.bekk.altinnpdp.restserver
+package no.kartverket.altinnpdp.restserver
 
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application

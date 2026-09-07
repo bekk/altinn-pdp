@@ -1,4 +1,4 @@
-package no.bekk.altinnpdp.restserver
+package no.kartverket.altinnpdp.restserver
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.JsonConvertException
@@ -9,7 +9,7 @@ import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.ContentTransformationException
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
-import no.bekk.altinnpdp.exception.AltinnPdpException
+import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 
 /**
  * Maps every exception that can escape a route to a JSON [ErrorResponse] instead of Ktor's

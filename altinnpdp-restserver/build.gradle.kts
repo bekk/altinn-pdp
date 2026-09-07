@@ -9,7 +9,7 @@ application {
 }
 
 dependencies {
-    implementation(project(":altinn-pdp-client"))
+    implementation(project(":altinnpdp-client"))
 
     implementation(ktorLibs.server.config.yaml)
     implementation(ktorLibs.server.core)

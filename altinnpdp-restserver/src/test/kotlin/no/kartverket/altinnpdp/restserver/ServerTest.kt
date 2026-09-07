@@ -13,9 +13,9 @@ import java.net.InetSocketAddress
 import java.time.Instant
 import kotlin.test.*
 import kotlinx.serialization.json.Json
-import no.bekk.altinnpdp.auth.AccessToken
-import no.bekk.altinnpdp.auth.AltinnTokenProvider
-import no.bekk.altinnpdp.client.PdpClient
+import no.kartverket.altinnpdp.client.auth.AccessToken
+import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
+import no.kartverket.altinnpdp.client.PdpClient
 
 class ServerTest {
 

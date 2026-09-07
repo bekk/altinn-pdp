@@ -1,4 +1,4 @@
-package no.bekk.altinnpdp.restserver
+package no.kartverket.altinnpdp.restserver
 
 import kotlinx.serialization.Serializable
 

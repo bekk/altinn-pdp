@@ -3,5 +3,8 @@ ktor:
     port: 8080
   application:
     modules:
+      - no.kartverket.altinnpdp.restserver.SerializationKt.configureSerialization
+      - no.kartverket.altinnpdp.restserver.ErrorHandlingKt.configureErrorHandling
+      - no.kartverket.altinnpdp.restserver.PdpKt.configurePdp
       - no.kartverket.altinnpdp.restserver.HttpKt.configureHttp
       - no.kartverket.altinnpdp.restserver.RoutingKt.configureRouting

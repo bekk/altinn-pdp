@@ -5,7 +5,7 @@ import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.request.receive
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import no.bekk.altinnpdp.client.PdpClient
+import no.kartverket.altinnpdp.client.PdpClient
 
 fun Application.configureRouting() {
     routing {

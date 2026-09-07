@@ -1,4 +1,4 @@
-package no.bekk.altinnpdp.restserver
+package no.kartverket.altinnpdp.restserver
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -6,11 +6,11 @@ import io.ktor.server.application.pluginOrNull
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.plugins.di.provide
-import no.bekk.altinnpdp.AltinnEnvironment
-import no.bekk.altinnpdp.auth.AltinnScopes
-import no.bekk.altinnpdp.auth.MaskinportenAltinnTokenProvider
-import no.bekk.altinnpdp.auth.MaskinportenConfig
-import no.bekk.altinnpdp.client.PdpClient
+import no.kartverket.altinnpdp.client.AltinnEnvironment
+import no.kartverket.altinnpdp.client.auth.AltinnScopes
+import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
+import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
+import no.kartverket.altinnpdp.client.PdpClient
 
 /**
  * Registers the [PdpClient] every `/authorize` call resolves via Ktor's DI plugin
