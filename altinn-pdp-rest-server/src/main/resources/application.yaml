@@ -3,5 +3,8 @@ ktor:
     port: 8080
   application:
     modules:
+      - no.bekk.altinnpdp.restserver.SerializationKt.configureSerialization
+      - no.bekk.altinnpdp.restserver.ErrorHandlingKt.configureErrorHandling
+      - no.bekk.altinnpdp.restserver.PdpKt.configurePdp
       - no.bekk.altinnpdp.restserver.HttpKt.configureHttp
       - no.bekk.altinnpdp.restserver.RoutingKt.configureRouting
