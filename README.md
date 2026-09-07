@@ -13,9 +13,9 @@ Tools for asking Altinn's Policy Decision Point (PDP) whether a systembruker has
 
 ## Key concepts
 
-- **The PDP question.** `PdpClient.authorize(systemuserId, organizationNumber, resourceId, action)` answers one question: can this systemuser act on behalf of this org, on this resource, this way? The answer is a `PdpDecision` — `PERMIT`, `DENY`, `NOT_APPLICABLE` (no matching policy, not necessarily an error), or `INDETERMINATE` (the PDP couldn't evaluate the request).
+- **The PDP question.** `PdpClient.authorize(systemuserId, organizationNumber, resourceId, action)` answers one question: can this systemuser act on behalf of this org, on this resource, this way? The answer is a `PdpDecision` - `PERMIT`, `DENY`, `NOT_APPLICABLE` (no matching policy, not necessarily an error), or `INDETERMINATE` (the PDP couldn't evaluate the request).
 - **Environments.** `AltinnEnvironment.TT02` / `.PROD` fix the base URL for both the PDP call and the token exchange from one place. A raw base-URL constructor still exists for pointing at a local test server.
-- **Two tokens, not one.** A Maskinporten token proves the calling system's identity, but Altinn doesn't accept it directly — it's exchanged for a separate Altinn token, which is what's actually sent to the PDP. Both are fetched and cached automatically.
+- **Two tokens, not one.** A Maskinporten token proves the calling system's identity, but Altinn doesn't accept it directly - it's exchanged for a separate Altinn token, which is what's actually sent to the PDP. Both are fetched and cached automatically.
 
 ## Getting started
 
