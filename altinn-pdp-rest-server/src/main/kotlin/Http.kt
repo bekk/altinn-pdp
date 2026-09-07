@@ -6,7 +6,7 @@ import io.ktor.server.routing.*
 
 fun Application.configureHttp() {
     routing {
-        openAPI(path = "openapi") {
+        openAPI(path = "openapi", swaggerFile = "documentation.yaml") {
             /*
              Documentation source configuration goes here.
 
