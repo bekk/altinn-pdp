@@ -1,18 +1,10 @@
 plugins {
-    alias(libs.plugins.kotlin.jvm)
     alias(ktorLibs.plugins.ktor)
     alias(libs.plugins.jib)
 }
 
-group = "no.bekk.altinnpdp"
-version = "0.1.0-SNAPSHOT"
-
 application {
     mainClass = "io.ktor.server.netty.EngineMain"
-}
-
-kotlin {
-    jvmToolchain(21)
 }
 
 dependencies {
@@ -23,7 +15,6 @@ dependencies {
     implementation(ktorLibs.server.routingOpenapi)
     implementation(libs.logback.classic)
 
-    testImplementation(kotlin("test"))
     testImplementation(ktorLibs.server.testHost)
 }
 

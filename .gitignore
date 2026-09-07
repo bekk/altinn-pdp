@@ -3,4 +3,18 @@
 # Gradle
 .gradle/
 build/
+.kotlin/
 altinn-pdp-rest-server/docs/
+docs/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
+*.local.properties
