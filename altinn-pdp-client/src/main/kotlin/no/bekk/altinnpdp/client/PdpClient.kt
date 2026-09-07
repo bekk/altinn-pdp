@@ -166,7 +166,11 @@ class PdpClient(
 
         fun maskinportenJwk(jwk: String): Builder = apply { this.maskinportenJwk = jwk }
 
-        /** No per-environment default - Altinn's expected `resource` claim per environment isn't confirmed. */
+        /**
+         * Defaults to [environment]'s own `resource` claim, where one is confirmed (`TT02` has
+         * one; `PROD` doesn't yet, so this call becomes required there). Override for a systemuser
+         * that genuinely needs something else.
+         */
         fun maskinportenResource(resource: String): Builder = apply { this.maskinportenResource = resource }
 
         fun build(): PdpClient {
@@ -186,8 +190,8 @@ class PdpClient(
                     // Not configurable: PdpClient only ever calls /authorize, and AUTHORIZE is the
                     // one scope that operation needs - not exposed as a builder override.
                     scopes = listOf(AltinnScopes.AUTHORIZE),
-                    resource = requireNotNull(maskinportenResource) {
-                        "maskinportenResource is required (no per-environment default - not confirmed for prod)"
+                    resource = requireNotNull(maskinportenResource ?: env.maskinportenResource) {
+                        "maskinportenResource is required for $env (no confirmed default for this environment)"
                     },
                 ),
                 environment = env,
