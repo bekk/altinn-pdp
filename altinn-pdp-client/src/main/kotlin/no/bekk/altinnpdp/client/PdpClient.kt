@@ -166,7 +166,7 @@ class PdpClient(
 
         fun maskinportenJwk(jwk: String): Builder = apply { this.maskinportenJwk = jwk }
 
-        /** Defaults to [environment]'s own `resource` claim; override only if Maskinporten requires something else. */
+        /** No per-environment default - Altinn's expected `resource` claim per environment isn't confirmed. */
         fun maskinportenResource(resource: String): Builder = apply { this.maskinportenResource = resource }
 
         fun build(): PdpClient {
@@ -186,7 +186,9 @@ class PdpClient(
                     // Not configurable: PdpClient only ever calls /authorize, and AUTHORIZE is the
                     // one scope that operation needs - not exposed as a builder override.
                     scopes = listOf(AltinnScopes.AUTHORIZE),
-                    resource = maskinportenResource ?: env.maskinportenResource,
+                    resource = requireNotNull(maskinportenResource) {
+                        "maskinportenResource is required (no per-environment default - not confirmed for prod)"
+                    },
                 ),
                 environment = env,
                 httpClient = client,
