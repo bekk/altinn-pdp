@@ -27,15 +27,15 @@ Requires JDK 21 (or let the Gradle toolchain resolver provision one).
 
 Builds and tests every module - this is also what CI runs (see below).
 
-## Local secrets
-
-Create the ignored local secrets file from the committed template:
+To run `altinn-pdp-rest-server` locally, first create the ignored local secrets file from the
+committed template:
 
 ```shell
 cp .env.example .env
 ```
 
-The template has no variables yet; they are added as the app starts reading them. Fill in `.env` when it does, then start Ktor:
+The template has no variables yet; they are added as the app starts reading them. Fill in `.env`
+when it does, then start Ktor:
 
 ```shell
 ./scripts/dev.sh
