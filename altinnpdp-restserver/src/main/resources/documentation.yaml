@@ -19,5 +19,123 @@ paths:
               examples:
                 Example#1:
                   value: "Hello, World!"
+  /authorize:
+    post:
+      summary: "Check whether a systembruker is authorized"
+      description: >
+        Asks the Altinn PDP whether the systembruker identified by [systemuserId] has been
+        delegated [action] on [resourceId] for the party identified by [organizationNumber].
+        The Altinn subscription key and Maskinporten token are configured server-side; the
+        caller never supplies them.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthorizeRequest"
+            examples:
+              Example#1:
+                value:
+                  systemuserId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  resourceId: "altinn_access_management"
+                  organizationNumber: "923609016"
+                  action: "read"
+      responses:
+        "200":
+          description: "The PDP's decision."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthorizeResponse"
+              examples:
+                Permit:
+                  value:
+                    decision: "PERMIT"
+                Deny:
+                  value:
+                    decision: "DENY"
+        "400":
+          description: >
+            The request could not be understood or was rejected by Altinn as invalid - a missing
+            or blank field, a malformed JSON body, or Altinn reporting an unknown/invalid
+            resourceId, systemuserId, or organizationNumber.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                MissingField:
+                  value:
+                    error: "Missing required field: systemuserId"
+                MissingFields:
+                  value:
+                    error: "Missing required fields: systemuserId, resourceId"
+                BlankField:
+                  value:
+                    error: "systemuserId is required"
+        "502":
+          description: >
+            The call to Altinn or Maskinporten failed for a reason unrelated to this request's
+            content - the PDP itself errored, or a token could not be obtained.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                Example#1:
+                  value:
+                    error: "Altinn responded 503 to the PDP authorization request"
+        "500":
+          description: "An unanticipated server error."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                Example#1:
+                  value:
+                    error: "Internal server error"
 components:
-  schemas: {}
+  schemas:
+    AuthorizeRequest:
+      type: "object"
+      required:
+        - "systemuserId"
+        - "resourceId"
+        - "organizationNumber"
+        - "action"
+      properties:
+        systemuserId:
+          type: "string"
+          description: "The systembruker id from the token's authorization_details."
+        resourceId:
+          type: "string"
+          description: "The resource's identifier in the Altinn Resource Registry."
+        organizationNumber:
+          type: "string"
+          description: >
+            The plain Norwegian org number of the party whose access is being checked, e.g.
+            "923609016" - not the ISO6523-prefixed form Maskinporten tokens use.
+        action:
+          type: "string"
+          description: "e.g. \"read\" or \"write\"."
+    AuthorizeResponse:
+      type: "object"
+      required:
+        - "decision"
+      properties:
+        decision:
+          type: "string"
+          description: "The XACML decision."
+          enum:
+            - "PERMIT"
+            - "DENY"
+            - "NOT_APPLICABLE"
+            - "INDETERMINATE"
+    ErrorResponse:
+      type: "object"
+      required:
+        - "error"
+      properties:
+        error:
+          type: "string"

@@ -5,7 +5,6 @@ import io.ktor.server.application.install
 import io.ktor.server.application.pluginOrNull
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
-import io.ktor.server.plugins.di.provide
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.auth.AltinnScopes
 import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
