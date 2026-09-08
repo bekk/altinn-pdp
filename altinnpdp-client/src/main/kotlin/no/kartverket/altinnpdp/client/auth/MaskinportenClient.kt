@@ -60,7 +60,6 @@ class MaskinportenClient(
             .jwtID(UUID.randomUUID().toString())
             .issueTime(Date.from(now))
             .expirationTime(Date.from(now.plus(config.assertionLifetime)))
-        config.resource?.let { claims.claim("resource", it) }
 
         val header = JWSHeader.Builder(JWSAlgorithm.RS256)
             .keyID(signingKey.keyID)

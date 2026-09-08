@@ -147,7 +147,6 @@ class PdpClient(
         private var maskinportenTokenUrl: String? = null
         private var maskinportenClientId: String? = null
         private var maskinportenJwk: String? = null
-        private var maskinportenResource: String? = null
 
         /** Required - fixes the platform base URL and Maskinporten token endpoint for this client. */
         fun environment(environment: AltinnEnvironment): Builder = apply { this.environment = environment }
@@ -170,9 +169,6 @@ class PdpClient(
         /** Required, unless [tokenProvider] is used instead. */
         fun maskinportenJwk(jwk: String): Builder = apply { this.maskinportenJwk = jwk }
 
-        /** Required for every [environment] - no default, so switching TT02 to PROD can't silently reuse a stale value. */
-        fun maskinportenResource(resource: String): Builder = apply { this.maskinportenResource = resource }
-
         fun build(): PdpClient {
             val env = requireNotNull(environment) { "environment is required" }
             val key = requireNotNull(subscriptionKey) { "subscriptionKey is required" }
@@ -190,9 +186,6 @@ class PdpClient(
                     // Not configurable: PdpClient only ever calls /authorize, and AUTHORIZE is the
                     // one scope that operation needs - not exposed as a builder override.
                     scopes = listOf(AltinnScopes.AUTHORIZE),
-                    resource = requireNotNull(maskinportenResource) {
-                        "maskinportenResource is required (or call tokenProvider(...) directly)"
-                    },
                 ),
                 environment = env,
                 httpClient = client,
