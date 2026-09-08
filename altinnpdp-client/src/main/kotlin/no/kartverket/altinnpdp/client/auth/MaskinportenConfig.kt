@@ -10,7 +10,7 @@ import java.time.Duration
  * @param clientId client id issued by Maskinporten - sent as `iss` in the client assertion
  * @param jwk the private key as a JWK in JSON format, used to sign the client assertion
  * @param scopes the scopes requested, sent as a space-separated `scope` claim
- * @param resource optional `resource` claim - which API the token is intended for
+ * @param resource the `resource` claim - which API the token is intended for
  * @param assertionLifetime lifetime of the client assertion; at most [MAX_ASSERTION_LIFETIME]
  * @param audience `aud` in the client assertion - Maskinporten's issuer. Derived from [tokenUrl]
  *   by default; override only if Maskinporten requires something else.
@@ -20,7 +20,7 @@ data class MaskinportenConfig(
     val clientId: String,
     val jwk: String,
     val scopes: List<String>,
-    val resource: String? = null,
+    val resource: String,
     val assertionLifetime: Duration = Duration.ofSeconds(60),
     val audience: String = deriveAudience(tokenUrl),
 ) {
@@ -29,6 +29,7 @@ data class MaskinportenConfig(
         require(clientId.isNotBlank()) { "clientId is required" }
         require(jwk.isNotBlank()) { "jwk is required" }
         require(scopes.isNotEmpty()) { "at least one scope is required" }
+        require(resource.isNotBlank()) { "resource is required" }
         require(
             !assertionLifetime.isNegative && !assertionLifetime.isZero &&
                 assertionLifetime <= MAX_ASSERTION_LIFETIME
