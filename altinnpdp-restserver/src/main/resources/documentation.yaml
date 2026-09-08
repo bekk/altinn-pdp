@@ -4,11 +4,11 @@ info:
   description: "Simplified JSON REST API for the Altinn PDP"
   version: "0.1.0"
 servers:
-  - url: "http://0.0.0.0:8080"
+  - url: "http://localhost:8080"
 paths:
   /:
     get:
-      description: "Hello World!"
+      description: "Hello, World!"
       responses:
         "200":
           description: "OK"
@@ -18,6 +18,6 @@ paths:
                 type: "string"
               examples:
                 Example#1:
-                  value: "Hello World!"
+                  value: "Hello, World!"
 components:
   schemas: {}
