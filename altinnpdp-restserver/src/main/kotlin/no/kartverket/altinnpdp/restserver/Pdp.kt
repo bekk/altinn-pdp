@@ -21,7 +21,7 @@ import no.kartverket.altinnpdp.client.PdpClient
  * dependency registration works even for modules that never mention DI) - `install(DI)` here
  * would then throw [io.ktor.server.application.DuplicatePluginException]. `testApplication`, on
  * the other hand, never installs it up front, so this module still has to when running under
- * test. [pluginOrNull] covers both.
+ * test. [pluginOrNull]  covers both.
  */
 fun Application.configurePdp(client: PdpClient = pdpClientFromEnv()) {
     if (pluginOrNull(DI) == null) install(DI)
