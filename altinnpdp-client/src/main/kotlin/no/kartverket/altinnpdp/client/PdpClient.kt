@@ -149,8 +149,10 @@ class PdpClient(
         private var maskinportenJwk: String? = null
         private var maskinportenResource: String? = null
 
+        /** Required - fixes the platform base URL and Maskinporten token endpoint for this client. */
         fun environment(environment: AltinnEnvironment): Builder = apply { this.environment = environment }
 
+        /** Required - the Azure API Management subscription key for the PDP `/authorize` endpoint. */
         fun subscriptionKey(subscriptionKey: String): Builder = apply { this.subscriptionKey = subscriptionKey }
 
         /** Defaults to a plain [Http.defaultClient]; override to share a client/connection pool. */
@@ -162,15 +164,13 @@ class PdpClient(
         /** Defaults to [environment]'s own Maskinporten token endpoint; override only for a local test server. */
         fun maskinportenTokenUrl(tokenUrl: String): Builder = apply { this.maskinportenTokenUrl = tokenUrl }
 
+        /** Required, unless [tokenProvider] is used instead. */
         fun maskinportenClientId(clientId: String): Builder = apply { this.maskinportenClientId = clientId }
 
+        /** Required, unless [tokenProvider] is used instead. */
         fun maskinportenJwk(jwk: String): Builder = apply { this.maskinportenJwk = jwk }
 
-        /**
-         * Defaults to [environment]'s own `resource` claim, where one is confirmed (`TT02` has
-         * one; `PROD` doesn't yet, so this call becomes required there). Override for a systemuser
-         * that genuinely needs something else.
-         */
+        /** Required for every [environment] - no default, so switching TT02 to PROD can't silently reuse a stale value. */
         fun maskinportenResource(resource: String): Builder = apply { this.maskinportenResource = resource }
 
         fun build(): PdpClient {
@@ -190,8 +190,8 @@ class PdpClient(
                     // Not configurable: PdpClient only ever calls /authorize, and AUTHORIZE is the
                     // one scope that operation needs - not exposed as a builder override.
                     scopes = listOf(AltinnScopes.AUTHORIZE),
-                    resource = requireNotNull(maskinportenResource ?: env.maskinportenResource) {
-                        "maskinportenResource is required for $env (no confirmed default for this environment)"
+                    resource = requireNotNull(maskinportenResource) {
+                        "maskinportenResource is required (or call tokenProvider(...) directly)"
                     },
                 ),
                 environment = env,
