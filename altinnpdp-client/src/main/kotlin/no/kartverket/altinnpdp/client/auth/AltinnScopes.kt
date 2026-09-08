@@ -1,4 +1,4 @@
-package no.kartverket.altinnpdp.auth
+package no.kartverket.altinnpdp.client.auth
 
 /**
  * Maskinporten scopes required to administer delegation setup in Altinn (step 2 in

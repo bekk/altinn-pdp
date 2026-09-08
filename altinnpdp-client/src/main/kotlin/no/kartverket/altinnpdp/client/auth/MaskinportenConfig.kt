@@ -1,4 +1,4 @@
-package no.kartverket.altinnpdp.auth
+package no.kartverket.altinnpdp.client.auth
 
 import java.net.URI
 import java.time.Duration

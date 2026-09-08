@@ -1,4 +1,4 @@
-package no.kartverket.altinnpdp.model
+package no.kartverket.altinnpdp.client.model
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable

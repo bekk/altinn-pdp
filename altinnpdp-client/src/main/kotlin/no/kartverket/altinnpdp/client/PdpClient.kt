@@ -6,12 +6,12 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import no.kartverket.altinnpdp.AltinnEnvironment
-import no.kartverket.altinnpdp.auth.AltinnTokenProvider
-import no.kartverket.altinnpdp.exception.PdpException
-import no.kartverket.altinnpdp.http.Http
-import no.kartverket.altinnpdp.model.XacmlAuthorizationRequest
-import no.kartverket.altinnpdp.model.XacmlAuthorizationResponse
+import no.kartverket.altinnpdp.client.AltinnEnvironment
+import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
+import no.kartverket.altinnpdp.client.exception.PdpException
+import no.kartverket.altinnpdp.client.http.Http
+import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
+import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
 
 /**
  * Calls Altinn's PDP (`POST /authorization/api/v1/authorize`) to check whether a systembruker

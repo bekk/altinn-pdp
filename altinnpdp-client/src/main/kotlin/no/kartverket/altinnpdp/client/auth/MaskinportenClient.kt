@@ -1,4 +1,4 @@
-package no.kartverket.altinnpdp.auth
+package no.kartverket.altinnpdp.client.auth
 
 import com.nimbusds.jose.JOSEException
 import com.nimbusds.jose.JWSAlgorithm
@@ -22,8 +22,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import no.kartverket.altinnpdp.exception.MaskinportenException
-import no.kartverket.altinnpdp.http.Http
+import no.kartverket.altinnpdp.client.exception.MaskinportenException
+import no.kartverket.altinnpdp.client.http.Http
 
 /**
  * Fetches an access token from Maskinporten using the JWT grant
