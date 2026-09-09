@@ -6,9 +6,6 @@ import io.ktor.server.application.pluginOrNull
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
 import no.kartverket.altinnpdp.client.AltinnEnvironment
-import no.kartverket.altinnpdp.client.auth.AltinnScopes
-import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
-import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
 import no.kartverket.altinnpdp.client.PdpClient
 
 /**
@@ -29,16 +26,13 @@ fun Application.configurePdp(client: PdpClient = pdpClientFromEnv()) {
 }
 
 private fun pdpClientFromEnv(): PdpClient {
-    val environment = AltinnEnvironment.valueOf(Dotenv.get("ALTINN_ENVIRONMENT") ?: "TT02")
-    val subscriptionKey = requiredEnv("ALTINN_SUBSCRIPTION_KEY")
-    val maskinportenConfig = MaskinportenConfig(
-        tokenUrl = Dotenv.get("MASKINPORTEN_TOKEN_URL") ?: "https://test.maskinporten.no/token",
-        clientId = requiredEnv("MASKINPORTEN_CLIENT_ID"),
-        jwk = requiredEnv("MASKINPORTEN_CLIENT_JWK"),
-        scopes = (AltinnScopes.AUTHORIZE).split(" "),
-    )
-    val tokenProvider = MaskinportenAltinnTokenProvider(maskinportenConfig, environment)
-    return PdpClient(environment, tokenProvider, subscriptionKey)
+    val builder = PdpClient.builder()
+        .environment(AltinnEnvironment.valueOf(Dotenv.get("ALTINN_ENVIRONMENT") ?: "TT02"))
+        .subscriptionKey(requiredEnv("ALTINN_SUBSCRIPTION_KEY"))
+        .maskinportenClientId(requiredEnv("MASKINPORTEN_CLIENT_ID"))
+        .maskinportenJwk(requiredEnv("MASKINPORTEN_CLIENT_JWK"))
+    Dotenv.get("MASKINPORTEN_TOKEN_URL")?.let { builder.maskinportenTokenUrl(it) }
+    return builder.build()
 }
 
 private fun requiredEnv(name: String): String =
