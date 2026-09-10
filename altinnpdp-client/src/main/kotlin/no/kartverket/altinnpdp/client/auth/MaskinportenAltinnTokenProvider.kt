@@ -16,8 +16,7 @@ import no.kartverket.altinnpdp.client.http.Http
  *         tokenUrl = "https://test.maskinporten.no/token",
  *         clientId = "<client id>",
  *         jwk = jwkJson,
- *         scopes = AltinnScopes.DELEGATION,
- *         resource = "https://tt02.altinn.no",
+ *         scopes = listOf(AltinnScopes.AUTHORIZE),
  *     ),
  *     environment = AltinnEnvironment.TT02,
  * )
