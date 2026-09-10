@@ -26,7 +26,6 @@
   - [Building the client](#building-the-client)
   - [Asking the PDP](#asking-the-pdp)
   - [Running the server](#running-the-server)
-- [🔌 API](#-api)
 - [🔑 Environment variables](#-environment-variables)
 - [🌍 Environments](#-environments)
 - [🧪 Testing](#-testing)
@@ -60,6 +59,10 @@ this project is for.
 
 `altinnpdp-restserver` is the intended consumer of `altinnpdp-client`, so other systems can ask
 "is this allowed?" over plain JSON without speaking Maskinporten and XACML themselves.
+
+> [!NOTE]
+> The server is still an early scaffold. It serves Ktor's default routing and does not call the
+> PDP yet.
 
 ---
 
@@ -131,74 +134,9 @@ The server runs on <http://localhost:8080>.
 
 ---
 
-## 🔌 API
-
-### `POST /authorize`
-
-Request body:
-
-```json
-{
-  "systemuserId": "<systembruker id from the token's authorization_details>",
-  "resourceId": "<resource identifier in the Altinn Resource Registry>",
-  "organizationNumber": "923609016",
-  "action": "read"
-}
-```
-
-All four fields are required strings. `organizationNumber` is the plain Norwegian org number
-(no ISO6523 prefix). The Altinn subscription key and Maskinporten credentials are configured
-server-side (see [Environment variables](#-environment-variables)) - callers never supply them.
-
-Response body (`200 OK`):
-
-```json
-{
-  "decision": "PERMIT"
-}
-```
-
-`decision` is one of:
-
-| Value | Meaning |
-| :--- | :--- |
-| `PERMIT` | The systembruker is allowed to perform `action` on the resource for that org |
-| `DENY` | Explicitly denied |
-| `NOT_APPLICABLE` | No matching policy - not necessarily an error |
-| `INDETERMINATE` | The PDP couldn't evaluate the request |
-
-Error responses (any non-2xx) share one shape:
-
-```json
-{
-  "error": "<human-readable message>"
-}
-```
-
-| Status | Cause |
-| :--- | :--- |
-| `400 Bad Request` | Malformed/missing JSON fields, or Altinn rejected the request itself (e.g. unknown `resourceId`) |
-| `502 Bad Gateway` | Calling Maskinporten or Altinn failed for a reason unrelated to this request's content |
-| `500 Internal Server Error` | Anything unanticipated |
-
-### `GET /health/live`
-
-Liveness probe. Returns `200 OK` with an empty body if the server is up - not part of the stable
-API.
-
----
-
 ## 🔑 Environment variables
 
-| Variable | Required | Default |
-| :--- | :--- | :--- |
-| `MASKINPORTEN_CLIENT_ID` | yes | - |
-| `MASKINPORTEN_CLIENT_JWK` | yes | - |
-| `ALTINN_SUBSCRIPTION_KEY` | yes | - |
-| `ALTINN_ENVIRONMENT` | no | `TT02` |
-| `MASKINPORTEN_TOKEN_URL` | no | TT02's Maskinporten token endpoint |
-
-See `.env.example` for what each variable is and where to get it.
+_None are required yet. They are added to `.env.example` as the app starts reading them._
 
 Never commit `.env`, and never print secrets in logs.
 
@@ -225,9 +163,6 @@ The client also has raw base-URL constructors for pointing at a local test serve
 ```
 
 `./gradlew build` runs the tests as part of the build, and CI runs it on every pull request.
-
-`.github/workflows/build.yml` runs `./gradlew build` on every PR and on push to `main`.
-`.github/dependabot.yml` keeps dependencies and Actions up to date.
 
 ---
 
