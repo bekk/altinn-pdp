@@ -124,6 +124,7 @@ Create the ignored local secrets file from the committed template, then start Kt
 
 ```bash
 cp .env.example .env
+cp altinnpdp-restserver/.env.example altinnpdp-restserver/.env
 ./scripts/dev.sh
 ```
 
