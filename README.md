@@ -123,7 +123,6 @@ not in itself an error) or `INDETERMINATE` (the PDP could not evaluate the reque
 Create the ignored local secrets file from the committed template, then start Ktor:
 
 ```bash
-cp .env.example .env
 cp altinnpdp-restserver/.env.example altinnpdp-restserver/.env
 ./scripts/dev.sh
 ```
@@ -202,7 +201,7 @@ API.
 | `ALTINN_ENVIRONMENT` | no | `TT02` |
 | `MASKINPORTEN_TOKEN_URL` | no | TT02's Maskinporten token endpoint |
 
-See `.env.example` for what each variable is and where to get it.
+See `altinnpdp-restserver/.env.example` for what each variable is and where to get it.
 
 Never commit `.env`, and never print secrets in logs.
 
