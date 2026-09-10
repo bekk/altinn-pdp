@@ -50,15 +50,17 @@ paths:
               examples:
                 Permit:
                   value:
+                    permit: true
                     decision: "PERMIT"
                 Deny:
                   value:
+                    permit: false
                     decision: "DENY"
         "400":
           description: >
             The request could not be understood or was rejected by Altinn as invalid - a missing
-            or blank field, a malformed JSON body, or Altinn reporting an unknown/invalid
-            resourceId, systemuserId, or organizationNumber.
+            or blank field, a malformed organizationNumber, a malformed JSON body, or Altinn
+            reporting an unknown/invalid resourceId or systemuserId.
           content:
             application/json:
               schema:
@@ -73,10 +75,14 @@ paths:
                 BlankField:
                   value:
                     error: "systemuserId is required"
+                InvalidOrganizationNumber:
+                  value:
+                    error: "organizationNumber must be exactly 9 digits"
         "502":
           description: >
             The call to Altinn or Maskinporten failed for a reason unrelated to this request's
-            content - the PDP itself errored, or a token could not be obtained.
+            content - the PDP itself errored, or a token could not be obtained. The response never
+            includes Altinn's own error details; those are logged server-side instead.
           content:
             application/json:
               schema:
@@ -84,7 +90,7 @@ paths:
               examples:
                 Example#1:
                   value:
-                    error: "Altinn responded 503 to the PDP authorization request"
+                    error: "The call to Altinn failed"
         "500":
           description: "An unanticipated server error."
           content:
@@ -113,20 +119,27 @@ components:
           description: "The resource's identifier in the Altinn Resource Registry."
         organizationNumber:
           type: "string"
+          pattern: "^[0-9]{9}$"
           description: >
-            The plain Norwegian org number of the party whose access is being checked, e.g.
-            "923609016" - not the ISO6523-prefixed form Maskinporten tokens use.
+            The plain Norwegian org number (exactly 9 digits) of the party whose access is being
+            checked - the customer/business systemuserId is acting on behalf of, e.g. "923609016".
+            Not the caller's own org number, and not the ISO6523-prefixed form Maskinporten tokens
+            use.
         action:
           type: "string"
           description: "e.g. \"read\" or \"write\"."
     AuthorizeResponse:
       type: "object"
       required:
+        - "permit"
         - "decision"
       properties:
+        permit:
+          type: "boolean"
+          description: "Whether the request is permitted - shorthand for decision == \"PERMIT\"."
         decision:
           type: "string"
-          description: "The XACML decision."
+          description: "The underlying XACML decision."
           enum:
             - "PERMIT"
             - "DENY"

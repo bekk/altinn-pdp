@@ -8,6 +8,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import java.net.InetSocketAddress
 import java.time.Instant
@@ -37,6 +38,30 @@ class ServerTest {
     private fun pdpClientAgainst(server: HttpServer): PdpClient =
         PdpClient("http://localhost:${server.address.port}", fakeTokenProvider, "test-subscription-key")
 
+    /**
+     * Wraps [testApplication] with a stubbed PDP backend wired into [configurePdp] - the setup
+     * every `/authorize` test needs. [decision] and [statusCode] configure the stub; [block] is
+     * the actual test body, run once the application and stub are ready.
+     */
+    private fun authorizeTest(
+        decision: String,
+        statusCode: Int = 200,
+        block: suspend ApplicationTestBuilder.() -> Unit,
+    ) = testApplication {
+        val server = stubPdpServer(decision, statusCode)
+        try {
+            application {
+                configureSerialization()
+                configureErrorHandling()
+                configurePdp(pdpClientAgainst(server))
+                configureRouting()
+            }
+            block()
+        } finally {
+            server.stop(0)
+        }
+    }
+
     @Test
     fun `test root endpoint`() = testApplication {
         application {
@@ -47,146 +72,154 @@ class ServerTest {
     }
 
     @Test
-    fun `authorize returns the PDP decision`() = testApplication {
-        val server = stubPdpServer(decision = "Permit")
-        try {
-            application {
-                configureSerialization()
-                configureErrorHandling()
-                configurePdp(pdpClientAgainst(server))
-                configureRouting()
-            }
-
-            val response = client.post("/authorize") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
-                )
-            }
-
-            assertEquals(HttpStatusCode.OK, response.status)
-            assertEquals(
-                AuthorizeResponse("PERMIT"),
-                Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
+    fun `authorize returns the PDP decision`() = authorizeTest(decision = "Permit") {
+        val response = client.post("/authorize") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
             )
-        } finally {
-            server.stop(0)
         }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(
+            AuthorizeResponse(permit = true, decision = "PERMIT"),
+            Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
+        )
     }
 
     @Test
-    fun `authorize rejects a blank field with 400`() = testApplication {
-        val server = stubPdpServer(decision = "Permit")
-        try {
-            application {
-                configureSerialization()
-                configureErrorHandling()
-                configurePdp(pdpClientAgainst(server))
-                configureRouting()
-            }
-
-            val response = client.post("/authorize") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    """{"systemuserId":"","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
-                )
-            }
-
-            assertEquals(HttpStatusCode.BadRequest, response.status)
-        } finally {
-            server.stop(0)
-        }
-    }
-
-    @Test
-    fun `authorize reports the missing field when one is absent`() = testApplication {
-        val server = stubPdpServer(decision = "Permit")
-        try {
-            application {
-                configureSerialization()
-                configureErrorHandling()
-                configurePdp(pdpClientAgainst(server))
-                configureRouting()
-            }
-
-            val response = client.post("/authorize") {
-                contentType(ContentType.Application.Json)
-                setBody("""{"resourceId":"res-1","organizationNumber":"923609016","action":"read"}""")
-            }
-
-            assertEquals(HttpStatusCode.BadRequest, response.status)
-            assertEquals(
-                ErrorResponse("Missing required field: systemuserId"),
-                Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()),
+    fun `authorize returns a Deny decision`() = authorizeTest(decision = "Deny") {
+        val response = client.post("/authorize") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
             )
-        } finally {
-            server.stop(0)
         }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(
+            AuthorizeResponse(permit = false, decision = "DENY"),
+            Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
+        )
     }
 
     @Test
-    fun `authorize reports every missing field when several are absent`() = testApplication {
-        val server = stubPdpServer(decision = "Permit")
-        try {
-            application {
-                configureSerialization()
-                configureErrorHandling()
-                configurePdp(pdpClientAgainst(server))
-                configureRouting()
-            }
-
-            val response = client.post("/authorize") {
-                contentType(ContentType.Application.Json)
-                setBody("""{"organizationNumber":"923609016","action":"read"}""")
-            }
-
-            assertEquals(HttpStatusCode.BadRequest, response.status)
-            assertEquals(
-                ErrorResponse("Missing required fields: systemuserId, resourceId"),
-                Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()),
+    fun `authorize returns a NotApplicable decision`() = authorizeTest(decision = "NotApplicable") {
+        val response = client.post("/authorize") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
             )
-        } finally {
-            server.stop(0)
         }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(
+            AuthorizeResponse(permit = false, decision = "NOT_APPLICABLE"),
+            Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
+        )
     }
 
     @Test
-    fun `authorize without a Content-Type header returns 400, not 500`() = testApplication {
-        val server = stubPdpServer(decision = "Permit")
-        try {
-            application {
-                configureSerialization()
-                configureErrorHandling()
-                configurePdp(pdpClientAgainst(server))
-                configureRouting()
-            }
-
-            // No contentType(...) call - ContentNegotiation then finds no converter for the
-            // request at all and throws CannotTransformContentToTypeException, a different
-            // exception type than a malformed JSON body would (JsonConvertException).
-            val response = client.post("/authorize") {
-                setBody(
-                    """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
-                )
-            }
-
-            assertEquals(HttpStatusCode.BadRequest, response.status)
-        } finally {
-            server.stop(0)
+    fun `authorize returns an Indeterminate decision`() = authorizeTest(decision = "Indeterminate") {
+        val response = client.post("/authorize") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+            )
         }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(
+            AuthorizeResponse(permit = false, decision = "INDETERMINATE"),
+            Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
+        )
     }
 
     @Test
-    fun `authorize maps a PDP server failure to 502`() = testApplication {
-        val server = stubPdpServer(decision = "Permit", statusCode = 500)
-        try {
-            application {
-                configureSerialization()
-                configureErrorHandling()
-                configurePdp(pdpClientAgainst(server))
-                configureRouting()
-            }
+    fun `authorize rejects a blank field with 400`() = authorizeTest(decision = "Permit") {
+        val response = client.post("/authorize") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """{"systemuserId":"","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+            )
+        }
 
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun `authorize rejects an organizationNumber that isn't 9 digits`() = authorizeTest(decision = "Permit") {
+        val response = client.post("/authorize") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"12345","action":"read"}""",
+            )
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(
+            ErrorResponse("organizationNumber must be exactly 9 digits"),
+            Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()),
+        )
+    }
+
+    @Test
+    fun `authorize reports the missing field when one is absent`() = authorizeTest(decision = "Permit") {
+        val response = client.post("/authorize") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"resourceId":"res-1","organizationNumber":"923609016","action":"read"}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(
+            ErrorResponse("Missing required field: systemuserId"),
+            Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()),
+        )
+    }
+
+    @Test
+    fun `authorize reports every missing field when several are absent`() = authorizeTest(decision = "Permit") {
+        val response = client.post("/authorize") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"organizationNumber":"923609016","action":"read"}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(
+            ErrorResponse("Missing required fields: systemuserId, resourceId"),
+            Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()),
+        )
+    }
+
+    @Test
+    fun `authorize without a Content-Type header returns 400, not 500`() = authorizeTest(decision = "Permit") {
+        // No contentType(...) call - ContentNegotiation then finds no converter for the
+        // request at all and throws CannotTransformContentToTypeException, a different
+        // exception type than a malformed JSON body would (JsonConvertException).
+        val response = client.post("/authorize") {
+            setBody(
+                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+            )
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun `authorize maps a PDP server failure to 502`() = authorizeTest(decision = "Permit", statusCode = 500) {
+        val response = client.post("/authorize") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+            )
+        }
+
+        assertEquals(HttpStatusCode.BadGateway, response.status)
+    }
+
+    @Test
+    fun `authorize maps a PDP rejection of the request to 400, not 502`() =
+        authorizeTest(decision = "Permit", statusCode = 400) {
             val response = client.post("/authorize") {
                 contentType(ContentType.Application.Json)
                 setBody(
@@ -194,33 +227,6 @@ class ServerTest {
                 )
             }
 
-            assertEquals(HttpStatusCode.BadGateway, response.status)
-        } finally {
-            server.stop(0)
-        }
-    }
-
-    @Test
-    fun `authorize maps a PDP rejection of the request to 400, not 502`() = testApplication {
-        val server = stubPdpServer(decision = "Permit", statusCode = 400)
-        try {
-            application {
-                configureSerialization()
-                configureErrorHandling()
-                configurePdp(pdpClientAgainst(server))
-                configureRouting()
-            }
-
-            val response = client.post("/authorize") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
-                )
-            }
-
             assertEquals(HttpStatusCode.BadRequest, response.status)
-        } finally {
-            server.stop(0)
         }
-    }
 }

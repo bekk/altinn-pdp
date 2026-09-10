@@ -40,23 +40,31 @@ fun Application.configureErrorHandling() {
         // A 4xx from Altinn means it rejected this specific request (e.g. an unknown resourceId
         // or malformed organizationNumber) - that is on the caller, so tell them, not just "bad
         // gateway". A 5xx, or no status at all (a network failure), is Altinn's fault, not theirs.
+        //
+        // cause.message already has Altinn's own response body appended (see
+        // AltinnPdpException.messageWithBody) - that's useful in the logs but must never reach the
+        // caller as-is, since it can carry details about our Altinn integration we don't want to
+        // expose. Log the full detail, respond with a fixed message instead.
         exception<PdpException> { call, cause ->
-            call.application.log.error("PDP call failed", cause)
+            call.application.log.error(
+                "PDP call failed: statusCode=${cause.statusCode}, responseBody=${cause.responseBody}",
+                cause,
+            )
             val status = cause.statusCode
             if (status != null && status in 400..499) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message ?: "Altinn rejected the request"))
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Altinn rejected the request"))
             } else {
-                call.respond(HttpStatusCode.BadGateway, ErrorResponse(cause.message ?: "The call to Altinn failed"))
+                call.respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Altinn failed"))
             }
         }
         // Maskinporten/Altinn token exchange failures: always a server-side credentials/infra
         // problem, never something the caller's request body could have caused.
         exception<AltinnPdpException> { call, cause ->
-            call.application.log.error("Maskinporten/Altinn call failed", cause)
-            call.respond(
-                HttpStatusCode.BadGateway,
-                ErrorResponse(cause.message ?: "The call to Altinn failed"),
+            call.application.log.error(
+                "Maskinporten/Altinn call failed: statusCode=${cause.statusCode}, responseBody=${cause.responseBody}",
+                cause,
             )
+            call.respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Altinn failed"))
         }
         exception<Throwable> { call, cause ->
             call.application.log.error("Unhandled exception", cause)
