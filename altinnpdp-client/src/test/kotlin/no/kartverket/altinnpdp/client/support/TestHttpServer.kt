@@ -33,11 +33,22 @@ internal class TestHttpServer private constructor(private val server: HttpServer
 
     private val lock = Any()
     private val recorded = mutableMapOf<String, MutableList<RecordedRequest>>()
+    private val handlers = mutableMapOf<String, (RecordedRequest) -> TestResponse>()
 
     val baseUrl: String get() = "http://127.0.0.1:${server.address.port}"
 
-    /** Serves [path] with [handler]. Register before the client under test makes its call. */
+    /**
+     * Serves [path] with [handler]. Register before the client under test makes its call.
+     *
+     * Registering the same path twice replaces the handler rather than failing, so one server
+     * can serve a test that needs a different answer partway through. [HttpServer.createContext]
+     * throws on a duplicate path, so the context is created once and the handler looked up per
+     * request.
+     */
     fun on(path: String, handler: (RecordedRequest) -> TestResponse): TestHttpServer {
+        val isNewPath = synchronized(lock) { handlers.put(path, handler) == null }
+        if (!isNewPath) return this
+
         server.createContext(path) { exchange ->
             try {
                 val request = RecordedRequest(
@@ -48,7 +59,8 @@ internal class TestHttpServer private constructor(private val server: HttpServer
                         .associate { it.key.lowercase() to it.value.first() },
                 )
                 synchronized(lock) { recorded.getOrPut(path) { mutableListOf() }.add(request) }
-                respond(exchange, handler(request))
+                val current = synchronized(lock) { handlers.getValue(path) }
+                respond(exchange, current(request))
             } catch (e: Throwable) {
                 // Without this the exchange never closes and the client blocks until it times out,
                 // turning a broken fixture into a ten-second mystery.

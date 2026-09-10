@@ -1,6 +1,8 @@
 package no.kartverket.altinnpdp.client.auth
 
 import java.time.Duration
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +22,17 @@ import no.kartverket.altinnpdp.client.support.signedJwt
  * Both caches are exercised here through real HTTP so the nesting is covered end to end.
  */
 class MaskinportenAltinnTokenProviderTest {
+
+    /** One server per test, started and stopped around it rather than inside every test body. */
+    private lateinit var server: TestHttpServer
+
+    @BeforeTest
+    fun startServer() {
+        server = TestHttpServer.start()
+    }
+
+    @AfterTest
+    fun stopServer() = server.close()
 
     private val tokenPath = "/token"
     private val exchangePath = AltinnTokenExchanger.EXCHANGE_PATH
@@ -46,56 +59,48 @@ class MaskinportenAltinnTokenProviderTest {
 
     @Test
     fun `fetches a Maskinporten token and exchanges it for an Altinn token`() = runBlocking {
-        TestHttpServer.start().use { server ->
-            server.serveBothTokens()
+        server.serveBothTokens()
 
-            val token = provider(server).getAltinnToken()
+        val token = provider(server).getAltinnToken()
 
-            assertEquals("Bearer mp-token", server.lastRequest(exchangePath).header("Authorization"))
-            assertEquals(NOW.plusSeconds(300).epochSecond, token.expiresAt.epochSecond)
-        }
+        assertEquals("Bearer mp-token", server.lastRequest(exchangePath).header("Authorization"))
+        assertEquals(NOW.plusSeconds(300).epochSecond, token.expiresAt.epochSecond)
     }
 
     @Test
     fun `serves both tokens from cache on later calls`() = runBlocking {
-        TestHttpServer.start().use { server ->
-            server.serveBothTokens()
-            val provider = provider(server)
+        server.serveBothTokens()
+        val provider = provider(server)
 
-            repeat(3) { provider.getAltinnToken() }
+        repeat(3) { provider.getAltinnToken() }
 
-            assertEquals(1, server.requestCount(tokenPath))
-            assertEquals(1, server.requestCount(exchangePath))
-        }
+        assertEquals(1, server.requestCount(tokenPath))
+        assertEquals(1, server.requestCount(exchangePath))
     }
 
     @Test
     fun `exposes the underlying Maskinporten token without exchanging again`() = runBlocking {
-        TestHttpServer.start().use { server ->
-            server.serveBothTokens()
-            val provider = provider(server)
+        server.serveBothTokens()
+        val provider = provider(server)
 
-            provider.getAltinnToken()
+        provider.getAltinnToken()
 
-            assertEquals("mp-token", provider.getMaskinportenToken().value)
-            assertEquals(1, server.requestCount(tokenPath))
-            assertEquals(1, server.requestCount(exchangePath))
-        }
+        assertEquals("mp-token", provider.getMaskinportenToken().value)
+        assertEquals(1, server.requestCount(tokenPath))
+        assertEquals(1, server.requestCount(exchangePath))
     }
 
     @Test
     fun `invalidate clears both caches so the next call refetches everything`() = runBlocking {
-        TestHttpServer.start().use { server ->
-            server.serveBothTokens()
-            val provider = provider(server)
+        server.serveBothTokens()
+        val provider = provider(server)
 
-            provider.getAltinnToken()
-            provider.invalidate()
-            provider.getAltinnToken()
+        provider.getAltinnToken()
+        provider.invalidate()
+        provider.getAltinnToken()
 
-            assertEquals(2, server.requestCount(tokenPath), "the Maskinporten token should be refetched too")
-            assertEquals(2, server.requestCount(exchangePath))
-        }
+        assertEquals(2, server.requestCount(tokenPath), "the Maskinporten token should be refetched too")
+        assertEquals(2, server.requestCount(exchangePath))
     }
 
     @Test
@@ -103,16 +108,14 @@ class MaskinportenAltinnTokenProviderTest {
         // Getting an Altinn token takes the Altinn cache's lock and then, inside the loader, the
         // Maskinporten cache's lock. That nesting is only safe while both are always acquired in
         // this order; reversing it anywhere would deadlock exactly here.
-        TestHttpServer.start().use { server ->
-            server.serveBothTokens()
-            val provider = provider(server)
+        server.serveBothTokens()
+        val provider = provider(server)
 
-            coroutineScope {
-                List(20) { async(Dispatchers.Default) { provider.getAltinnToken() } }.awaitAll()
-            }
-
-            assertEquals(1, server.requestCount(tokenPath))
-            assertEquals(1, server.requestCount(exchangePath))
+        coroutineScope {
+            List(20) { async(Dispatchers.Default) { provider.getAltinnToken() } }.awaitAll()
         }
+
+        assertEquals(1, server.requestCount(tokenPath))
+        assertEquals(1, server.requestCount(exchangePath))
     }
 }
