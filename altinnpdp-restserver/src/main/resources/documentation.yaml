@@ -6,19 +6,13 @@ info:
 servers:
   - url: "http://localhost:8080"
 paths:
-  /:
+  /health/live:
     get:
-      description: "Hello, World!"
+      summary: "Liveness probe"
+      description: "Returns 200 OK if the server is up. Not part of the stable API."
       responses:
         "200":
           description: "OK"
-          content:
-            text/plain:
-              schema:
-                type: "string"
-              examples:
-                Example#1:
-                  value: "Hello, World!"
   /authorize:
     post:
       summary: "Check whether a systembruker is authorized"

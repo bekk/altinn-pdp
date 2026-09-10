@@ -67,10 +67,10 @@ Error responses (any non-2xx) share one shape:
 | `502 Bad Gateway` | Calling Maskinporten or Altinn failed for a reason unrelated to this request's content |
 | `500 Internal Server Error` | Anything unanticipated |
 
-### `GET /`
+### `GET /health/live`
 
-Returns `200 OK` with a plain-text placeholder body - not part of the stable API, only useful as
-a liveness check for now.
+Liveness probe. Returns `200 OK` with an empty body if the server is up - not part of the stable
+API.
 
 ## Getting started
 

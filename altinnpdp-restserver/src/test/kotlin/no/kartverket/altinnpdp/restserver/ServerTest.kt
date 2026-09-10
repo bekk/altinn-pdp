@@ -63,12 +63,12 @@ class ServerTest {
     }
 
     @Test
-    fun `test root endpoint`() = testApplication {
+    fun `test health liveness endpoint`() = testApplication {
         application {
             configureHttp()
             configureRouting()
         }
-        assertEquals(HttpStatusCode.OK, client.get("/").status)
+        assertEquals(HttpStatusCode.OK, client.get("/health/live").status)
     }
 
     @Test
