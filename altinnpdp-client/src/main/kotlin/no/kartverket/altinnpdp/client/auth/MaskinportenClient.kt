@@ -119,7 +119,7 @@ class MaskinportenClient(
         /** Used when Maskinporten does not supply `expires_in`. */
         private const val DEFAULT_LIFETIME_SECONDS = 60L
 
-        // The PDP response carries fields we don't model; ignore them rather than fail.
+        // The token response carries fields we don't model (token_type, scope, ...); ignore them.
         private val json = Json { ignoreUnknownKeys = true }
 
         private fun urlEncode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
