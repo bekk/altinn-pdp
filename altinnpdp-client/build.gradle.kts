@@ -2,6 +2,7 @@
 
 plugins {
     alias(libs.plugins.kotlin.serialization)
+    `maven-publish`
 }
 
 dependencies {
@@ -15,4 +16,22 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("gpr") {
+            from(components["java"])
+        }
+    }
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/bekk/altinn-pdp")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
 }
