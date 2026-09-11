@@ -26,3 +26,7 @@ jobs:
 
       - name: Build
         run: ./gradlew build
+
+      # Verifies the image builds. jibBuildTar writes a local tarball - nothing is published.
+      - name: Build Docker image
+        run: ./gradlew :altinnpdp-restserver:jibBuildTar
