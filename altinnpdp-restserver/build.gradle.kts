@@ -26,6 +26,10 @@ dependencies {
     testImplementation(ktorLibs.server.testHost)
 }
 
+tasks.named<JavaExec>("run") {
+  workingDir = rootProject.projectDir
+}
+
 // Local-first Jib config: `./gradlew jibDockerBuild` needs no registry.
 // Override the target image in CI with `-PdockerImage=<registry>/altinnpdp-restserver:<tag>`.
 jib {
