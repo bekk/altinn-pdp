@@ -31,7 +31,7 @@ tasks.named<JavaExec>("run") {
 }
 
 // Local-first Jib config: `./gradlew jibDockerBuild` needs no registry.
-// Override the target image in CI with `-PdockerImage=<registry>/altinnpdp-restserver:<tag>`.
+// Override the target image when publishing with `-PdockerImage=<registry>/altinnpdp-restserver:<tag>`.
 jib {
     from {
         image = "eclipse-temurin:21-jre"
@@ -42,5 +42,7 @@ jib {
     container {
         mainClass = "no.kartverket.altinnpdp.restserver.MainKt"
         ports = listOf("8080")
+        user = "1000:1000"
+        workingDirectory = "/tmp"
     }
 }
