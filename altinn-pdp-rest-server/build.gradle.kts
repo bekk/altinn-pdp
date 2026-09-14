@@ -9,7 +9,7 @@ application {
 }
 
 dependencies {
-    implementation(project(":altinnpdp-client"))
+    implementation(project(":altinn-pdp-client"))
 
     implementation(ktorLibs.server.core)
     implementation(ktorLibs.server.netty)
@@ -30,13 +30,13 @@ tasks.named<JavaExec>("run") {
 }
 
 // Local-first Jib config: `./gradlew jibDockerBuild` needs no registry.
-// Override the target image when publishing with `-PdockerImage=<registry>/altinnpdp-restserver:<tag>`.
+// Override the target image when publishing with `-PdockerImage=<registry>/altinn-pdp-rest-server:<tag>`.
 jib {
     from {
         image = "eclipse-temurin:21-jre"
     }
     to {
-        image = findProperty("dockerImage")?.toString() ?: "altinnpdp-restserver:local"
+        image = findProperty("dockerImage")?.toString() ?: "altinn-pdp-rest-server:local"
     }
     container {
         mainClass = "no.kartverket.altinnpdp.restserver.MainKt"

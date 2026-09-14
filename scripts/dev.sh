@@ -12,4 +12,4 @@ set -a
 . ./.env
 set +a
 
-exec ./gradlew :altinnpdp-restserver:run
+exec ./gradlew :altinn-pdp-rest-server:run

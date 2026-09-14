@@ -20,5 +20,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "altinn-pdp"
 
-include(":altinnpdp-restserver")
-include(":altinnpdp-client")
+include(":altinn-pdp-rest-server")
+include(":altinn-pdp-client")
