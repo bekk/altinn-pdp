@@ -54,16 +54,6 @@ class AltinnTokenExchangerTest {
     }
 
     @Test
-    fun `unwraps a token that Altinn returned wrapped in quotes`() = runBlocking {
-        // Some Altinn environments answer with the JWT as a quoted JSON string rather than raw
-        // text. Without the unwrapping this looks like a harmless no-op and gets deleted.
-        val jwt = signedJwt(NOW.plusSeconds(300))
-        server.on(path) { TestResponse(body = "\"$jwt\"") }
-
-        assertEquals(jwt, exchanger(server).exchange("maskinporten-token").value)
-    }
-
-    @Test
     fun `trims whitespace around the returned token`() = runBlocking {
         val jwt = signedJwt(NOW.plusSeconds(300))
         server.on(path) { TestResponse(body = "  $jwt\n") }
@@ -100,13 +90,6 @@ class AltinnTokenExchangerTest {
     @Test
     fun `fails when Altinn answers with an empty body`() = runBlocking {
         server.on(path) { TestResponse(body = "") }
-
-        assertContains(assertFailsWith<AltinnException> { exchanger(server).exchange("mp") }.message!!, "empty")
-    }
-
-    @Test
-    fun `fails when Altinn answers with quotes but no token inside them`() = runBlocking {
-        server.on(path) { TestResponse(body = "\"\"") }
 
         assertContains(assertFailsWith<AltinnException> { exchanger(server).exchange("mp") }.message!!, "empty")
     }

@@ -39,7 +39,6 @@ class AltinnTokenExchanger(
     suspend fun exchange(maskinportenToken: String): AccessToken {
         val request = HttpRequest.newBuilder(exchangeUrl)
             .header("Authorization", "Bearer $maskinportenToken")
-            .header("Accept", "application/json")
             .timeout(Http.DEFAULT_TIMEOUT)
             .GET()
             .build()
@@ -54,7 +53,7 @@ class AltinnTokenExchanger(
                 responseBody = response.body(),
             )
         }
-        val token = cleanToken(response.body())
+        val token = response.body().trim()
         if (token.isEmpty()) {
             throw AltinnException(
                 "Altinn returned an empty token",
@@ -79,14 +78,5 @@ class AltinnTokenExchanger(
 
         /** Used when the Altinn token has no `exp` claim. */
         private const val FALLBACK_LIFETIME_SECONDS = 60L
-
-        /** Altinn returns the JWT as text, in some environments wrapped in quotes. */
-        private fun cleanToken(body: String?): String {
-            var token = body?.trim() ?: ""
-            if (token.length >= 2 && token.startsWith("\"") && token.endsWith("\"")) {
-                token = token.substring(1, token.length - 1)
-            }
-            return token.trim()
-        }
     }
 }
