@@ -147,10 +147,10 @@ class PdpClient(
         private var maskinportenClientId: String? = null
         private var maskinportenJwk: String? = null
 
-        /** Required. */
+        /** Required - fixes the platform base URL and Maskinporten token endpoint for this client. */
         fun environment(environment: AltinnEnvironment): Builder = apply { this.environment = environment }
 
-        /** Required. */
+        /** Required - the Azure API Management subscription key for the PDP `/authorize` endpoint. */
         fun subscriptionKey(subscriptionKey: String): Builder = apply { this.subscriptionKey = subscriptionKey }
 
         /** Defaults to a plain [Http.defaultClient]; override to share a client/connection pool. */

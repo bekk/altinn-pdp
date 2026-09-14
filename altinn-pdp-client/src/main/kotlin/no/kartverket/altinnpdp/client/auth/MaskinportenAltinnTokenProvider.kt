@@ -40,7 +40,7 @@ class MaskinportenAltinnTokenProvider(
     /** Exposed separately for troubleshooting, and for APIs that accept a Maskinporten token directly. */
     suspend fun getMaskinportenToken(): AccessToken = maskinportenClient.getToken()
 
-    /** e.g. after a 401. */
+    /** Clears both cached tokens, for example after Altinn rejects one with a 401. */
     suspend fun invalidate() {
         cache.invalidate()
         maskinportenClient.invalidate()
