@@ -2,10 +2,7 @@ package no.kartverket.altinnpdp.restserver
 
 import kotlinx.serialization.Serializable
 
-/**
- * Mirrors the arguments `PdpClient.authorize` needs directly - the Altinn subscription key and
- * token are configured server-side (see [configurePdp]), never supplied by the caller.
- */
+/** The Altinn subscription key and token are configured server-side (see [configurePdp]), never supplied by the caller. */
 @Serializable
 data class AuthorizeRequest(
     val systemuserId: String,
@@ -34,9 +31,8 @@ data class AuthorizeRequest(
 private val ORG_NUMBER_REGEX = Regex("""\d{9}""")
 
 /**
- * [permit] is the simple yes/no most callers only need; [decision] is the underlying XACML
- * decision name (`PERMIT`, `DENY`, `NOT_APPLICABLE` or `INDETERMINATE`) for callers that want to
- * distinguish an explicit deny from "no policy applies".
+ * [decision] is the underlying XACML decision name (`PERMIT`, `DENY`, `NOT_APPLICABLE` or
+ * `INDETERMINATE`), for distinguishing an explicit deny from "no policy applies".
  */
 @Serializable
 data class AuthorizeResponse(val permit: Boolean, val decision: String)

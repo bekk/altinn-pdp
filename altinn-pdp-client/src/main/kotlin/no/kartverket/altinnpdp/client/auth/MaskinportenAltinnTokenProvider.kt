@@ -9,23 +9,7 @@ import no.kartverket.altinnpdp.client.http.Http
 /**
  * Fetches a token from Maskinporten and exchanges it for an Altinn token, caching the Maskinporten
  * token in [MaskinportenClient] and the Altinn token here, refetching each only as it approaches
- * expiry.
- *
- * ```
- * val provider = MaskinportenAltinnTokenProvider(
- *     maskinportenConfig = MaskinportenConfig(
- *         tokenUrl = "https://test.maskinporten.no/token",
- *         clientId = "<client id>",
- *         jwk = jwkJson,
- *         scopes = listOf(AltinnScopes.AUTHORIZE),
- *     ),
- *     environment = AltinnEnvironment.TT02,
- * )
- *
- * val altinnToken = provider.getAltinnToken().value
- * ```
- *
- * Safe to call concurrently from multiple coroutines and meant to be reused.
+ * expiry. Safe to call concurrently from multiple coroutines and meant to be reused.
  */
 class MaskinportenAltinnTokenProvider(
     private val maskinportenClient: MaskinportenClient,
