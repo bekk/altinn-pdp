@@ -9,8 +9,8 @@ import java.time.Duration
  * @param jwk the private key as a JWK in JSON format, used to sign the client assertion
  * @param scopes the scopes requested, sent as a space-separated `scope` claim
  * @param assertionLifetime lifetime of the client assertion; at most [MAX_ASSERTION_LIFETIME]
- * @param audience `aud` in the client assertion - Maskinporten's issuer. Derived from [tokenUrl]
- *   by default; override only if Maskinporten requires something else.
+ * @param audience `aud` in the client assertion - Maskinporten's issuer. Override only if
+ *   Maskinporten requires something other than the derived default.
  */
 data class MaskinportenConfig(
     val tokenUrl: String,

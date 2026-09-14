@@ -16,7 +16,7 @@ sealed class AltinnPdpException(
         /** Keeps large error pages out of the logs. */
         private const val MAX_BODY_LENGTH = 500
 
-        /** Shared by every subclass's constructor; the body is kept whole in [responseBody], only the message is capped. */
+        /** The body is kept whole in [responseBody]; only the message is capped. */
         internal fun messageWithBody(message: String, body: String?): String {
             val shown = abbreviate(body)
             return if (shown.isEmpty()) message else "$message: $shown"

@@ -1,6 +1,6 @@
 package no.kartverket.altinnpdp.client.exception
 
-/** Failure while asking the Altinn PDP whether a subject has access to a resource - a non-2xx response, or a response that could not be parsed. */
+/** Raised when the PDP call itself fails: a non-2xx response, or a response that could not be parsed. */
 class PdpException(
     message: String,
     statusCode: Int? = null,

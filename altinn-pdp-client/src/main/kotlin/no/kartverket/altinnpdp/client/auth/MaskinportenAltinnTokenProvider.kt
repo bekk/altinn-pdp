@@ -7,9 +7,9 @@ import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.http.Http
 
 /**
- * Fetches a token from Maskinporten and exchanges it for an Altinn token, caching the Maskinporten
- * token in [MaskinportenClient] and the Altinn token here, refetching each only as it approaches
- * expiry. Safe to call concurrently from multiple coroutines and meant to be reused.
+ * Caches the Maskinporten token in [MaskinportenClient] and the Altinn token here, refetching each
+ * only as it approaches expiry. Safe to call concurrently from multiple coroutines and meant to be
+ * reused.
  */
 class MaskinportenAltinnTokenProvider(
     private val maskinportenClient: MaskinportenClient,
@@ -40,7 +40,7 @@ class MaskinportenAltinnTokenProvider(
     /** Exposed separately for troubleshooting, and for APIs that accept a Maskinporten token directly. */
     suspend fun getMaskinportenToken(): AccessToken = maskinportenClient.getToken()
 
-    /** Clears both cached tokens, for example after Altinn rejects one with a 401. */
+    /** Call after Altinn rejects a token with a 401. */
     suspend fun invalidate() {
         cache.invalidate()
         maskinportenClient.invalidate()

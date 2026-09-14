@@ -11,13 +11,7 @@ import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.http.Http
 
-/**
- * Altinn does not accept Maskinporten tokens directly - this exchanges one for an Altinn token.
- *
- * @param platformBaseUrl for example `https://platform.tt02.altinn.no` - use the
- *   [AltinnEnvironment] constructor instead when calling TT02 or prod, so the URL can't be
- *   mistyped
- */
+/** Altinn does not accept Maskinporten tokens directly - this exchanges one for an Altinn token. */
 class AltinnTokenExchanger(
     platformBaseUrl: String,
     private val httpClient: HttpClient = Http.defaultClient(),
@@ -31,7 +25,6 @@ class AltinnTokenExchanger(
 
     private val exchangeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + EXCHANGE_PATH)
 
-    /** Exchanges a Maskinporten token and returns the Altinn token. */
     suspend fun exchange(maskinportenToken: String): AccessToken {
         val request = HttpRequest.newBuilder(exchangeUrl)
             .header("Authorization", "Bearer $maskinportenToken")

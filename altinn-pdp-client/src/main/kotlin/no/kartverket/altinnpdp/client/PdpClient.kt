@@ -182,8 +182,8 @@ class PdpClient(
                     jwk = requireNotNull(maskinportenJwk) {
                         "maskinportenJwk is required (or call tokenProvider(...) directly)"
                     },
-                    // Not configurable: PdpClient only ever calls /authorize, and AUTHORIZE is the
-                    // one scope that operation needs - not exposed as a builder override.
+                    // Not configurable: PdpClient only ever calls /authorize, and AUTHORIZE is
+                    // the one scope that operation needs.
                     scopes = listOf(AltinnScopes.AUTHORIZE),
                 ),
                 environment = env,

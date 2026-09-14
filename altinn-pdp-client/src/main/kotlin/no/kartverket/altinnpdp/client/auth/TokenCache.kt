@@ -6,7 +6,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Uses a [Mutex] rather than plain synchronization since [loader] suspends (it makes a network
+ * Uses a [Mutex] rather than plain synchronization since loader suspends (it makes a network
  * call) - suspending while holding a JVM monitor is not something `synchronized` supports.
  */
 internal class TokenCache(

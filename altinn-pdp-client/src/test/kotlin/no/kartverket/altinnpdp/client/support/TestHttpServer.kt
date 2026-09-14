@@ -19,9 +19,9 @@ internal class RecordedRequest(
 }
 
 /**
- * The clients talk to Altinn through [java.net.http.HttpClient], which is an abstract class with a
- * dozen members to implement, so faking it is far more work than serving the two endpoints for
- * real.
+ * The clients talk to Maskinporten and Altinn through [java.net.http.HttpClient], which is an
+ * abstract class with a dozen members to implement, so faking it is far more work than serving the
+ * handful of endpoints under test for real.
  */
 internal class TestHttpServer private constructor(private val server: HttpServer) : AutoCloseable {
 
@@ -32,7 +32,7 @@ internal class TestHttpServer private constructor(private val server: HttpServer
     val baseUrl: String get() = "http://127.0.0.1:${server.address.port}"
 
     /**
-     * Serves [path] with [handler]. Register before the client under test makes its call.
+     * Register before the client under test makes its call.
      *
      * Registering the same path twice replaces the handler rather than failing, so one server
      * can serve a test that needs a different answer partway through. [HttpServer.createContext]

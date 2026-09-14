@@ -58,8 +58,6 @@ class MaskinportenClientTest {
             """{"access_token":"$accessToken","token_type":"Bearer","expires_in":$expiresIn}"""
         }
 
-    // --- the client assertion: if this is wrong every call to Maskinporten fails with a 400 ---
-
     @Test
     fun `signs the client assertion with the configured key`() {
         val assertion = MaskinportenClient(config("https://test.maskinporten.no/token"), clock = fixedClock())
