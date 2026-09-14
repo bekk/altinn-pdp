@@ -39,7 +39,6 @@ class AltinnTokenExchanger(
     suspend fun exchange(maskinportenToken: String): AccessToken {
         val request = HttpRequest.newBuilder(exchangeUrl)
             .header("Authorization", "Bearer $maskinportenToken")
-            .header("Accept", "application/json")
             .timeout(Http.DEFAULT_TIMEOUT)
             .GET()
             .build()
