@@ -50,9 +50,9 @@ class MaskinportenConfigTest {
 
     @Test
     fun `joins the scopes with spaces, as the scope claim requires`() {
-        val config = config(scopes = listOf(AltinnScopes.RESOURCE_READ, AltinnScopes.RESOURCE_WRITE))
+        val config = config(scopes = listOf("scope-a", "scope-b"))
 
-        assertEquals("altinn:resourceregistry/resource.read altinn:resourceregistry/resource.write", config.scopeString)
+        assertEquals("scope-a scope-b", config.scopeString)
     }
 
     @Test
