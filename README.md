@@ -129,6 +129,10 @@ cp .env.example .env
 
 The server runs on <http://localhost:8080>.
 
+`scripts/dev.sh` sources `.env` into the environment before starting the server. The variables
+are substituted into `application.yaml` at startup, so starting the server another way (from an
+IDE, or `./gradlew run` directly) needs those variables set in that environment.
+
 ---
 
 ## 🔌 API
@@ -200,6 +204,7 @@ API.
 | `ALTINN_SUBSCRIPTION_KEY` | yes | - |
 | `ALTINN_ENVIRONMENT` | no | `TT02` |
 | `MASKINPORTEN_TOKEN_URL` | no | TT02's Maskinporten token endpoint |
+| `PORT` | no | `8080` |
 
 See `.env.example` for what each variable is and where to get it.
 

@@ -1,0 +1,17 @@
+# Values only. The application itself is wired up in Main.kt, not here.
+#
+#   $VAR            required; startup fails with a named error if it is unset
+#   ${VAR:default}  falls back to default
+
+ktor:
+  deployment:
+    port: "${PORT:8080}"
+
+altinn:
+  environment: "${ALTINN_ENVIRONMENT:TT02}"
+  subscriptionKey: "$ALTINN_SUBSCRIPTION_KEY"
+
+maskinporten:
+  clientId: "$MASKINPORTEN_CLIENT_ID"
+  clientJwk: "$MASKINPORTEN_CLIENT_JWK"
+  tokenUrl: "${MASKINPORTEN_TOKEN_URL:}"
