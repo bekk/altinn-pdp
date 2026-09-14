@@ -2,7 +2,6 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
-import io.ktor.server.application.pluginOrNull
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
 import no.kartverket.altinnpdp.client.AltinnEnvironment
@@ -13,15 +12,9 @@ import no.kartverket.altinnpdp.client.PdpClient
  * (`val pdpClient: PdpClient by dependencies` in a route). Defaults to one built from
  * environment variables / `.env` (see `.env.example`) - pass [client] explicitly in tests instead
  * of setting up real Maskinporten credentials.
- *
- * Ktor's engine installs [DI] itself when running from `application.yaml` (so config-based
- * dependency registration works even for modules that never mention DI) - `install(DI)` here
- * would then throw [io.ktor.server.application.DuplicatePluginException]. `testApplication`, on
- * the other hand, never installs it up front, so this module still has to when running under
- * test. [pluginOrNull]  covers both.
  */
 fun Application.configurePdp(client: PdpClient = pdpClientFromEnv()) {
-    if (pluginOrNull(DI) == null) install(DI)
+    install(DI)
     dependencies.provide<PdpClient> { client }
 }
 
