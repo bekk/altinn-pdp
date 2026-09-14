@@ -42,7 +42,7 @@ class MaskinportenAltinnTokenProvider(
         refreshLeeway: Duration = Duration.ofSeconds(30),
     ) : this(
         MaskinportenClient(maskinportenConfig, httpClient, clock, refreshLeeway),
-        AltinnTokenExchanger(environment, httpClient, clock),
+        AltinnTokenExchanger(environment, httpClient),
         clock,
         refreshLeeway,
     )

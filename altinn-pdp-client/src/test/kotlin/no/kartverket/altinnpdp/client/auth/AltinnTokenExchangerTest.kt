@@ -11,7 +11,6 @@ import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.support.NOW
 import no.kartverket.altinnpdp.client.support.TestHttpServer
 import no.kartverket.altinnpdp.client.support.TestResponse
-import no.kartverket.altinnpdp.client.support.fixedClock
 import no.kartverket.altinnpdp.client.support.signedJwt
 
 class AltinnTokenExchangerTest {
@@ -30,7 +29,7 @@ class AltinnTokenExchangerTest {
     private val path = AltinnTokenExchanger.EXCHANGE_PATH
 
     private fun exchanger(server: TestHttpServer, baseUrl: String = server.baseUrl) =
-        AltinnTokenExchanger(baseUrl, clock = fixedClock())
+        AltinnTokenExchanger(baseUrl)
 
     @Test
     fun `sends the Maskinporten token as a bearer token on a GET`() = runBlocking {
@@ -62,10 +61,13 @@ class AltinnTokenExchangerTest {
     }
 
     @Test
-    fun `falls back to a short lifetime when the token has no exp claim`() = runBlocking {
+    fun `fails when the token has no exp claim`() = runBlocking {
         server.on(path) { TestResponse(body = signedJwt(expiresAt = null)) }
 
-        assertEquals(NOW.plusSeconds(60), exchanger(server).exchange("maskinporten-token").expiresAt)
+        assertContains(
+            assertFailsWith<AltinnException> { exchanger(server).exchange("maskinporten-token") }.message!!,
+            "exp",
+        )
     }
 
     @Test
@@ -103,7 +105,7 @@ class AltinnTokenExchangerTest {
 
     @Test
     fun `wraps a connection failure rather than leaking an IOException`() = runBlocking {
-        val exchanger = AltinnTokenExchanger("http://127.0.0.1:1", clock = fixedClock())
+        val exchanger = AltinnTokenExchanger("http://127.0.0.1:1")
 
         assertContains(assertFailsWith<AltinnException> { exchanger.exchange("mp") }.message!!, "Altinn token exchange")
     }

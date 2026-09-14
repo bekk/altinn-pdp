@@ -48,7 +48,7 @@ class MaskinportenAltinnTokenProviderTest {
                 ),
                 clock = clock,
             ),
-            exchanger = AltinnTokenExchanger(server.baseUrl, clock = clock),
+            exchanger = AltinnTokenExchanger(server.baseUrl),
             clock = clock,
         )
 
