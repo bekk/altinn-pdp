@@ -55,10 +55,10 @@ this project is for.
 
 | Module | What it is | Published as |
 | :--- | :--- | :--- |
-| [`altinnpdp-client`](altinnpdp-client) | Kotlin library that talks to Maskinporten and the Altinn PDP directly | a package, for other services to depend on |
-| [`altinnpdp-restserver`](altinnpdp-restserver) | Ktor server exposing a simplified REST/JSON API over the client | a Docker image, built with [Jib](https://github.com/GoogleContainerTools/jib) |
+| [`altinn-pdp-client`](altinn-pdp-client) | Kotlin library that talks to Maskinporten and the Altinn PDP directly | a package, for other services to depend on |
+| [`altinn-pdp-rest-server`](altinn-pdp-rest-server) | Ktor server exposing a simplified REST/JSON API over the client | a Docker image, built with [Jib](https://github.com/GoogleContainerTools/jib) |
 
-`altinnpdp-restserver` is the intended consumer of `altinnpdp-client`, so other systems can ask
+`altinn-pdp-rest-server` is the intended consumer of `altinn-pdp-client`, so other systems can ask
 "is this allowed?" over plain JSON without speaking Maskinporten and XACML themselves.
 
 ---
