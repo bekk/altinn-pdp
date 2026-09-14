@@ -47,8 +47,7 @@ class PdpClientBuilderTest {
                 .build()
         }
 
-        // Without the key API Management rejects every call with a 401, so refusing to build is
-        // friendlier than a client that only fails once it is in use.
+        // Refusing to build is friendlier than a client that only fails once it is in use.
         assertContains(e.message!!, "subscriptionKey")
     }
 

@@ -11,7 +11,7 @@ import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.http.Http
 
-/** Altinn does not accept Maskinporten tokens directly - this exchanges one for an Altinn token. */
+/** Altinn does not accept Maskinporten tokens directly. */
 class AltinnTokenExchanger(
     platformBaseUrl: String,
     private val httpClient: HttpClient = Http.defaultClient(),

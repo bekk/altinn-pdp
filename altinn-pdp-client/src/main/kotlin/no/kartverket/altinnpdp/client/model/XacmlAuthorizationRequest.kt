@@ -34,10 +34,8 @@ internal data class XacmlAuthorizationRequest(val request: Request) {
         /** The systembruker id from the token's `authorization_details`. */
         const val ATTRIBUTE_SYSTEMUSER_UUID = "urn:altinn:systemuser:uuid"
 
-        /** The action being checked, e.g. `"read"` or `"write"`. */
         const val ATTRIBUTE_ACTION_ID = "urn:oasis:names:tc:xacml:1.0:action:action-id"
 
-        /** The resource's identifier in the Resource Registry. */
         const val ATTRIBUTE_RESOURCE = "urn:altinn:resource"
 
         /** A plain Norwegian org number, no ISO6523 prefix. */

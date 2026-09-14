@@ -26,8 +26,7 @@ import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.http.Http
 
 /**
- * Fetches an access token from Maskinporten using the JWT grant
- * (`urn:ietf:params:oauth:grant-type:jwt-bearer`).
+ * Uses the JWT grant (`urn:ietf:params:oauth:grant-type:jwt-bearer`).
  *
  * The token is cached and only refetched as it approaches expiry. Safe to call concurrently from
  * multiple coroutines and meant to be reused.

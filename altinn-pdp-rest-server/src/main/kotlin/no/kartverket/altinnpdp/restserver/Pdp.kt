@@ -8,8 +8,8 @@ import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
 
 /**
- * Routes resolve it with `val pdpClient: PdpClient by dependencies`. Pass [client] explicitly in
- * tests instead of setting up real Maskinporten credentials.
+ * Routes resolve the [PdpClient] with `val pdpClient: PdpClient by dependencies`. Pass [client]
+ * explicitly in tests instead of setting up real Maskinporten credentials.
  */
 fun Application.configurePdp(client: PdpClient = pdpClientFromEnv()) {
     install(DI)

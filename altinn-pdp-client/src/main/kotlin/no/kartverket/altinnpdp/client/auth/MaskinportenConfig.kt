@@ -4,11 +4,11 @@ import java.net.URI
 import java.time.Duration
 
 /**
- * @param tokenUrl the token endpoint, for example `https://test.maskinporten.no/token`
+ * @param tokenUrl for example `https://test.maskinporten.no/token`
  * @param clientId client id issued by Maskinporten - sent as `iss` in the client assertion
  * @param jwk the private key as a JWK in JSON format, used to sign the client assertion
- * @param scopes the scopes requested, sent as a space-separated `scope` claim
- * @param assertionLifetime lifetime of the client assertion; at most [MAX_ASSERTION_LIFETIME]
+ * @param scopes sent as a space-separated `scope` claim
+ * @param assertionLifetime at most [MAX_ASSERTION_LIFETIME]
  * @param audience `aud` in the client assertion - Maskinporten's issuer. Override only if
  *   Maskinporten requires something other than the derived default.
  */
