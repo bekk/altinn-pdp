@@ -3,11 +3,7 @@ package no.kartverket.altinnpdp.client.auth
 import java.time.Duration
 import java.time.Instant
 
-/**
- * [MaskinportenAltinnTokenProvider] is the real implementation (Maskinporten + token exchange);
- * this interface is the seam `PdpClient` depends on so a caller can supply their own token source
- * instead, or fake it in tests.
- */
+/** The seam `PdpClient` depends on; [MaskinportenAltinnTokenProvider] is the real implementation. */
 interface AltinnTokenProvider {
     suspend fun getAltinnToken(): AccessToken
 }

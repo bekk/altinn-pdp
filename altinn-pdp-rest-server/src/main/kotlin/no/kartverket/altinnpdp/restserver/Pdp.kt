@@ -8,10 +8,8 @@ import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
 
 /**
- * Registers the [PdpClient] every `/authorize` call resolves via Ktor's DI plugin
- * (`val pdpClient: PdpClient by dependencies` in a route). Defaults to one built from
- * environment variables / `.env` (see `.env.example`) - pass [client] explicitly in tests instead
- * of setting up real Maskinporten credentials.
+ * Routes resolve it with `val pdpClient: PdpClient by dependencies`. Pass [client] explicitly in
+ * tests instead of setting up real Maskinporten credentials.
  */
 fun Application.configurePdp(client: PdpClient = pdpClientFromEnv()) {
     install(DI)

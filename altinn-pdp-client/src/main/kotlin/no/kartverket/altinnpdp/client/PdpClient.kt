@@ -17,21 +17,18 @@ import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
 
 /**
- * Calls Altinn's PDP (`POST /authorization/api/v1/authorize`) to check whether a systembruker
- * has been delegated access to a resource - the question a valid Maskinporten token alone cannot
- * answer, since it only proves the systembruker belongs to the calling system, not that it was
- * ever granted access to any particular resource.
+ * A valid Maskinporten token only proves the systembruker belongs to the calling system, not that
+ * it was ever granted access to any particular resource. The PDP answers that second question.
  *
- * Deliberately knows nothing about any specific API: [authorize]'s `resourceId`,
- * `organizationNumber` and `action` are supplied by the caller on every call, so one client can
- * be reused across different APIs/resources without carrying any single one's configuration.
+ * Carries no per-API configuration, so one client can be reused across different APIs and
+ * resources.
  *
  * @param platformBaseUrl for example `https://platform.tt02.altinn.no` - use the
  *   [AltinnEnvironment] constructor instead when calling TT02 or prod, so the URL can't be
  *   mistyped
  * @param subscriptionKey the Azure API Management subscription key for the Access Management
- *   products, ordered from Altinn servicedesk - sent as the [SUBSCRIPTION_KEY_HEADER] header,
- *   without which the gateway rejects the call with 401 before the PDP sees it
+ *   products, ordered from Altinn servicedesk - without it the gateway rejects the call with 401
+ *   before the PDP sees it
  */
 class PdpClient(
     platformBaseUrl: String,
@@ -131,11 +128,8 @@ class PdpClient(
     }
 
     /**
-     * A caller sticking to Maskinporten only ever needs to depend on [PdpClient] and
-     * [PdpClient.Builder] - not [MaskinportenConfig] or [MaskinportenAltinnTokenProvider]
-     * directly. Call [tokenProvider] instead of the `maskinporten*` setters to supply a token
-     * source of your own (or a fake, in tests) - that is the one case where a caller does need to
-     * depend on [AltinnTokenProvider].
+     * A caller sticking to Maskinporten only ever needs [PdpClient] and this builder - not
+     * [MaskinportenConfig] or [MaskinportenAltinnTokenProvider] directly.
      */
     class Builder {
         private var environment: AltinnEnvironment? = null

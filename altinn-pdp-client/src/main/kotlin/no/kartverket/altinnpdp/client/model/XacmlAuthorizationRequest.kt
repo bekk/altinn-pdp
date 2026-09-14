@@ -3,8 +3,8 @@ package no.kartverket.altinnpdp.client.model
 import kotlinx.serialization.Serializable
 
 /**
- * Body of a PDP authorization request, built for the one shape `PdpClient` needs: "does this
- * systembruker have access to this resource for this org and action".
+ * Built for the one shape `PdpClient` needs: "does this systembruker have access to this resource
+ * for this org and action".
  *
  * See https://docs.altinn.studio/nb/authorization/guides/resource-owner/system-user/#autorisasjon-av-systembruker
  * for the full request/response shape.

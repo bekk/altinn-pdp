@@ -18,8 +18,8 @@ import no.kartverket.altinnpdp.client.support.TestResponse
 import no.kartverket.altinnpdp.client.support.signedJwt
 
 /**
- * The provider chains two cached calls: a Maskinporten token, then an exchange for an Altinn one.
- * Both caches are exercised here through real HTTP so the nesting is covered end to end.
+ * Exercises both caches through real HTTP rather than stubs, so the nesting of the Altinn cache
+ * around the Maskinporten one is covered end to end.
  */
 class MaskinportenAltinnTokenProviderTest {
 

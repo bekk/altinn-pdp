@@ -11,10 +11,8 @@ import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.support.TestKeys
 
 /**
- * The builder is the only entry point a consumer is meant to use, so what it accepts and what it
- * refuses is public API. Nothing here makes a network call: [PdpClient.Builder.build] only
- * assembles the client, and the assertions below are about what it rejects before it gets that
- * far.
+ * Nothing here makes a network call: [PdpClient.Builder.build] only assembles the client, so these
+ * assertions are all about what it rejects before it gets that far.
  */
 class PdpClientBuilderTest {
 
