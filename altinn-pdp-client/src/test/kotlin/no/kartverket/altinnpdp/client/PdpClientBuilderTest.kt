@@ -28,8 +28,6 @@ class PdpClientBuilderTest {
         override suspend fun getAltinnToken() = AccessToken("altinn-token", Instant.MAX)
     }
 
-    // --- what it refuses ---
-
     @Test
     fun `rejects a missing environment`() {
         val e = assertFailsWith<IllegalArgumentException> {
@@ -74,8 +72,6 @@ class PdpClientBuilderTest {
         assertContains(e.message!!, "tokenProvider")
     }
 
-    // --- what it builds ---
-
     @Test
     fun `builds a client from Maskinporten credentials`() {
         val client = builder()
@@ -110,8 +106,6 @@ class PdpClientBuilderTest {
 
         assertContains(e.message!!, "tokenUrl")
     }
-
-    // --- the token provider shortcut ---
 
     @Test
     fun `tokenProvider builds without any Maskinporten settings`() {

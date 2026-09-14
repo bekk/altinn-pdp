@@ -39,7 +39,6 @@ class PdpClient(
     private val subscriptionKey: String,
     private val httpClient: HttpClient = Http.defaultClient(),
 ) {
-    /** Calls [environment] instead of an arbitrary URL - the common case outside of tests. */
     constructor(
         environment: AltinnEnvironment,
         tokenProvider: AltinnTokenProvider,
@@ -95,7 +94,6 @@ class PdpClient(
         return decisionOf(response)
     }
 
-    /** Convenience for the common case of only needing a permit/deny boolean. */
     suspend fun isPermitted(
         systemuserId: String,
         resourceId: String,
@@ -133,10 +131,11 @@ class PdpClient(
     }
 
     /**
-     * Builds a [PdpClient] from raw config values, so a caller only ever needs to depend on
-     * [PdpClient] and [PdpClient.Builder] - not [MaskinportenConfig], [MaskinportenAltinnTokenProvider],
-     * or [AltinnTokenProvider] directly. Call [tokenProvider] instead of the `maskinporten*`
-     * setters to supply a token source of your own (or a fake, in tests).
+     * A caller sticking to Maskinporten only ever needs to depend on [PdpClient] and
+     * [PdpClient.Builder] - not [MaskinportenConfig] or [MaskinportenAltinnTokenProvider]
+     * directly. Call [tokenProvider] instead of the `maskinporten*` setters to supply a token
+     * source of your own (or a fake, in tests) - that is the one case where a caller does need to
+     * depend on [AltinnTokenProvider].
      */
     class Builder {
         private var environment: AltinnEnvironment? = null
@@ -148,10 +147,10 @@ class PdpClient(
         private var maskinportenClientId: String? = null
         private var maskinportenJwk: String? = null
 
-        /** Required - fixes the platform base URL and Maskinporten token endpoint for this client. */
+        /** Required. */
         fun environment(environment: AltinnEnvironment): Builder = apply { this.environment = environment }
 
-        /** Required - the Azure API Management subscription key for the PDP `/authorize` endpoint. */
+        /** Required. */
         fun subscriptionKey(subscriptionKey: String): Builder = apply { this.subscriptionKey = subscriptionKey }
 
         /** Defaults to a plain [Http.defaultClient]; override to share a client/connection pool. */
@@ -201,7 +200,6 @@ class PdpClient(
         /** The external `/authorize` endpoint sits behind Azure API Management, which needs this. */
         const val SUBSCRIPTION_KEY_HEADER = "Ocp-Apim-Subscription-Key"
 
-        // The PDP response carries fields we don't model (status, obligations, ...); ignore them.
         // Case (Response/response, Decision/decision) is handled per-field via @JsonNames on the
         // response model instead of a blanket case-insensitive mode.
         private val json = Json { ignoreUnknownKeys = true }

@@ -26,7 +26,6 @@ import no.kartverket.altinnpdp.client.support.fixedClock
 
 class MaskinportenClientTest {
 
-    /** One server per test, started and stopped around it rather than inside every test body. */
     private lateinit var server: TestHttpServer
 
     @BeforeTest
@@ -97,8 +96,6 @@ class MaskinportenClientTest {
         assertTrue(first != second, "a reused jti would be rejected as a replay")
     }
 
-    // --- the key itself ---
-
     @Test
     fun `rejects a JWK that is not RSA`() {
         val ec = ECKeyGenerator(Curve.P_256).keyID("ec-key").generate()
@@ -125,8 +122,6 @@ class MaskinportenClientTest {
             MaskinportenClient(config("https://test.maskinporten.no/token", jwk = "not-a-jwk"))
         }
     }
-
-    // --- the token request ---
 
     @Test
     fun `posts the JWT grant as a form-encoded body`() = runBlocking {
@@ -171,8 +166,6 @@ class MaskinportenClientTest {
         assertEquals(NOW.plusSeconds(60), client.getToken().expiresAt)
     }
 
-    // --- failures ---
-
     @Test
     fun `surfaces a non-200 with the status and body on the exception`() = runBlocking {
         server.on(tokenPath) { TestResponse(status = 400, body = """{"error":"invalid_grant"}""") }
@@ -210,8 +203,6 @@ class MaskinportenClientTest {
 
         assertContains(assertFailsWith<MaskinportenException> { client.getToken() }.message!!, "Maskinporten")
     }
-
-    // --- caching ---
 
     @Test
     fun `serves a cached token instead of asking Maskinporten again`() = runBlocking {

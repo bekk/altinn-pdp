@@ -1,10 +1,6 @@
 package no.kartverket.altinnpdp.client
 
-/**
- * Which Altinn platform environment to call. Fixes, from one choice, every value that has to
- * stay consistent across an environment: the PDP/platform base URL and the Maskinporten token
- * endpoint.
- */
+/** Bundles the base URL and Maskinporten token endpoint so they can't drift out of sync between environments. */
 enum class AltinnEnvironment(
     internal val platformBaseUrl: String,
     internal val maskinportenTokenUrl: String,

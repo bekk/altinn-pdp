@@ -4,30 +4,24 @@ import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 
-/** What the test server should answer with. */
 internal data class TestResponse(
     val status: Int = 200,
     val body: String = "",
     val contentType: String = "application/json",
 )
 
-/** A request the test server received, so tests can assert on what actually went over the wire. */
 internal class RecordedRequest(
     val method: String,
     val body: String,
     private val headers: Map<String, String>,
 ) {
-    /** Header lookup is case-insensitive, as it is on the wire. */
     fun header(name: String): String? = headers[name.lowercase()]
 }
 
 /**
- * A real HTTP server on a loopback port.
- *
  * The clients talk to Altinn through [java.net.http.HttpClient], which is an abstract class with a
  * dozen members to implement, so faking it is far more work than serving the two endpoints for
- * real. The raw base-URL constructors on the clients exist precisely for this - their KDoc points
- * at the [no.kartverket.altinnpdp.client.AltinnEnvironment] constructors as the non-test path.
+ * real.
  */
 internal class TestHttpServer private constructor(private val server: HttpServer) : AutoCloseable {
 

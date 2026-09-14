@@ -4,8 +4,6 @@ import java.net.URI
 import java.time.Duration
 
 /**
- * Configuration for the Maskinporten integration.
- *
  * @param tokenUrl the token endpoint, for example `https://test.maskinporten.no/token`
  * @param clientId client id issued by Maskinporten - sent as `iss` in the client assertion
  * @param jwk the private key as a JWK in JSON format, used to sign the client assertion

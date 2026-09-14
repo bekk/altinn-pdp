@@ -41,16 +41,11 @@ class MaskinportenClient(
     private val cache = TokenCache(clock, refreshLeeway)
     private val signingKey: RSAKey = parseSigningKey(config.jwk)
 
-    /** A valid access token from Maskinporten, served from cache when possible. */
     suspend fun getToken(): AccessToken = cache.get { fetchToken() }
 
-    /** Clears the cache so the next call fetches a new token. */
     suspend fun invalidate() = cache.invalidate()
 
-    /**
-     * Builds and signs the client assertion (the grant JWT) sent to Maskinporten. Exposed for
-     * troubleshooting - call [getToken] for normal use.
-     */
+    /** Exposed for troubleshooting - call [getToken] for normal use. */
     fun createClientAssertion(): String {
         val now = clock.instant()
         val claims = JWTClaimsSet.Builder()
@@ -116,10 +111,8 @@ class MaskinportenClient(
     companion object {
         private const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 
-        /** Used when Maskinporten does not supply `expires_in`. */
         private const val DEFAULT_LIFETIME_SECONDS = 60L
 
-        // The token response carries fields we don't model (token_type, scope, ...); ignore them.
         private val json = Json { ignoreUnknownKeys = true }
 
         private fun urlEncode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)

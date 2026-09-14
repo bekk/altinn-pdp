@@ -12,18 +12,17 @@ import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.http.Http
 
 /**
- * Exchanges a Maskinporten token for an Altinn token.
+ * Altinn does not accept Maskinporten tokens directly - this exchanges one for an Altinn token.
  *
- * Altinn does not accept Maskinporten tokens directly. The exchange happens through
- * `GET /authentication/api/v1/exchange/maskinporten`, with the Maskinporten token sent as a
- * bearer token. The response body is the Altinn token itself (a JWT).
+ * @param platformBaseUrl for example `https://platform.tt02.altinn.no` - use the
+ *   [AltinnEnvironment] constructor instead when calling TT02 or prod, so the URL can't be
+ *   mistyped
  */
 class AltinnTokenExchanger(
     platformBaseUrl: String,
     private val httpClient: HttpClient = Http.defaultClient(),
     private val clock: Clock = Clock.systemUTC(),
 ) {
-    /** Calls [environment] instead of an arbitrary URL - the common case outside of tests. */
     constructor(
         environment: AltinnEnvironment,
         httpClient: HttpClient = Http.defaultClient(),
@@ -32,10 +31,7 @@ class AltinnTokenExchanger(
 
     private val exchangeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + EXCHANGE_PATH)
 
-    /**
-     * Exchanges a Maskinporten token and returns the Altinn token, with the expiry read from the
-     * token's own `exp` claim.
-     */
+    /** Exchanges a Maskinporten token and returns the Altinn token. */
     suspend fun exchange(maskinportenToken: String): AccessToken {
         val request = HttpRequest.newBuilder(exchangeUrl)
             .header("Authorization", "Bearer $maskinportenToken")
@@ -76,7 +72,6 @@ class AltinnTokenExchanger(
     companion object {
         const val EXCHANGE_PATH = "/authentication/api/v1/exchange/maskinporten"
 
-        /** Used when the Altinn token has no `exp` claim. */
         private const val FALLBACK_LIFETIME_SECONDS = 60L
     }
 }

@@ -1,6 +1,5 @@
 package no.kartverket.altinnpdp.client.exception
 
-/** Failure while fetching a token from Maskinporten. */
 class MaskinportenException(
     message: String,
     statusCode: Int? = null,

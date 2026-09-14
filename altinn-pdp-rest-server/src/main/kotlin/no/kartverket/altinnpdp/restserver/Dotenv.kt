@@ -3,10 +3,8 @@ package no.kartverket.altinnpdp.restserver
 import java.io.File
 
 /**
- * Configuration lookup: real process environment variables first (how this runs in production),
- * falling back to a `.env` file in the working directory (gitignored, for local dev) so the same
- * [get] call works in both. A real env var always wins, so deployments are never surprised by a
- * stray local `.env`.
+ * Falls back to a gitignored `.env` file for local dev; real env vars always win so deployments
+ * are never surprised by a stray local `.env`.
  */
 object Dotenv {
     private val fileValues: Map<String, String> by lazy { parse(File(".env")) }

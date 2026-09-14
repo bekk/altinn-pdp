@@ -6,8 +6,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Coroutine-safe cache for a single token, refetched as it approaches expiry.
- *
  * Uses a [Mutex] rather than plain synchronization since [loader] suspends (it makes a network
  * call) - suspending while holding a JVM monitor is not something `synchronized` supports.
  */

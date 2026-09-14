@@ -16,7 +16,6 @@ import no.kartverket.altinnpdp.client.support.signedJwt
 
 class AltinnTokenExchangerTest {
 
-    /** One server per test, started and stopped around it rather than inside every test body. */
     private lateinit var server: TestHttpServer
 
     @BeforeTest

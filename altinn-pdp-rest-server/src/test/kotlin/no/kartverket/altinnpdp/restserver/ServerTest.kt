@@ -38,11 +38,7 @@ class ServerTest {
     private fun pdpClientAgainst(server: HttpServer): PdpClient =
         PdpClient("http://localhost:${server.address.port}", fakeTokenProvider, "test-subscription-key")
 
-    /**
-     * Wraps [testApplication] with a stubbed PDP backend wired into [configurePdp] - the setup
-     * every `/authorize` test needs. [decision] and [statusCode] configure the stub; [block] is
-     * the actual test body, run once the application and stub are ready.
-     */
+    /** Wraps [testApplication] with a stubbed PDP backend wired into [configurePdp] - the setup every `/authorize` test needs. */
     private fun authorizeTest(
         decision: String,
         statusCode: Int = 200,
