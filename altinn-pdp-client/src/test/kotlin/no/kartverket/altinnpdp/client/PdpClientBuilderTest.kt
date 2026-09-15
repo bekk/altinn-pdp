@@ -1,13 +1,18 @@
 package no.kartverket.altinnpdp.client
 
+import java.time.Duration
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.auth.AccessToken
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
+import no.kartverket.altinnpdp.client.exception.PdpException
+import no.kartverket.altinnpdp.client.http.Timeouts
 import no.kartverket.altinnpdp.client.support.TestKeys
 
 /**
@@ -23,9 +28,17 @@ class PdpClientBuilderTest {
     private fun builder() = PdpClient.builder()
         .environment(AltinnEnvironment.TT02)
         .subscriptionKey("subscription-key")
+        .timeouts(Timeouts.DEFAULT)
 
     private object FakeTokenProvider : AltinnTokenProvider {
         override suspend fun getAltinnToken() = AccessToken("altinn-token", Instant.MAX)
+    }
+
+    private object SlowTokenProvider : AltinnTokenProvider {
+        override suspend fun getAltinnToken(): AccessToken {
+            delay(500)
+            return AccessToken("altinn-token", Instant.MAX)
+        }
     }
 
     // --- what it refuses ---
@@ -54,6 +67,20 @@ class PdpClientBuilderTest {
         // Without the key API Management rejects every call with a 401, so refusing to build is
         // friendlier than a client that only fails once it is in use.
         assertContains(e.message!!, "subscriptionKey")
+    }
+
+    @Test
+    fun `refuses to choose the timeouts for the caller, and names the way out`() {
+        val e = assertFailsWith<IllegalArgumentException> {
+            PdpClient.builder()
+                .environment(AltinnEnvironment.TT02)
+                .subscriptionKey("subscription-key")
+                .tokenProvider(FakeTokenProvider)
+                .build()
+        }
+
+        assertContains(e.message!!, "timeouts")
+        assertContains(e.message!!, "Timeouts.DEFAULT")
     }
 
     @Test
@@ -118,10 +145,26 @@ class PdpClientBuilderTest {
         val client = PdpClient.builder()
             .environment(AltinnEnvironment.TT02)
             .subscriptionKey("subscription-key")
+            .timeouts(Timeouts.DEFAULT)
             .tokenProvider(FakeTokenProvider)
             .build()
 
         assertNotNull(client)
+    }
+
+    @Test
+    fun `passes the timeouts on to the client rather than dropping them`() = runBlocking {
+        // The budget runs out inside the token provider, so nothing here reaches the network.
+        val client = builder()
+            .tokenProvider(SlowTokenProvider)
+            .timeouts(Timeouts(total = Duration.ofMillis(50)))
+            .build()
+
+        val e = assertFailsWith<PdpException> {
+            client.authorize("sys-1", "urn:altinn:resource:x", "923609016", "read")
+        }
+
+        assertContains(e.message!!, "50 ms")
     }
 
     @Test

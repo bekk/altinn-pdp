@@ -9,6 +9,7 @@ import java.time.Instant
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.http.Http
+import no.kartverket.altinnpdp.client.http.Timeouts
 
 /**
  * Exchanges a Maskinporten token for an Altinn token.
@@ -19,13 +20,15 @@ import no.kartverket.altinnpdp.client.http.Http
  */
 class AltinnTokenExchanger(
     platformBaseUrl: String,
-    private val httpClient: HttpClient = Http.defaultClient(),
+    private val timeouts: Timeouts = Timeouts.DEFAULT,
+    private val httpClient: HttpClient = Http.defaultClient(timeouts),
 ) {
     /** Calls [environment] instead of an arbitrary URL - the common case outside of tests. */
     constructor(
         environment: AltinnEnvironment,
-        httpClient: HttpClient = Http.defaultClient(),
-    ) : this(environment.platformBaseUrl, httpClient)
+        timeouts: Timeouts = Timeouts.DEFAULT,
+        httpClient: HttpClient = Http.defaultClient(timeouts),
+    ) : this(environment.platformBaseUrl, timeouts, httpClient)
 
     private val exchangeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + EXCHANGE_PATH)
 
@@ -36,7 +39,7 @@ class AltinnTokenExchanger(
     suspend fun exchange(maskinportenToken: String): AccessToken {
         val request = HttpRequest.newBuilder(exchangeUrl)
             .header("Authorization", "Bearer $maskinportenToken")
-            .timeout(Http.DEFAULT_TIMEOUT)
+            .timeout(timeouts.request)
             .GET()
             .build()
 
