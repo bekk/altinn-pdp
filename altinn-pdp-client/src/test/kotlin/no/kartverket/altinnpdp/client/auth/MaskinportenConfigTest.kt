@@ -24,8 +24,6 @@ class MaskinportenConfigTest {
 
     @Test
     fun `derives the audience as the issuer, with the trailing slash Maskinporten requires`() {
-        // Maskinporten compares `aud` to its issuer exactly; drop the slash and every assertion
-        // is rejected, which is not obvious from the one-line derivation.
         assertEquals("https://test.maskinporten.no/", config().audience)
         assertEquals("https://maskinporten.no/", config(tokenUrl = "https://maskinporten.no/token").audience)
     }

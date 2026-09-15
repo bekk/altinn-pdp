@@ -7,10 +7,6 @@ import io.ktor.server.plugins.di.dependencies
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
 
-/**
- * Routes resolve the [PdpClient] with `val pdpClient: PdpClient by dependencies`. Pass [client]
- * explicitly in tests instead of setting up real Maskinporten credentials.
- */
 fun Application.configurePdp(client: PdpClient = pdpClientFromEnv()) {
     install(DI)
     dependencies.provide<PdpClient> { client }

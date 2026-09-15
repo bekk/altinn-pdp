@@ -1,6 +1,5 @@
 package no.kartverket.altinnpdp.client
 
-/** Bundles the base URL and Maskinporten token endpoint so they can't drift out of sync between environments. */
 enum class AltinnEnvironment(
     internal val platformBaseUrl: String,
     internal val maskinportenTokenUrl: String,

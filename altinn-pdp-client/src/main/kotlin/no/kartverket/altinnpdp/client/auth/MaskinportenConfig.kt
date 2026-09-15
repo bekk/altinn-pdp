@@ -3,15 +3,6 @@ package no.kartverket.altinnpdp.client.auth
 import java.net.URI
 import java.time.Duration
 
-/**
- * @param tokenUrl for example `https://test.maskinporten.no/token`
- * @param clientId client id issued by Maskinporten - sent as `iss` in the client assertion
- * @param jwk the private key as a JWK in JSON format, used to sign the client assertion
- * @param scopes sent as a space-separated `scope` claim
- * @param assertionLifetime at most [MAX_ASSERTION_LIFETIME]
- * @param audience `aud` in the client assertion - Maskinporten's issuer. Override only if
- *   Maskinporten requires something other than the derived default.
- */
 data class MaskinportenConfig(
     val tokenUrl: String,
     val clientId: String,
@@ -34,7 +25,6 @@ data class MaskinportenConfig(
     internal val scopeString: String get() = scopes.joinToString(" ")
 
     companion object {
-        /** Maskinporten allows a client assertion lifetime of at most 120 seconds. */
         val MAX_ASSERTION_LIFETIME: Duration = Duration.ofSeconds(120)
 
         /**

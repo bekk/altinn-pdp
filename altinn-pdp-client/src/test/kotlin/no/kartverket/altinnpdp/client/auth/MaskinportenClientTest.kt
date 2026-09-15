@@ -77,7 +77,6 @@ class MaskinportenClientTest {
 
         assertEquals("my-client-id", claims.issuer)
         assertEquals(listOf("https://test.maskinporten.no/"), claims.audience)
-        // Space-separated, not a JSON array - this is the OAuth scope encoding, not a list.
         assertEquals("altinn:a altinn:b", claims.getStringClaim("scope"))
         assertNotNull(claims.jwtid, "a jti is required so Maskinporten can reject replays")
         assertEquals(NOW.epochSecond, claims.issueTime.toInstant().epochSecond)
@@ -131,7 +130,6 @@ class MaskinportenClientTest {
         val request = server.lastRequest(tokenPath)
         assertEquals("POST", request.method)
         assertEquals("application/x-www-form-urlencoded", request.header("Content-Type"))
-        // The grant type is a URN, so its colons have to be percent-encoded on the wire.
         assertContains(request.body, "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer")
 
         val form = request.body.split("&").associate {
@@ -171,7 +169,6 @@ class MaskinportenClientTest {
 
         val e = assertFailsWith<MaskinportenException> { client.getToken() }
 
-        // Callers are told to branch on statusCode rather than parse the message.
         assertEquals(400, e.statusCode)
         assertEquals("""{"error":"invalid_grant"}""", e.responseBody)
         assertContains(e.message!!, "invalid_grant")
@@ -196,7 +193,6 @@ class MaskinportenClientTest {
 
     @Test
     fun `wraps a connection failure rather than leaking an IOException`() = runBlocking {
-        // Nothing is listening on this port.
         val client = MaskinportenClient(config("http://127.0.0.1:1/token"), clock = fixedClock())
 
         assertContains(assertFailsWith<MaskinportenException> { client.getToken() }.message!!, "Maskinporten")

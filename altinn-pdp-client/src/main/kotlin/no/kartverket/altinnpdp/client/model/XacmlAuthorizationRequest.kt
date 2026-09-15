@@ -3,11 +3,8 @@ package no.kartverket.altinnpdp.client.model
 import kotlinx.serialization.Serializable
 
 /**
- * Built for the one shape `PdpClient` needs: "does this systembruker have access to this resource
- * for this org and action".
- *
- * See https://docs.altinn.studio/nb/authorization/guides/resource-owner/system-user/#autorisasjon-av-systembruker
- * for the full request/response shape.
+ * The request shape is fixed by Altinn's XACML JSON profile, not by anything in this codebase:
+ * https://docs.altinn.studio/nb/authorization/guides/resource-owner/system-user/#autorisasjon-av-systembruker
  */
 @Serializable
 internal data class XacmlAuthorizationRequest(val request: Request) {
@@ -31,7 +28,6 @@ internal data class XacmlAuthorizationRequest(val request: Request) {
     data class Attribute(val attributeId: String, val value: String)
 
     companion object {
-        /** The systembruker id from the token's `authorization_details`. */
         const val ATTRIBUTE_SYSTEMUSER_UUID = "urn:altinn:systemuser:uuid"
 
         const val ATTRIBUTE_ACTION_ID = "urn:oasis:names:tc:xacml:1.0:action:action-id"

@@ -6,11 +6,6 @@ import java.time.Duration
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.http.Http
 
-/**
- * Caches the Maskinporten token in [MaskinportenClient] and the Altinn token here, refetching each
- * only as it approaches expiry. Safe to call concurrently from multiple coroutines and meant to be
- * reused.
- */
 class MaskinportenAltinnTokenProvider(
     private val maskinportenClient: MaskinportenClient,
     private val exchanger: AltinnTokenExchanger,
@@ -33,14 +28,11 @@ class MaskinportenAltinnTokenProvider(
 
     private val cache = TokenCache(clock, refreshLeeway)
 
-    /** Send [AccessToken.value] as `Authorization: Bearer <value>` to the Altinn APIs. */
     override suspend fun getAltinnToken(): AccessToken =
         cache.get { exchanger.exchange(maskinportenClient.getToken().value) }
 
-    /** Exposed separately for troubleshooting, and for APIs that accept a Maskinporten token directly. */
     suspend fun getMaskinportenToken(): AccessToken = maskinportenClient.getToken()
 
-    /** Call after Altinn rejects a token with a 401. */
     suspend fun invalidate() {
         cache.invalidate()
         maskinportenClient.invalidate()

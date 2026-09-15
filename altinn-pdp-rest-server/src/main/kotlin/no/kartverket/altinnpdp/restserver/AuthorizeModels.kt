@@ -2,25 +2,14 @@ package no.kartverket.altinnpdp.restserver
 
 import kotlinx.serialization.Serializable
 
-/** The Altinn subscription key and token are configured server-side (see [configurePdp]), never supplied by the caller. */
 @Serializable
 data class AuthorizeRequest(
     val systemuserId: String,
     val resourceId: String,
-    /**
-     * The plain Norwegian org number (9 digits, e.g. `"923609016"`) of the party whose access is
-     * being checked - the customer/business systemuserId is acting on behalf of, not the calling
-     * system's own org number.
-     */
+    // The party (customer) whose access is being checked, not the calling system's own org number.
     val organizationNumber: String,
     val action: String,
 ) {
-    /**
-     * Called explicitly from the route rather than an `init` block - an `init` check would run
-     * during JSON deserialization, where kotlinx.serialization wraps the resulting
-     * [IllegalArgumentException] into a generic "malformed request body" error instead of the
-     * specific message below.
-     */
     fun requireValidOrganizationNumber() {
         require(organizationNumber.matches(ORG_NUMBER_REGEX)) {
             "organizationNumber must be exactly 9 digits"
@@ -30,10 +19,8 @@ data class AuthorizeRequest(
 
 private val ORG_NUMBER_REGEX = Regex("""\d{9}""")
 
-/**
- * [decision] is the underlying XACML decision name (`PERMIT`, `DENY`, `NOT_APPLICABLE` or
- * `INDETERMINATE`), for distinguishing an explicit deny from "no policy applies".
- */
+// `decision` carries the raw XACML name alongside `permit` so a caller can tell an explicit DENY
+// from NOT_APPLICABLE - a distinction `permit` collapses into the same `false`.
 @Serializable
 data class AuthorizeResponse(val permit: Boolean, val decision: String)
 

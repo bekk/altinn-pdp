@@ -4,11 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlinx.serialization.json.Json
 
-/**
- * The PDP request body is a contract with Altinn that cannot be checked by reading this code -
- * it has to be compared against Altinn's documentation. These tests freeze the shape that was
- * verified against it, so a later refactor cannot quietly change what goes over the wire.
- */
 class XacmlAuthorizationRequestTest {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -31,8 +26,6 @@ class XacmlAuthorizationRequestTest {
 
     @Test
     fun `puts the resource id and the organization number in one resource category`() {
-        // Splitting these into two categories still serializes and still gets a 200 back, but the
-        // PDP then evaluates a different question and the decision is wrong rather than failed.
         val resource = request().request.resource
 
         assertEquals(1, resource.size, "both attributes belong to a single resource category")

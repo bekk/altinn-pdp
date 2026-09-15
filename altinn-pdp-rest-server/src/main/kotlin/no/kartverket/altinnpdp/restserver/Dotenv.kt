@@ -2,10 +2,6 @@ package no.kartverket.altinnpdp.restserver
 
 import java.io.File
 
-/**
- * Falls back to a gitignored `.env` file for local dev; real env vars always win so deployments
- * are never surprised by a stray local `.env`.
- */
 object Dotenv {
     private val fileValues: Map<String, String> by lazy { parse(File(".env")) }
 

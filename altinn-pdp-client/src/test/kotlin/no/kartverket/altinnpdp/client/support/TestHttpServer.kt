@@ -18,11 +18,6 @@ internal class RecordedRequest(
     fun header(name: String): String? = headers[name.lowercase()]
 }
 
-/**
- * The clients talk to Maskinporten and Altinn through [java.net.http.HttpClient], which is an
- * abstract class with a dozen members to implement, so faking it is far more work than serving the
- * handful of endpoints under test for real.
- */
 internal class TestHttpServer private constructor(private val server: HttpServer) : AutoCloseable {
 
     private val lock = Any()
@@ -31,14 +26,9 @@ internal class TestHttpServer private constructor(private val server: HttpServer
 
     val baseUrl: String get() = "http://127.0.0.1:${server.address.port}"
 
-    /**
-     * Register before the client under test makes its call.
-     *
-     * Registering the same path twice replaces the handler rather than failing, so one server
-     * can serve a test that needs a different answer partway through. [HttpServer.createContext]
-     * throws on a duplicate path, so the context is created once and the handler looked up per
-     * request.
-     */
+    // HttpServer.createContext throws if the same path is registered twice, so the context is
+    // created once and the handler looked up per request. Re-registering a path therefore replaces
+    // the handler, which lets one test answer differently partway through.
     fun on(path: String, handler: (RecordedRequest) -> TestResponse): TestHttpServer {
         val isNewPath = synchronized(lock) { handlers.put(path, handler) == null }
         if (!isNewPath) return this
@@ -56,8 +46,6 @@ internal class TestHttpServer private constructor(private val server: HttpServer
                 val current = synchronized(lock) { handlers.getValue(path) }
                 respond(exchange, current(request))
             } catch (e: Throwable) {
-                // Without this the exchange never closes and the client blocks until it times out,
-                // turning a broken fixture into a ten-second mystery.
                 runCatching { respond(exchange, TestResponse(500, "handler failed: $e", "text/plain")) }
                 exchange.close()
             }
@@ -77,6 +65,9 @@ internal class TestHttpServer private constructor(private val server: HttpServer
     private fun respond(exchange: HttpExchange, response: TestResponse) {
         val bytes = response.body.toByteArray()
         exchange.responseHeaders.add("Content-Type", response.contentType)
+        // -1 is HttpExchange's "no response body". Passing 0 instead means a chunked body of
+        // unknown length, and the exchange would never complete - the client blocks until its
+        // timeout rather than failing fast.
         if (bytes.isEmpty()) {
             exchange.sendResponseHeaders(response.status, -1)
             exchange.close()

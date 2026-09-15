@@ -25,12 +25,6 @@ import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.http.Http
 
-/**
- * Uses the JWT grant (`urn:ietf:params:oauth:grant-type:jwt-bearer`).
- *
- * The token is cached and only refetched as it approaches expiry. Safe to call concurrently from
- * multiple coroutines and meant to be reused.
- */
 class MaskinportenClient(
     private val config: MaskinportenConfig,
     private val httpClient: HttpClient = Http.defaultClient(),

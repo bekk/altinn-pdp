@@ -64,8 +64,6 @@ class PdpClientTest {
         val request = server.lastRequest(path)
         assertEquals("POST", request.method)
         assertEquals("Bearer altinn-token", request.header("Authorization"))
-        // Without this header API Management rejects the call with a 401 before the PDP ever
-        // sees it, which reads like an authentication bug rather than a missing key.
         assertEquals("subscription-key", request.header(PdpClient.SUBSCRIPTION_KEY_HEADER))
         assertEquals("application/json", request.header("Content-Type"))
     }

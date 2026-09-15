@@ -60,9 +60,6 @@ class TokenCacheTest {
 
     @Test
     fun `concurrent callers on a cold cache trigger exactly one load`() = runBlocking {
-        // This is the whole reason TokenCache holds a Mutex across the network call rather than
-        // just reading and writing a field. Simplify that away and fifty coroutines each fetch
-        // their own token, which Maskinporten will rate-limit.
         val cache = TokenCache(MutableClock(), leeway)
         val loads = AtomicInteger()
 

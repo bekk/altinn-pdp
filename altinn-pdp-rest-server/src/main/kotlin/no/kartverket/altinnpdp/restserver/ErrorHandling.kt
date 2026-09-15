@@ -12,13 +12,6 @@ import io.ktor.server.response.respond
 import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 import no.kartverket.altinnpdp.client.exception.PdpException
 
-/**
- * Maps every exception that can escape a route to a JSON [ErrorResponse] instead of Ktor's
- * default plain-text/HTML error page, and to a status code that tells callers where the fault
- * lies: 400 for a request we could not understand (including a body Altinn itself rejected as
- * invalid), 502 when Altinn/Maskinporten failed for a reason unrelated to this request's content,
- * 500 for anything unanticipated.
- */
 fun Application.configureErrorHandling() {
     install(StatusPages) {
         exception<IllegalArgumentException> { call, cause ->
@@ -27,24 +20,16 @@ fun Application.configureErrorHandling() {
         exception<JsonConvertException> { call, cause ->
             call.respond(HttpStatusCode.BadRequest, ErrorResponse(bodyErrorMessage(cause)))
         }
-        // Thrown by ContentNegotiation itself (not the JSON converter) when it can't find a
-        // converter for the request at all - typically a missing/wrong `Content-Type` header.
+        // ContentNegotiation throws this when it finds no converter at all, typically a missing
+        // or wrong `Content-Type` - not a conversion that was attempted and failed.
         exception<ContentTransformationException> { call, cause ->
             call.respond(HttpStatusCode.BadRequest, ErrorResponse("Malformed request body: ${cause.message}"))
         }
-        // Ktor wraps a failed body conversion (missing/blank field, wrong type, invalid JSON) in
-        // this - the useful detail from the JSON converter is further down the cause chain.
         exception<BadRequestException> { call, cause ->
             call.respond(HttpStatusCode.BadRequest, ErrorResponse(bodyErrorMessage(cause)))
         }
-        // A 4xx from Altinn means it rejected this specific request (e.g. an unknown resourceId
-        // or malformed organizationNumber) - that is on the caller, so tell them, not just "bad
-        // gateway". A 5xx, or no status at all (a network failure), is Altinn's fault, not theirs.
-        //
-        // cause.message already has Altinn's own response body appended (see
-        // AltinnPdpException.messageWithBody) - that's useful in the logs but must never reach the
-        // caller as-is, since it can carry details about our Altinn integration we don't want to
-        // expose. Log the full detail, respond with a fixed message instead.
+        // cause.message carries Altinn's own response body, which can expose details of this
+        // service's Altinn integration. Log it, never respond with it.
         exception<PdpException> { call, cause ->
             call.application.log.error(
                 "PDP call failed: statusCode=${cause.statusCode}, responseBody=${cause.responseBody}",
@@ -57,8 +42,6 @@ fun Application.configureErrorHandling() {
                 call.respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Altinn failed"))
             }
         }
-        // Maskinporten/Altinn token exchange failures: always a server-side credentials/infra
-        // problem, never something the caller's request body could have caused.
         exception<AltinnPdpException> { call, cause ->
             call.application.log.error(
                 "Maskinporten/Altinn call failed: statusCode=${cause.statusCode}, responseBody=${cause.responseBody}",
@@ -73,13 +56,8 @@ fun Application.configureErrorHandling() {
     }
 }
 
-/**
- * The specific field-level detail (e.g. which field was missing) sits several levels down the
- * cause chain - [BadRequestException] wraps another [BadRequestException] wraps the
- * [JsonConvertException] with the actual message. Walks the chain to find it instead of
- * surfacing the outer "Failed to convert request body to class ..." message, which never names
- * the field and leaks an internal class name.
- */
+// The outer message names no field and leaks an internal class name, hence the walk to the inner
+// JsonConvertException. The patterns match kotlinx's wording; ServerTest catches an upgrade.
 private fun bodyErrorMessage(cause: Throwable): String {
     val detail = generateSequence(cause) { it.cause }
         .filterIsInstance<JsonConvertException>()

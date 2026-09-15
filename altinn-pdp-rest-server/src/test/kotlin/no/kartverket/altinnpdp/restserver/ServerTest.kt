@@ -188,9 +188,6 @@ class ServerTest {
 
     @Test
     fun `authorize without a Content-Type header returns 400, not 500`() = authorizeTest(decision = "Permit") {
-        // No contentType(...) call - ContentNegotiation then finds no converter for the
-        // request at all and throws CannotTransformContentToTypeException, a different
-        // exception type than a malformed JSON body would (JsonConvertException).
         val response = client.post("/authorize") {
             setBody(
                 """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",

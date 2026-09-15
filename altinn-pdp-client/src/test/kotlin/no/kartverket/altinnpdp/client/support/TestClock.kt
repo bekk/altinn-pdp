@@ -6,12 +6,10 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 
-/** A fixed instant every test in this module measures expiry against. */
 internal val NOW: Instant = Instant.parse("2026-01-01T12:00:00Z")
 
 internal fun fixedClock(instant: Instant = NOW): Clock = Clock.fixed(instant, ZoneOffset.UTC)
 
-/** For asserting what happens as a token approaches expiry. */
 internal class MutableClock(
     private var current: Instant = NOW,
     private val zone: ZoneId = ZoneOffset.UTC,

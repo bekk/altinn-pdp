@@ -3,7 +3,6 @@ package no.kartverket.altinnpdp.client.auth
 import java.time.Duration
 import java.time.Instant
 
-/** The seam `PdpClient` depends on; [MaskinportenAltinnTokenProvider] is the real implementation. */
 interface AltinnTokenProvider {
     suspend fun getAltinnToken(): AccessToken
 }

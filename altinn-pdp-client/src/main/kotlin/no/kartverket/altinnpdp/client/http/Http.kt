@@ -13,8 +13,6 @@ internal object Http {
 
     fun defaultClient(): HttpClient = HttpClient.newBuilder()
         .connectTimeout(DEFAULT_TIMEOUT)
-        // Requests carry a bearer token and the subscription key; following a redirect would
-        // resend both to whatever host the response names.
         .followRedirects(HttpClient.Redirect.NEVER)
         .build()
 
