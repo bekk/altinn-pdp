@@ -5,7 +5,6 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.text.ParseException
-import java.time.Clock
 import java.time.Instant
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.exception.AltinnException
@@ -15,13 +14,11 @@ import no.kartverket.altinnpdp.client.http.Http
 class AltinnTokenExchanger(
     platformBaseUrl: String,
     private val httpClient: HttpClient = Http.defaultClient(),
-    private val clock: Clock = Clock.systemUTC(),
 ) {
     constructor(
         environment: AltinnEnvironment,
         httpClient: HttpClient = Http.defaultClient(),
-        clock: Clock = Clock.systemUTC(),
-    ) : this(environment.platformBaseUrl, httpClient, clock)
+    ) : this(environment.platformBaseUrl, httpClient)
 
     private val exchangeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + EXCHANGE_PATH)
 
@@ -53,18 +50,14 @@ class AltinnTokenExchanger(
         return AccessToken(token, expiresAt(token))
     }
 
-    private fun expiresAt(token: String): Instant {
-        val exp = try {
-            JWTParser.parse(token).jwtClaimsSet.expirationTime
-        } catch (e: ParseException) {
-            throw AltinnException("Failed to parse the Altinn token as a JWT", cause = e)
-        }
-        return exp?.toInstant() ?: clock.instant().plusSeconds(FALLBACK_LIFETIME_SECONDS)
+    private fun expiresAt(token: String): Instant = try {
+        JWTParser.parse(token).jwtClaimsSet?.expirationTime?.toInstant()
+            ?: throw AltinnException("The Altinn token has no exp claim")
+    } catch (e: ParseException) {
+        throw AltinnException("Failed to parse the Altinn token as a JWT", cause = e)
     }
 
     companion object {
         const val EXCHANGE_PATH = "/authentication/api/v1/exchange/maskinporten"
-
-        private const val FALLBACK_LIFETIME_SECONDS = 60L
     }
 }

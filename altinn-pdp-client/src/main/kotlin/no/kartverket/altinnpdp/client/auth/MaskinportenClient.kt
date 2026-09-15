@@ -97,15 +97,15 @@ class MaskinportenClient(
         if (parsed.accessToken.isBlank()) {
             throw MaskinportenException("The response from Maskinporten had no access_token")
         }
-        val lifetimeSeconds = parsed.expiresIn ?: DEFAULT_LIFETIME_SECONDS
+        val lifetimeSeconds = parsed.expiresIn
+            ?: throw MaskinportenException("The response from Maskinporten had no expires_in")
         return AccessToken(parsed.accessToken, clock.instant().plusSeconds(lifetimeSeconds))
     }
 
     companion object {
         private const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 
-        private const val DEFAULT_LIFETIME_SECONDS = 60L
-
+        // The token response carries fields we don't model (token_type, scope, ...); ignore them.
         private val json = Json { ignoreUnknownKeys = true }
 
         private fun urlEncode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)

@@ -155,11 +155,11 @@ class MaskinportenClientTest {
     }
 
     @Test
-    fun `falls back to a short lifetime when the response omits expires_in`() = runBlocking {
+    fun `fails when the response omits expires_in`() = runBlocking {
         server.on(tokenPath) { TestResponse(body = tokenResponse(expiresIn = null)) }
         val client = MaskinportenClient(config(server.baseUrl + tokenPath), clock = fixedClock())
 
-        assertEquals(NOW.plusSeconds(60), client.getToken().expiresAt)
+        assertContains(assertFailsWith<MaskinportenException> { client.getToken() }.message!!, "expires_in")
     }
 
     @Test
