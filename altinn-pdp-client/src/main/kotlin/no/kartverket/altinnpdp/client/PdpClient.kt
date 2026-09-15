@@ -78,7 +78,7 @@ class PdpClient(
         return Http.withBudget(
             budget = timeouts.total,
             operation = "The PDP authorization lookup",
-            exception = { message, cause -> PdpException(message, cause = cause) },
+            exception = { message -> PdpException(message) },
         ) {
             fetchDecision(subject, resource, org, actionId)
         }

@@ -6,9 +6,8 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 import kotlin.time.toKotlinDuration
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.future.await
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 
 /** Small helpers around [HttpClient] shared by every outbound call this library makes. */
@@ -34,19 +33,19 @@ internal object Http {
             throw exception("Call to $target failed: ${e.message}", e)
         }
 
-    suspend fun <T> withBudget(
+    /**
+     * Runs [block] under [budget], failing with [exception] if it outlasts it.
+     *
+     * [T] is non-null so that a `null` result can only ever mean the budget expired.
+     */
+    suspend fun <T : Any> withBudget(
         budget: Duration,
         operation: String,
-        exception: (message: String, cause: Throwable) -> AltinnPdpException,
+        exception: (message: String) -> AltinnPdpException,
         block: suspend () -> T,
     ): T =
-        try {
-            // The kotlin.time overload: the Long one takes milliseconds and would round a
-            // sub-millisecond budget down to zero, failing every call instantly.
-            withTimeout(budget.toKotlinDuration()) { block() }
-        } catch (e: TimeoutCancellationException) {
-            throw exception("$operation did not complete within its ${format(budget)} time budget", e)
-        }
+        withTimeoutOrNull(budget.toKotlinDuration()) { block() }
+            ?: throw exception("$operation did not complete within its ${format(budget)} time budget")
 
     /** `Duration.toString` would put `PT20S` in the message. */
     private fun format(duration: Duration): String =

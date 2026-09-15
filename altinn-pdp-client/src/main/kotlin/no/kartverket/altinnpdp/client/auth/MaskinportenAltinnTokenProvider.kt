@@ -66,7 +66,7 @@ class MaskinportenAltinnTokenProvider(
         Http.withBudget(
             budget = timeouts.total,
             operation = "Altinn token retrieval",
-            exception = { message, cause -> AltinnException(message, cause = cause) },
+            exception = { message -> AltinnException(message) },
         ) {
             cache.get { exchanger.exchange(maskinportenClient.getToken().value) }
         }

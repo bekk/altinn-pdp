@@ -10,7 +10,9 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import no.kartverket.altinnpdp.client.auth.AccessToken
 import no.kartverket.altinnpdp.client.auth.AltinnScopes
 import no.kartverket.altinnpdp.client.auth.AltinnTokenExchanger
@@ -99,6 +101,49 @@ class PdpClientTimeoutTest {
         assertContains(e.message!!, "600 ms")
         // Reached only once Maskinporten answered, so the budget was spent across calls.
         assertEquals(1, server.requestCount(exchangePath))
+    }
+
+    @Test
+    fun `a caller's own timeout is not reported as the client's budget`(): Unit = runBlocking {
+        server.on(authorizePath, slowly(400, TestResponse(body = """{"Response":[{"Decision":"Permit"}]}""")))
+        val client = PdpClient(
+            platformBaseUrl = server.baseUrl,
+            tokenProvider = InstantTokenProvider,
+            subscriptionKey = "subscription-key",
+            timeouts = Timeouts(request = Duration.ofSeconds(5), total = Duration.ofSeconds(5)),
+        )
+
+        // Nothing of the client's has expired, so its budget must stay out of this and let the
+        // caller's cancellation through - a PdpException here would break their withTimeout.
+        assertFailsWith<TimeoutCancellationException> {
+            withTimeout(100) { client.authorizeSample() }
+        }
+    }
+
+    @Test
+    fun `a budget spent fetching a token is still reported as the lookup's`() = runBlocking {
+        server.on(tokenPath, slowly(400, TestResponse(body = """{"access_token":"mp-token","expires_in":3600}""")))
+        server.on(exchangePath) { TestResponse(body = signedJwt(Instant.now().plusSeconds(300)), contentType = "text/plain") }
+        server.on(authorizePath) { TestResponse(body = """{"Response":[{"Decision":"Permit"}]}""") }
+
+        // The provider's own budget is nowhere near expiry, so the 200 ms it is cancelled by can
+        // only be the lookup's - which is what the caller has to be told about.
+        val generous = Timeouts(request = Duration.ofSeconds(5), total = Duration.ofSeconds(5))
+        val client = PdpClient(
+            platformBaseUrl = server.baseUrl,
+            tokenProvider = MaskinportenAltinnTokenProvider(
+                maskinportenClient = MaskinportenClient(maskinportenConfig(), generous),
+                exchanger = AltinnTokenExchanger(server.baseUrl, generous),
+                timeouts = generous,
+            ),
+            subscriptionKey = "subscription-key",
+            timeouts = Timeouts(request = Duration.ofSeconds(5), total = Duration.ofMillis(200)),
+        )
+
+        val e = assertFailsWith<PdpException> { client.authorizeSample() }
+
+        assertContains(e.message!!, "The PDP authorization lookup")
+        assertContains(e.message!!, "200 ms")
     }
 
     private fun maskinportenConfig() = MaskinportenConfig(
