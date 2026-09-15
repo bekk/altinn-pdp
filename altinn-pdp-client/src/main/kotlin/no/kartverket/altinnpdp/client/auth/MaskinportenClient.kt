@@ -24,6 +24,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.http.Http
+import no.kartverket.altinnpdp.client.http.Timeouts
 
 /**
  * Fetches an access token from Maskinporten using the JWT grant
@@ -34,7 +35,8 @@ import no.kartverket.altinnpdp.client.http.Http
  */
 class MaskinportenClient(
     private val config: MaskinportenConfig,
-    private val httpClient: HttpClient = Http.defaultClient(),
+    private val timeouts: Timeouts = Timeouts.DEFAULT,
+    private val httpClient: HttpClient = Http.defaultClient(timeouts),
     private val clock: Clock = Clock.systemUTC(),
     refreshLeeway: Duration = Duration.ofSeconds(30),
 ) {
@@ -80,7 +82,7 @@ class MaskinportenClient(
         val request = HttpRequest.newBuilder(URI.create(config.tokenUrl))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Accept", "application/json")
-            .timeout(Http.DEFAULT_TIMEOUT)
+            .timeout(timeouts.request)
             .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
             .build()
 

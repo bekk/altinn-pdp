@@ -13,6 +13,7 @@ import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
 import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.http.Http
+import no.kartverket.altinnpdp.client.http.Timeouts
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
 
@@ -32,20 +33,24 @@ import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
  * @param subscriptionKey the Azure API Management subscription key for the Access Management
  *   products, ordered from Altinn servicedesk - sent as the [SUBSCRIPTION_KEY_HEADER] header,
  *   without which the gateway rejects the call with 401 before the PDP sees it
+ * @param httpClient a client supplied here is used as it was built - [java.net.http.HttpClient]
+ *   cannot be given a connect timeout afterwards, so only [Timeouts.request] bounds its connecting
  */
 class PdpClient(
     platformBaseUrl: String,
     private val tokenProvider: AltinnTokenProvider,
     private val subscriptionKey: String,
-    private val httpClient: HttpClient = Http.defaultClient(),
+    private val timeouts: Timeouts = Timeouts.DEFAULT,
+    private val httpClient: HttpClient = Http.defaultClient(timeouts),
 ) {
     /** Calls [environment] instead of an arbitrary URL - the common case outside of tests. */
     constructor(
         environment: AltinnEnvironment,
         tokenProvider: AltinnTokenProvider,
         subscriptionKey: String,
-        httpClient: HttpClient = Http.defaultClient(),
-    ) : this(environment.platformBaseUrl, tokenProvider, subscriptionKey, httpClient)
+        timeouts: Timeouts = Timeouts.DEFAULT,
+        httpClient: HttpClient = Http.defaultClient(timeouts),
+    ) : this(environment.platformBaseUrl, tokenProvider, subscriptionKey, timeouts, httpClient)
 
     private val authorizeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + AUTHORIZE_PATH)
 
@@ -56,6 +61,8 @@ class PdpClient(
      *   access is being checked, e.g. `"923609016"` - not the ISO6523-prefixed form Maskinporten
      *   tokens use
      * @param action e.g. `"read"` or `"write"`
+     * @throws no.kartverket.altinnpdp.client.exception.PdpException if the lookup outlasts
+     *   [Timeouts.total], which covers the token fetch and exchange as well as this call
      */
     suspend fun authorize(
         systemuserId: String,
@@ -68,6 +75,21 @@ class PdpClient(
         val org = required(organizationNumber, "organizationNumber")
         val actionId = required(action, "action")
 
+        return Http.withBudget(
+            budget = timeouts.total,
+            operation = "The PDP authorization lookup",
+            exception = { message, cause -> PdpException(message, cause = cause) },
+        ) {
+            fetchDecision(subject, resource, org, actionId)
+        }
+    }
+
+    private suspend fun fetchDecision(
+        subject: String,
+        resource: String,
+        org: String,
+        actionId: String,
+    ): PdpDecision {
         val token = tokenProvider.getAltinnToken()
         val body = json.encodeToString(
             XacmlAuthorizationRequest.serializer(),
@@ -78,7 +100,7 @@ class PdpClient(
             .header(SUBSCRIPTION_KEY_HEADER, subscriptionKey)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
-            .timeout(Http.DEFAULT_TIMEOUT)
+            .timeout(timeouts.request)
             .POST(HttpRequest.BodyPublishers.ofString(body))
             .build()
 
@@ -143,6 +165,7 @@ class PdpClient(
         private var subscriptionKey: String? = null
         private var httpClient: HttpClient? = null
         private var tokenProvider: AltinnTokenProvider? = null
+        private var timeouts: Timeouts? = null
 
         private var maskinportenTokenUrl: String? = null
         private var maskinportenClientId: String? = null
@@ -154,8 +177,18 @@ class PdpClient(
         /** Required - the Azure API Management subscription key for the PDP `/authorize` endpoint. */
         fun subscriptionKey(subscriptionKey: String): Builder = apply { this.subscriptionKey = subscriptionKey }
 
-        /** Defaults to a plain [Http.defaultClient]; override to share a client/connection pool. */
+        /**
+         * Override to share a client/connection pool. Set a connect timeout on your own builder
+         * if you want one - [java.net.http.HttpClient] cannot be given one afterwards, so
+         * otherwise only the wider [Timeouts.request] bounds connecting.
+         */
         fun httpClient(httpClient: HttpClient): Builder = apply { this.httpClient = httpClient }
+
+        /**
+         * Required: a library cannot know what call chain it was dropped into, so it will not
+         * choose for you. Pass [Timeouts.DEFAULT] to take the reference values deliberately.
+         */
+        fun timeouts(timeouts: Timeouts): Builder = apply { this.timeouts = timeouts }
 
         /** Supply your own token source instead of Maskinporten - the `maskinporten*` setters are then ignored. */
         fun tokenProvider(tokenProvider: AltinnTokenProvider): Builder = apply { this.tokenProvider = tokenProvider }
@@ -172,7 +205,11 @@ class PdpClient(
         fun build(): PdpClient {
             val env = requireNotNull(environment) { "environment is required" }
             val key = requireNotNull(subscriptionKey) { "subscriptionKey is required" }
-            val client = httpClient ?: Http.defaultClient()
+            val timeouts = requireNotNull(timeouts) {
+                "timeouts is required - size them to fit inside your own callers' budget, or pass " +
+                    "Timeouts.DEFAULT to take the reference values deliberately"
+            }
+            val client = httpClient ?: Http.defaultClient(timeouts)
 
             val provider = tokenProvider ?: MaskinportenAltinnTokenProvider(
                 maskinportenConfig = MaskinportenConfig(
@@ -188,10 +225,11 @@ class PdpClient(
                     scopes = listOf(AltinnScopes.AUTHORIZE),
                 ),
                 environment = env,
+                timeouts = timeouts,
                 httpClient = client,
             )
 
-            return PdpClient(env, provider, key, client)
+            return PdpClient(env, provider, key, timeouts, client)
         }
     }
 
