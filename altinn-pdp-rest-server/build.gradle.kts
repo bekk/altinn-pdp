@@ -8,25 +8,24 @@ application {
     mainClass = "no.kartverket.altinnpdp.restserver.MainKt"
 }
 
+tasks.named<JavaExec>("run") {
+    workingDir = rootProject.projectDir
+}
+
 dependencies {
     implementation(project(":altinn-pdp-client"))
 
     implementation(ktorLibs.server.core)
     implementation(ktorLibs.server.netty)
-    implementation(ktorLibs.server.openapi)
-    implementation(ktorLibs.server.routingOpenapi)
     implementation(ktorLibs.server.contentNegotiation)
     implementation(ktorLibs.server.statusPages)
+    implementation(ktorLibs.server.swagger)
     implementation(ktorLibs.server.di)
     implementation(ktorLibs.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.logback.classic)
 
     testImplementation(ktorLibs.server.testHost)
-}
-
-tasks.named<JavaExec>("run") {
-  workingDir = rootProject.projectDir
 }
 
 // Local-first Jib config: `./gradlew jibDockerBuild` needs no registry.
@@ -42,6 +41,5 @@ jib {
         mainClass = "no.kartverket.altinnpdp.restserver.MainKt"
         ports = listOf("8080")
         user = "1000:1000"
-        workingDirectory = "/tmp"
     }
 }

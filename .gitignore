@@ -4,8 +4,6 @@
 .gradle/
 build/
 .kotlin/
-altinn-pdp-rest-server/docs/
-docs/
 
 # VS Code
 .vscode/
