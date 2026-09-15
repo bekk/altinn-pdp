@@ -4,31 +4,20 @@ import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 
-/** What the test server should answer with. */
 internal data class TestResponse(
     val status: Int = 200,
     val body: String = "",
     val contentType: String = "application/json",
 )
 
-/** A request the test server received, so tests can assert on what actually went over the wire. */
 internal class RecordedRequest(
     val method: String,
     val body: String,
     private val headers: Map<String, String>,
 ) {
-    /** Header lookup is case-insensitive, as it is on the wire. */
     fun header(name: String): String? = headers[name.lowercase()]
 }
 
-/**
- * A real HTTP server on a loopback port.
- *
- * The clients talk to Altinn through [java.net.http.HttpClient], which is an abstract class with a
- * dozen members to implement, so faking it is far more work than serving the two endpoints for
- * real. The raw base-URL constructors on the clients exist precisely for this - their KDoc points
- * at the [no.kartverket.altinnpdp.client.AltinnEnvironment] constructors as the non-test path.
- */
 internal class TestHttpServer private constructor(private val server: HttpServer) : AutoCloseable {
 
     private val lock = Any()
@@ -37,14 +26,9 @@ internal class TestHttpServer private constructor(private val server: HttpServer
 
     val baseUrl: String get() = "http://127.0.0.1:${server.address.port}"
 
-    /**
-     * Serves [path] with [handler]. Register before the client under test makes its call.
-     *
-     * Registering the same path twice replaces the handler rather than failing, so one server
-     * can serve a test that needs a different answer partway through. [HttpServer.createContext]
-     * throws on a duplicate path, so the context is created once and the handler looked up per
-     * request.
-     */
+    // HttpServer.createContext throws if the same path is registered twice, so the context is
+    // created once and the handler looked up per request. Re-registering a path therefore replaces
+    // the handler, which lets one test answer differently partway through.
     fun on(path: String, handler: (RecordedRequest) -> TestResponse): TestHttpServer {
         val isNewPath = synchronized(lock) { handlers.put(path, handler) == null }
         if (!isNewPath) return this
@@ -62,8 +46,6 @@ internal class TestHttpServer private constructor(private val server: HttpServer
                 val current = synchronized(lock) { handlers.getValue(path) }
                 respond(exchange, current(request))
             } catch (e: Throwable) {
-                // Without this the exchange never closes and the client blocks until it times out,
-                // turning a broken fixture into a ten-second mystery.
                 runCatching { respond(exchange, TestResponse(500, "handler failed: $e", "text/plain")) }
                 exchange.close()
             }
@@ -83,6 +65,9 @@ internal class TestHttpServer private constructor(private val server: HttpServer
     private fun respond(exchange: HttpExchange, response: TestResponse) {
         val bytes = response.body.toByteArray()
         exchange.responseHeaders.add("Content-Type", response.contentType)
+        // -1 is HttpExchange's "no response body". Passing 0 instead means a chunked body of
+        // unknown length, and the exchange would never complete - the client blocks until its
+        // timeout rather than failing fast.
         if (bytes.isEmpty()) {
             exchange.sendResponseHeaders(response.status, -1)
             exchange.close()

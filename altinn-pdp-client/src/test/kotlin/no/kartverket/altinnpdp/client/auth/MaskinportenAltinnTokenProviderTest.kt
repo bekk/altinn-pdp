@@ -17,13 +17,8 @@ import no.kartverket.altinnpdp.client.support.TestKeys
 import no.kartverket.altinnpdp.client.support.TestResponse
 import no.kartverket.altinnpdp.client.support.signedJwt
 
-/**
- * The provider chains two cached calls: a Maskinporten token, then an exchange for an Altinn one.
- * Both caches are exercised here through real HTTP so the nesting is covered end to end.
- */
 class MaskinportenAltinnTokenProviderTest {
 
-    /** One server per test, started and stopped around it rather than inside every test body. */
     private lateinit var server: TestHttpServer
 
     @BeforeTest
@@ -105,9 +100,6 @@ class MaskinportenAltinnTokenProviderTest {
 
     @Test
     fun `concurrent callers on cold caches fetch one of each token`() = runBlocking {
-        // Getting an Altinn token takes the Altinn cache's lock and then, inside the loader, the
-        // Maskinporten cache's lock. That nesting is only safe while both are always acquired in
-        // this order; reversing it anywhere would deadlock exactly here.
         server.serveBothTokens()
         val provider = provider(server)
 

@@ -1,6 +1,5 @@
 package no.kartverket.altinnpdp.client.exception
 
-/** Failure while exchanging a Maskinporten token for an Altinn token. */
 class AltinnException(
     message: String,
     statusCode: Int? = null,

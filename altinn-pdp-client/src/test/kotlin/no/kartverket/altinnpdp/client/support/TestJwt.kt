@@ -10,15 +10,11 @@ import com.nimbusds.jwt.SignedJWT
 import java.time.Instant
 import java.util.Date
 
-/** Generating an RSA key is slow, so the whole test run shares one. */
+// RSA key generation is slow enough to dominate the suite, so every test shares one key.
 internal object TestKeys {
     val rsa: RSAKey by lazy { RSAKeyGenerator(2048).keyID("test-key").generate() }
 }
 
-/**
- * A signed JWT shaped like the token Altinn returns from the exchange. Only `exp` matters to the
- * client, but signing it keeps the fixture honest about what is actually parsed.
- */
 internal fun signedJwt(expiresAt: Instant?, issuedAt: Instant = NOW): String {
     val claims = JWTClaimsSet.Builder().issuer("https://test.altinn.no").issueTime(Date.from(issuedAt))
     expiresAt?.let { claims.expirationTime(Date.from(it)) }

@@ -38,11 +38,6 @@ class ServerTest {
     private fun pdpClientAgainst(server: HttpServer): PdpClient =
         PdpClient("http://localhost:${server.address.port}", fakeTokenProvider, "test-subscription-key")
 
-    /**
-     * Wraps [testApplication] with a stubbed PDP backend wired into [configurePdp] - the setup
-     * every `/authorize` test needs. [decision] and [statusCode] configure the stub; [block] is
-     * the actual test body, run once the application and stub are ready.
-     */
     private fun authorizeTest(
         decision: String,
         statusCode: Int = 200,
@@ -193,9 +188,6 @@ class ServerTest {
 
     @Test
     fun `authorize without a Content-Type header returns 400, not 500`() = authorizeTest(decision = "Permit") {
-        // No contentType(...) call - ContentNegotiation then finds no converter for the
-        // request at all and throws CannotTransformContentToTypeException, a different
-        // exception type than a malformed JSON body would (JsonConvertException).
         val response = client.post("/authorize") {
             setBody(
                 """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",

@@ -6,12 +6,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 
-/**
- * Decoding leans on `@JsonNames` (an experimental kotlinx-serialization API) to accept both the
- * PascalCase of Altinn's XACML JSON profile and the camelCase some environments answer with. A
- * dependency bump that changes that behaviour would otherwise only surface as a lost decision in
- * TT02, so these tests exist to turn that into a failing build.
- */
 class XacmlAuthorizationResponseTest {
 
     private val json = Json { ignoreUnknownKeys = true }
