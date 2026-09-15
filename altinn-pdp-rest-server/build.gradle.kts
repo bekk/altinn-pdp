@@ -12,6 +12,7 @@ dependencies {
     implementation(project(":altinn-pdp-client"))
 
     implementation(ktorLibs.server.core)
+    implementation(ktorLibs.server.config.yaml)
     implementation(ktorLibs.server.netty)
     implementation(ktorLibs.server.openapi)
     implementation(ktorLibs.server.routingOpenapi)
@@ -23,10 +24,6 @@ dependencies {
     implementation(libs.logback.classic)
 
     testImplementation(ktorLibs.server.testHost)
-}
-
-tasks.named<JavaExec>("run") {
-  workingDir = rootProject.projectDir
 }
 
 // Local-first Jib config: `./gradlew jibDockerBuild` needs no registry.

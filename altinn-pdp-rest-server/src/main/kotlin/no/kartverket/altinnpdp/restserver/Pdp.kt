@@ -2,26 +2,31 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
+import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
 
-fun Application.configurePdp(client: PdpClient = pdpClientFromEnv()) {
+fun Application.configurePdp(client: PdpClient = pdpClientFromConfig()) {
     install(DI)
     dependencies.provide<PdpClient> { client }
 }
 
-private fun pdpClientFromEnv(): PdpClient {
+private fun Application.pdpClientFromConfig(): PdpClient {
+    val config = environment.config
     val builder = PdpClient.builder()
-        .environment(AltinnEnvironment.valueOf(Dotenv.get("ALTINN_ENVIRONMENT") ?: "TT02"))
-        .subscriptionKey(requiredEnv("ALTINN_SUBSCRIPTION_KEY"))
-        .maskinportenClientId(requiredEnv("MASKINPORTEN_CLIENT_ID"))
-        .maskinportenJwk(requiredEnv("MASKINPORTEN_CLIENT_JWK"))
-    Dotenv.get("MASKINPORTEN_TOKEN_URL")?.let { builder.maskinportenTokenUrl(it) }
+        .environment(AltinnEnvironment.valueOf(config.required("altinn.environment")))
+        .subscriptionKey(config.required("altinn.subscriptionKey"))
+        .maskinportenClientId(config.required("maskinporten.clientId"))
+        .maskinportenJwk(config.required("maskinporten.clientJwk"))
+    config.propertyOrNull("maskinporten.tokenUrl")?.getString()?.takeIf { it.isNotBlank() }
+        ?.let { builder.maskinportenTokenUrl(it) }
     return builder.build()
 }
 
-private fun requiredEnv(name: String): String =
-    Dotenv.get(name)?.takeIf { it.isNotBlank() }
-        ?: error("Missing required environment variable $name (see .env.example)")
+// Ktor's "$VAR" substitution rejects a variable that is unset, but not one exported as an empty
+// string - which is exactly what a freshly copied .env gives you.
+private fun ApplicationConfig.required(path: String): String =
+    property(path).getString().takeIf { it.isNotBlank() }
+        ?: error("Missing required configuration $path (see .env.example)")

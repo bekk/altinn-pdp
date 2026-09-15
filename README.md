@@ -127,7 +127,9 @@ cp .env.example .env
 ./scripts/dev.sh
 ```
 
-The server runs on <http://localhost:8080>.
+The server runs on <http://localhost:8080>. `dev.sh` is what turns `.env` into real environment
+variables - the server itself only ever reads the environment, so starting it any other way (an
+IDE run configuration, `./gradlew :altinn-pdp-rest-server:run`) means setting them yourself.
 
 ---
 
@@ -202,6 +204,11 @@ API.
 | `MASKINPORTEN_TOKEN_URL` | no | TT02's Maskinporten token endpoint |
 
 See `.env.example` for what each variable is and where to get it.
+
+`altinn-pdp-rest-server/src/main/resources/application.yaml` maps each one onto a configuration
+key via Ktor's `$ENV_VAR` substitution, so a missing required variable stops the server at
+startup rather than at the first request. A JVM system property of the same name works too, which
+is occasionally handier than an environment variable in an IDE.
 
 Never commit `.env`, and never print secrets in logs.
 
