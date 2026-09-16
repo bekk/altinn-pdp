@@ -34,7 +34,9 @@ internal object Http {
     /**
      * Runs [block] under [budget], failing with [exception] if it outlasts it.
      *
-     * [T] is non-null so that a `null` result can only ever mean the budget expired.
+     * The `T : Any` bound is load-bearing: `withTimeoutOrNull` reports a timeout by returning
+     * null, so were [block] allowed to return null itself, a call that had in fact succeeded
+     * would come back out of here as a timeout.
      */
     suspend fun <T : Any> withBudget(
         budget: Duration,
