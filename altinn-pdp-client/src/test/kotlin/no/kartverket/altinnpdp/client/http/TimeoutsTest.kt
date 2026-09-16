@@ -33,8 +33,7 @@ class TimeoutsTest {
 
     @Test
     fun `allows a total shorter than the request timeout`() {
-        // Unvalidated on purpose: `Timeouts(total = ...)` is the one-liner people reach for, and
-        // the untouched request default is the larger number.
+        // Unvalidated on purpose: `Timeouts(total = ...)` alone already produces total < request.
         val timeouts = Timeouts(total = Duration.ofSeconds(1))
 
         assertEquals(Duration.ofSeconds(1), timeouts.total)
@@ -66,7 +65,6 @@ class TimeoutsTest {
 
     @Test
     fun `a client built elsewhere has no connect timeout, so connecting falls back to request`() {
-        // Not a hole: the JDK counts the request timeout from before the connection is made.
         val caller = java.net.http.HttpClient.newHttpClient()
 
         assertEquals(true, caller.connectTimeout().isEmpty)

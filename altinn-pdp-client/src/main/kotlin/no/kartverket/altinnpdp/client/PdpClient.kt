@@ -140,10 +140,6 @@ class PdpClient(
 
         fun httpClient(httpClient: HttpClient): Builder = apply { this.httpClient = httpClient }
 
-        /**
-         * Required: a library cannot know what call chain it was dropped into, so it will not
-         * choose for you. Pass [Timeouts.DEFAULT] to take the reference values deliberately.
-         */
         fun timeouts(timeouts: Timeouts): Builder = apply { this.timeouts = timeouts }
 
         fun tokenProvider(tokenProvider: AltinnTokenProvider): Builder = apply { this.tokenProvider = tokenProvider }

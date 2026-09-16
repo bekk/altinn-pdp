@@ -138,7 +138,6 @@ class PdpClientBuilderTest {
 
     @Test
     fun `passes the timeouts on to the client rather than dropping them`() = runBlocking {
-        // The budget runs out inside the token provider, so nothing here reaches the network.
         val client = builder()
             .tokenProvider(SlowTokenProvider)
             .timeouts(Timeouts(total = Duration.ofMillis(50)))

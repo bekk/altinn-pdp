@@ -130,7 +130,6 @@ class MaskinportenAltinnTokenProviderTest {
         val e = assertFailsWith<AltinnException> { provider.getAltinnToken() }
 
         assertContains(e.message!!, "time budget")
-        // Neither call is near the 5 s request timeout; only together do they overrun.
         assertEquals(1, server.requestCount(exchangePath))
     }
 

@@ -28,10 +28,7 @@ import no.kartverket.altinnpdp.client.support.TestKeys
 import no.kartverket.altinnpdp.client.support.TestResponse
 import no.kartverket.altinnpdp.client.support.signedJwt
 
-/**
- * Only the failing direction is asserted on: a sleep is a floor, so a slow machine can make these
- * calls later but never early enough to pass by accident.
- */
+/** Only timeouts are asserted on: a sleep is a floor, so a slow machine cannot pass these by luck. */
 class PdpClientTimeoutTest {
 
     private lateinit var server: TestHttpServer
@@ -78,7 +75,6 @@ class PdpClientTimeoutTest {
 
     @Test
     fun `the total budget bounds the whole lookup, not each call within it`() = runBlocking {
-        // No single call is near the 5 s request timeout, so without a budget all three succeed.
         server.on(tokenPath, slowly(250, TestResponse(body = """{"access_token":"mp-token","expires_in":3600}""")))
         server.on(exchangePath, slowly(250, TestResponse(body = signedJwt(Instant.now().plusSeconds(300)), contentType = "text/plain")))
         server.on(authorizePath, slowly(250, TestResponse(body = """{"Response":[{"Decision":"Permit"}]}""")))
@@ -99,7 +95,6 @@ class PdpClientTimeoutTest {
 
         assertContains(e.message!!, "time budget")
         assertContains(e.message!!, "600 ms")
-        // Reached only once Maskinporten answered, so the budget was spent across calls.
         assertEquals(1, server.requestCount(exchangePath))
     }
 
@@ -113,8 +108,7 @@ class PdpClientTimeoutTest {
             timeouts = Timeouts(request = Duration.ofSeconds(5), total = Duration.ofSeconds(5)),
         )
 
-        // Nothing of the client's has expired, so its budget must stay out of this and let the
-        // caller's cancellation through - a PdpException here would break their withTimeout.
+        // A PdpException here would break the caller's own withTimeout.
         assertFailsWith<TimeoutCancellationException> {
             withTimeout(100) { client.authorizeSample() }
         }
@@ -126,8 +120,6 @@ class PdpClientTimeoutTest {
         server.on(exchangePath) { TestResponse(body = signedJwt(Instant.now().plusSeconds(300)), contentType = "text/plain") }
         server.on(authorizePath) { TestResponse(body = """{"Response":[{"Decision":"Permit"}]}""") }
 
-        // The provider's own budget is nowhere near expiry, so the 200 ms it is cancelled by can
-        // only be the lookup's - which is what the caller has to be told about.
         val generous = Timeouts(request = Duration.ofSeconds(5), total = Duration.ofSeconds(5))
         val client = PdpClient(
             platformBaseUrl = server.baseUrl,
