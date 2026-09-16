@@ -14,12 +14,12 @@ import no.kartverket.altinnpdp.client.http.Timeouts
 /**  Altinn's APIs do not accept Maskinporten tokens, so one has to be traded for an Altinn token. */
 class AltinnTokenExchanger(
     platformBaseUrl: String,
-    private val timeouts: Timeouts = Timeouts.DEFAULT,
+    private val timeouts: Timeouts,
     private val httpClient: HttpClient = Http.defaultClient(timeouts),
 ) {
     constructor(
         environment: AltinnEnvironment,
-        timeouts: Timeouts = Timeouts.DEFAULT,
+        timeouts: Timeouts,
         httpClient: HttpClient = Http.defaultClient(timeouts),
     ) : this(environment.platformBaseUrl, timeouts, httpClient)
 

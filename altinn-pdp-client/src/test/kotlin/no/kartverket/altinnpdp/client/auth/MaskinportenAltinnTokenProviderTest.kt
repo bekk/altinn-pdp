@@ -45,9 +45,11 @@ class MaskinportenAltinnTokenProviderTest {
                     jwk = TestKeys.rsa.toJSONString(),
                     scopes = listOf(AltinnScopes.AUTHORIZE),
                 ),
+                Timeouts.DEFAULT,
                 clock = clock,
             ),
-            exchanger = AltinnTokenExchanger(server.baseUrl),
+            exchanger = AltinnTokenExchanger(server.baseUrl, Timeouts.DEFAULT),
+            timeouts = Timeouts.DEFAULT,
             clock = clock,
         )
 

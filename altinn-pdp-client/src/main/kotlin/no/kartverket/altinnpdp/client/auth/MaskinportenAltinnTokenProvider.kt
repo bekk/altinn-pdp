@@ -11,7 +11,7 @@ import no.kartverket.altinnpdp.client.http.Timeouts
 class MaskinportenAltinnTokenProvider(
     private val maskinportenClient: MaskinportenClient,
     private val exchanger: AltinnTokenExchanger,
-    private val timeouts: Timeouts = Timeouts.DEFAULT,
+    private val timeouts: Timeouts,
     clock: Clock = Clock.systemUTC(),
     refreshLeeway: Duration = Duration.ofSeconds(30),
 ) : AltinnTokenProvider {
@@ -19,7 +19,7 @@ class MaskinportenAltinnTokenProvider(
     constructor(
         maskinportenConfig: MaskinportenConfig,
         environment: AltinnEnvironment,
-        timeouts: Timeouts = Timeouts.DEFAULT,
+        timeouts: Timeouts,
         httpClient: HttpClient = Http.defaultClient(timeouts),
         clock: Clock = Clock.systemUTC(),
         refreshLeeway: Duration = Duration.ofSeconds(30),

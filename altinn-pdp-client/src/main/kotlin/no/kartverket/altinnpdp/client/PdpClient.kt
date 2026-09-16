@@ -21,14 +21,14 @@ class PdpClient(
     platformBaseUrl: String,
     private val tokenProvider: AltinnTokenProvider,
     private val subscriptionKey: String,
-    private val timeouts: Timeouts = Timeouts.DEFAULT,
+    private val timeouts: Timeouts,
     private val httpClient: HttpClient = Http.defaultClient(timeouts),
 ) {
     constructor(
         environment: AltinnEnvironment,
         tokenProvider: AltinnTokenProvider,
         subscriptionKey: String,
-        timeouts: Timeouts = Timeouts.DEFAULT,
+        timeouts: Timeouts,
         httpClient: HttpClient = Http.defaultClient(timeouts),
     ) : this(environment.platformBaseUrl, tokenProvider, subscriptionKey, timeouts, httpClient)
 

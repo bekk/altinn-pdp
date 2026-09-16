@@ -28,7 +28,7 @@ import no.kartverket.altinnpdp.client.http.Timeouts
 
 class MaskinportenClient(
     private val config: MaskinportenConfig,
-    private val timeouts: Timeouts = Timeouts.DEFAULT,
+    private val timeouts: Timeouts,
     private val httpClient: HttpClient = Http.defaultClient(timeouts),
     private val clock: Clock = Clock.systemUTC(),
     refreshLeeway: Duration = Duration.ofSeconds(30),

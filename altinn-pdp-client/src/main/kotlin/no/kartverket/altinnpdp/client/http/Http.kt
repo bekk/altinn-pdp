@@ -12,7 +12,7 @@ import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 
 internal object Http {
 
-    fun defaultClient(timeouts: Timeouts = Timeouts.DEFAULT): HttpClient = HttpClient.newBuilder()
+    fun defaultClient(timeouts: Timeouts): HttpClient = HttpClient.newBuilder()
         .connectTimeout(timeouts.connect)
         .followRedirects(HttpClient.Redirect.NEVER)
         .build()
