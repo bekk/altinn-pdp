@@ -26,12 +26,10 @@ private fun pdpClientFromEnv(): PdpClient {
 }
 
 internal fun timeoutsFromEnv(lookup: (String) -> String? = Dotenv::get): Timeouts = Timeouts(
-    connect = millis("ALTINN_CONNECT_TIMEOUT_MS", CONNECT, lookup),
     request = millis("ALTINN_REQUEST_TIMEOUT_MS", REQUEST, lookup),
     total = millis("ALTINN_TOTAL_TIMEOUT_MS", TOTAL, lookup),
 )
 
-private const val CONNECT = 2_000L
 private const val REQUEST = 4_000L
 private const val TOTAL = 8_000L
 

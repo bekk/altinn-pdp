@@ -15,12 +15,12 @@ import no.kartverket.altinnpdp.client.http.Timeouts
 class AltinnTokenExchanger(
     platformBaseUrl: String,
     private val timeouts: Timeouts,
-    private val httpClient: HttpClient = Http.defaultClient(timeouts),
+    private val httpClient: HttpClient = Http.defaultClient(),
 ) {
     constructor(
         environment: AltinnEnvironment,
         timeouts: Timeouts,
-        httpClient: HttpClient = Http.defaultClient(timeouts),
+        httpClient: HttpClient = Http.defaultClient(),
     ) : this(environment.platformBaseUrl, timeouts, httpClient)
 
     private val exchangeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + EXCHANGE_PATH)

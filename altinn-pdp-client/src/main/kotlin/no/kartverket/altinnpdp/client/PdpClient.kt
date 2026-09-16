@@ -22,14 +22,14 @@ class PdpClient(
     private val tokenProvider: AltinnTokenProvider,
     private val subscriptionKey: String,
     private val timeouts: Timeouts,
-    private val httpClient: HttpClient = Http.defaultClient(timeouts),
+    private val httpClient: HttpClient = Http.defaultClient(),
 ) {
     constructor(
         environment: AltinnEnvironment,
         tokenProvider: AltinnTokenProvider,
         subscriptionKey: String,
         timeouts: Timeouts,
-        httpClient: HttpClient = Http.defaultClient(timeouts),
+        httpClient: HttpClient = Http.defaultClient(),
     ) : this(environment.platformBaseUrl, tokenProvider, subscriptionKey, timeouts, httpClient)
 
     private val authorizeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + AUTHORIZE_PATH)
@@ -157,7 +157,7 @@ class PdpClient(
                 "timeouts is required - size them to fit inside your own callers' budget, or pass " +
                     "Timeouts.DEFAULT to take the reference values deliberately"
             }
-            val client = httpClient ?: Http.defaultClient(timeouts)
+            val client = httpClient ?: Http.defaultClient()
 
             val provider = tokenProvider ?: MaskinportenAltinnTokenProvider(
                 maskinportenConfig = MaskinportenConfig(

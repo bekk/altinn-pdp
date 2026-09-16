@@ -20,7 +20,7 @@ class MaskinportenAltinnTokenProvider(
         maskinportenConfig: MaskinportenConfig,
         environment: AltinnEnvironment,
         timeouts: Timeouts,
-        httpClient: HttpClient = Http.defaultClient(timeouts),
+        httpClient: HttpClient = Http.defaultClient(),
         clock: Clock = Clock.systemUTC(),
         refreshLeeway: Duration = Duration.ofSeconds(30),
     ) : this(

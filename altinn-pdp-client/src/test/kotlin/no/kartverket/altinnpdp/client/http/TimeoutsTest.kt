@@ -9,25 +9,19 @@ import kotlin.test.assertFailsWith
 class TimeoutsTest {
 
     @Test
-    fun `connect and request are separate values, not one shared default`() {
-        assertEquals(Duration.ofSeconds(5), Timeouts.DEFAULT.connect)
-        assertEquals(Duration.ofSeconds(10), Timeouts.DEFAULT.request)
-    }
-
-    @Test
     fun `the default budget is less than three request timeouts back to back`() {
         val backToBack = Timeouts.DEFAULT.request.multipliedBy(3)
 
+        assertEquals(Duration.ofSeconds(10), Timeouts.DEFAULT.request)
         assertEquals(Duration.ofSeconds(20), Timeouts.DEFAULT.total)
         assertEquals(true, Timeouts.DEFAULT.total < backToBack)
     }
 
     @Test
-    fun `overriding one value keeps the defaults for the rest`() {
+    fun `overriding one value keeps the default for the other`() {
         val timeouts = Timeouts(total = Duration.ofSeconds(3))
 
         assertEquals(Duration.ofSeconds(3), timeouts.total)
-        assertEquals(Timeouts.DEFAULT.connect, timeouts.connect)
         assertEquals(Timeouts.DEFAULT.request, timeouts.request)
     }
 
@@ -45,11 +39,6 @@ class TimeoutsTest {
         val zero = assertFailsWith<IllegalArgumentException> { Timeouts(request = Duration.ZERO) }
         assertContains(zero.message!!, "request")
 
-        val negativeConnect = assertFailsWith<IllegalArgumentException> {
-            Timeouts(connect = Duration.ofSeconds(-1))
-        }
-        assertContains(negativeConnect.message!!, "connect")
-
         val negativeTotal = assertFailsWith<IllegalArgumentException> {
             Timeouts(total = Duration.ofSeconds(-1))
         }
@@ -57,16 +46,9 @@ class TimeoutsTest {
     }
 
     @Test
-    fun `the client this library builds gets the connect timeout`() {
-        val client = Http.defaultClient(Timeouts(connect = Duration.ofSeconds(2)))
+    fun `the client this library builds refuses to follow redirects`() {
+        val client = Http.defaultClient()
 
-        assertEquals(Duration.ofSeconds(2), client.connectTimeout().orElse(null))
-    }
-
-    @Test
-    fun `a client built elsewhere has no connect timeout, so connecting falls back to request`() {
-        val caller = java.net.http.HttpClient.newHttpClient()
-
-        assertEquals(true, caller.connectTimeout().isEmpty)
+        assertEquals(java.net.http.HttpClient.Redirect.NEVER, client.followRedirects())
     }
 }

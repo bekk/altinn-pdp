@@ -18,7 +18,6 @@ class PdpTimeoutsTest {
     fun `each default sits inside the one containing it, and all of them inside the response budget`() {
         val timeouts = timeoutsFromEnv(env())
 
-        assertTrue(timeouts.connect < timeouts.request, "connect should be inside request")
         assertTrue(timeouts.request < timeouts.total, "request should be inside the total budget")
         assertTrue(
             timeouts.total < budgetPromisedToCallersInTheReadme,
@@ -34,16 +33,14 @@ class PdpTimeoutsTest {
     }
 
     @Test
-    fun `a deployment can override every value`() {
+    fun `a deployment can override both values`() {
         val timeouts = timeoutsFromEnv(
             env(
-                "ALTINN_CONNECT_TIMEOUT_MS" to "500",
                 "ALTINN_REQUEST_TIMEOUT_MS" to "1500",
                 "ALTINN_TOTAL_TIMEOUT_MS" to "3000",
             )
         )
 
-        assertEquals(Duration.ofMillis(500), timeouts.connect)
         assertEquals(Duration.ofMillis(1500), timeouts.request)
         assertEquals(Duration.ofMillis(3000), timeouts.total)
     }
@@ -65,9 +62,9 @@ class PdpTimeoutsTest {
     @Test
     fun `a non-positive value fails at startup, naming the variable`() {
         val e = assertFailsWith<IllegalArgumentException> {
-            timeoutsFromEnv(env("ALTINN_CONNECT_TIMEOUT_MS" to "0"))
+            timeoutsFromEnv(env("ALTINN_TOTAL_TIMEOUT_MS" to "0"))
         }
 
-        assertContains(e.message!!, "ALTINN_CONNECT_TIMEOUT_MS")
+        assertContains(e.message!!, "ALTINN_TOTAL_TIMEOUT_MS")
     }
 }
