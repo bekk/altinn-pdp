@@ -8,7 +8,7 @@ fun main() {
         configureSerialization()
         configureErrorHandling()
         configurePdp()
-        configureHttp()
+        configureOpenApi()
         configureRouting()
     }.start(wait = true)
 }

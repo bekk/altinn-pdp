@@ -60,10 +60,32 @@ class ServerTest {
     @Test
     fun `test health liveness endpoint`() = testApplication {
         application {
-            configureHttp()
+            configureOpenApi()
             configureRouting()
         }
         assertEquals(HttpStatusCode.OK, client.get("/health/live").status)
+    }
+
+    @Test
+    fun `openapi endpoint serves the spec from the classpath`() = testApplication {
+        application {
+            configureOpenApi()
+            configureRouting()
+        }
+        val response = client.get("/openapi")
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(response.bodyAsText().startsWith("openapi:"))
+    }
+
+    @Test
+    fun `swagger ui is served`() = testApplication {
+        application {
+            configureOpenApi()
+            configureRouting()
+        }
+        val response = client.get("/swagger")
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(response.bodyAsText().contains("swagger-ui"))
     }
 
     @Test
