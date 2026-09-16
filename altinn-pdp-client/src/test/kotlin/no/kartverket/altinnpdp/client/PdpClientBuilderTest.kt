@@ -15,12 +15,6 @@ import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.http.Timeouts
 import no.kartverket.altinnpdp.client.support.TestKeys
 
-/**
- * The builder is the only entry point a consumer is meant to use, so what it accepts and what it
- * refuses is public API. Nothing here makes a network call: [PdpClient.Builder.build] only
- * assembles the client, and the assertions below are about what it rejects before it gets that
- * far.
- */
 class PdpClientBuilderTest {
 
     private val jwk: String get() = TestKeys.rsa.toJSONString()
@@ -40,8 +34,6 @@ class PdpClientBuilderTest {
             return AccessToken("altinn-token", Instant.MAX)
         }
     }
-
-    // --- what it refuses ---
 
     @Test
     fun `rejects a missing environment`() {
@@ -64,8 +56,6 @@ class PdpClientBuilderTest {
                 .build()
         }
 
-        // Without the key API Management rejects every call with a 401, so refusing to build is
-        // friendlier than a client that only fails once it is in use.
         assertContains(e.message!!, "subscriptionKey")
     }
 
@@ -88,8 +78,6 @@ class PdpClientBuilderTest {
         val e = assertFailsWith<IllegalArgumentException> { builder().maskinportenJwk(jwk).build() }
 
         assertContains(e.message!!, "maskinportenClientId")
-        // The message has to mention the alternative; a caller with their own token source
-        // should not go looking for a client id they never needed.
         assertContains(e.message!!, "tokenProvider")
     }
 
@@ -100,8 +88,6 @@ class PdpClientBuilderTest {
         assertContains(e.message!!, "maskinportenJwk")
         assertContains(e.message!!, "tokenProvider")
     }
-
-    // --- what it builds ---
 
     @Test
     fun `builds a client from Maskinporten credentials`() {
@@ -138,8 +124,6 @@ class PdpClientBuilderTest {
         assertContains(e.message!!, "tokenUrl")
     }
 
-    // --- the token provider shortcut ---
-
     @Test
     fun `tokenProvider builds without any Maskinporten settings`() {
         val client = PdpClient.builder()
@@ -169,10 +153,10 @@ class PdpClientBuilderTest {
 
     @Test
     fun `tokenProvider skips the Maskinporten settings rather than validating them anyway`() {
-        // A JWK this broken would fail the build on the Maskinporten path. Building anyway is
-        // what proves the setters are ignored, not merely optional.
         val client = builder()
             .maskinportenClientId("client-id")
+            // The JWK is deliberately invalid: building anyway is what proves the Maskinporten
+            // setters are ignored rather than merely optional.
             .maskinportenJwk("not a jwk")
             .tokenProvider(FakeTokenProvider)
             .build()

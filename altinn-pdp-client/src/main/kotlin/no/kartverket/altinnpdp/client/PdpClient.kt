@@ -17,25 +17,6 @@ import no.kartverket.altinnpdp.client.http.Timeouts
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
 
-/**
- * Calls Altinn's PDP (`POST /authorization/api/v1/authorize`) to check whether a systembruker
- * has been delegated access to a resource - the question a valid Maskinporten token alone cannot
- * answer, since it only proves the systembruker belongs to the calling system, not that it was
- * ever granted access to any particular resource.
- *
- * Deliberately knows nothing about any specific API: [authorize]'s `resourceId`,
- * `organizationNumber` and `action` are supplied by the caller on every call, so one client can
- * be reused across different APIs/resources without carrying any single one's configuration.
- *
- * @param platformBaseUrl for example `https://platform.tt02.altinn.no` - use the
- *   [AltinnEnvironment] constructor instead when calling TT02 or prod, so the URL can't be
- *   mistyped
- * @param subscriptionKey the Azure API Management subscription key for the Access Management
- *   products, ordered from Altinn servicedesk - sent as the [SUBSCRIPTION_KEY_HEADER] header,
- *   without which the gateway rejects the call with 401 before the PDP sees it
- * @param httpClient a client supplied here is used as it was built - [java.net.http.HttpClient]
- *   cannot be given a connect timeout afterwards, so only [Timeouts.request] bounds its connecting
- */
 class PdpClient(
     platformBaseUrl: String,
     private val tokenProvider: AltinnTokenProvider,
@@ -43,7 +24,6 @@ class PdpClient(
     private val timeouts: Timeouts = Timeouts.DEFAULT,
     private val httpClient: HttpClient = Http.defaultClient(timeouts),
 ) {
-    /** Calls [environment] instead of an arbitrary URL - the common case outside of tests. */
     constructor(
         environment: AltinnEnvironment,
         tokenProvider: AltinnTokenProvider,
@@ -54,16 +34,6 @@ class PdpClient(
 
     private val authorizeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + AUTHORIZE_PATH)
 
-    /**
-     * @param systemuserId the systembruker id from the token's `authorization_details`
-     * @param resourceId the resource's identifier in the Altinn Resource Registry
-     * @param organizationNumber the plain Norwegian org number of the party (customer) whose
-     *   access is being checked, e.g. `"923609016"` - not the ISO6523-prefixed form Maskinporten
-     *   tokens use
-     * @param action e.g. `"read"` or `"write"`
-     * @throws no.kartverket.altinnpdp.client.exception.PdpException if the lookup outlasts
-     *   [Timeouts.total], which covers the token fetch and exchange as well as this call
-     */
     suspend fun authorize(
         systemuserId: String,
         resourceId: String,
@@ -117,7 +87,6 @@ class PdpClient(
         return decisionOf(response)
     }
 
-    /** Convenience for the common case of only needing a permit/deny boolean. */
     suspend fun isPermitted(
         systemuserId: String,
         resourceId: String,
@@ -154,12 +123,6 @@ class PdpClient(
         return value
     }
 
-    /**
-     * Builds a [PdpClient] from raw config values, so a caller only ever needs to depend on
-     * [PdpClient] and [PdpClient.Builder] - not [MaskinportenConfig], [MaskinportenAltinnTokenProvider],
-     * or [AltinnTokenProvider] directly. Call [tokenProvider] instead of the `maskinporten*`
-     * setters to supply a token source of your own (or a fake, in tests).
-     */
     class Builder {
         private var environment: AltinnEnvironment? = null
         private var subscriptionKey: String? = null
@@ -171,17 +134,10 @@ class PdpClient(
         private var maskinportenClientId: String? = null
         private var maskinportenJwk: String? = null
 
-        /** Required - fixes the platform base URL and Maskinporten token endpoint for this client. */
         fun environment(environment: AltinnEnvironment): Builder = apply { this.environment = environment }
 
-        /** Required - the Azure API Management subscription key for the PDP `/authorize` endpoint. */
         fun subscriptionKey(subscriptionKey: String): Builder = apply { this.subscriptionKey = subscriptionKey }
 
-        /**
-         * Override to share a client/connection pool. Set a connect timeout on your own builder
-         * if you want one - [java.net.http.HttpClient] cannot be given one afterwards, so
-         * otherwise only the wider [Timeouts.request] bounds connecting.
-         */
         fun httpClient(httpClient: HttpClient): Builder = apply { this.httpClient = httpClient }
 
         /**
@@ -190,16 +146,12 @@ class PdpClient(
          */
         fun timeouts(timeouts: Timeouts): Builder = apply { this.timeouts = timeouts }
 
-        /** Supply your own token source instead of Maskinporten - the `maskinporten*` setters are then ignored. */
         fun tokenProvider(tokenProvider: AltinnTokenProvider): Builder = apply { this.tokenProvider = tokenProvider }
 
-        /** Defaults to [environment]'s own Maskinporten token endpoint; override only for a local test server. */
         fun maskinportenTokenUrl(tokenUrl: String): Builder = apply { this.maskinportenTokenUrl = tokenUrl }
 
-        /** Required, unless [tokenProvider] is used instead. */
         fun maskinportenClientId(clientId: String): Builder = apply { this.maskinportenClientId = clientId }
 
-        /** Required, unless [tokenProvider] is used instead. */
         fun maskinportenJwk(jwk: String): Builder = apply { this.maskinportenJwk = jwk }
 
         fun build(): PdpClient {
@@ -220,8 +172,8 @@ class PdpClient(
                     jwk = requireNotNull(maskinportenJwk) {
                         "maskinportenJwk is required (or call tokenProvider(...) directly)"
                     },
-                    // Not configurable: PdpClient only ever calls /authorize, and AUTHORIZE is the
-                    // one scope that operation needs - not exposed as a builder override.
+                    // Not a builder setting: this client only ever calls /authorize, and that is
+                    // the one scope the endpoint needs.
                     scopes = listOf(AltinnScopes.AUTHORIZE),
                 ),
                 environment = env,
@@ -236,12 +188,8 @@ class PdpClient(
     companion object {
         const val AUTHORIZE_PATH = "/authorization/api/v1/authorize"
 
-        /** The external `/authorize` endpoint sits behind Azure API Management, which needs this. */
         const val SUBSCRIPTION_KEY_HEADER = "Ocp-Apim-Subscription-Key"
 
-        // The PDP response carries fields we don't model (status, obligations, ...); ignore them.
-        // Case (Response/response, Decision/decision) is handled per-field via @JsonNames on the
-        // response model instead of a blanket case-insensitive mode.
         private val json = Json { ignoreUnknownKeys = true }
 
         fun builder(): Builder = Builder()

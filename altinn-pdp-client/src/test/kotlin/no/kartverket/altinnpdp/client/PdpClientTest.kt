@@ -18,7 +18,6 @@ import no.kartverket.altinnpdp.client.support.TestResponse
 
 class PdpClientTest {
 
-    /** One server per test, started and stopped around it rather than inside every test body. */
     private lateinit var server: TestHttpServer
 
     @BeforeTest
@@ -56,8 +55,6 @@ class PdpClientTest {
     private suspend fun PdpClient.authorizeSample() =
         authorize("sys-1", "urn:altinn:resource:x", "923609016", "read")
 
-    // --- the request ---
-
     @Test
     fun `sends the bearer token and the subscription key the gateway requires`() = runBlocking {
         server.on(path) { TestResponse(body = decision("Permit")) }
@@ -67,8 +64,6 @@ class PdpClientTest {
         val request = server.lastRequest(path)
         assertEquals("POST", request.method)
         assertEquals("Bearer altinn-token", request.header("Authorization"))
-        // Without this header API Management rejects the call with a 401 before the PDP ever
-        // sees it, which reads like an authentication bug rather than a missing key.
         assertEquals("subscription-key", request.header(PdpClient.SUBSCRIPTION_KEY_HEADER))
         assertEquals("application/json", request.header("Content-Type"))
     }
@@ -106,8 +101,6 @@ class PdpClientTest {
         assertEquals(2, provider.calls)
     }
 
-    // --- the decision ---
-
     @Test
     fun `maps every XACML decision Altinn can answer with`() = runBlocking {
         val expected = mapOf(
@@ -137,8 +130,6 @@ class PdpClientTest {
 
         assertEquals(PdpDecision.DENY, client(server.baseUrl).authorizeSample())
     }
-
-    // --- failures ---
 
     @Test
     fun `surfaces a non-200 with the status and body on the exception`() = runBlocking {

@@ -11,19 +11,12 @@ import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.Timeouts
 
-/**
- * Exchanges a Maskinporten token for an Altinn token.
- *
- * Altinn does not accept Maskinporten tokens directly. The exchange happens through
- * `GET /authentication/api/v1/exchange/maskinporten`, with the Maskinporten token sent as a
- * bearer token. The response body is the Altinn token itself (a JWT).
- */
+/**  Altinn's APIs do not accept Maskinporten tokens, so one has to be traded for an Altinn token. */
 class AltinnTokenExchanger(
     platformBaseUrl: String,
     private val timeouts: Timeouts = Timeouts.DEFAULT,
     private val httpClient: HttpClient = Http.defaultClient(timeouts),
 ) {
-    /** Calls [environment] instead of an arbitrary URL - the common case outside of tests. */
     constructor(
         environment: AltinnEnvironment,
         timeouts: Timeouts = Timeouts.DEFAULT,
@@ -32,10 +25,6 @@ class AltinnTokenExchanger(
 
     private val exchangeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + EXCHANGE_PATH)
 
-    /**
-     * Exchanges a Maskinporten token and returns the Altinn token, with the expiry read from the
-     * token's own `exp` claim.
-     */
     suspend fun exchange(maskinportenToken: String): AccessToken {
         val request = HttpRequest.newBuilder(exchangeUrl)
             .header("Authorization", "Bearer $maskinportenToken")

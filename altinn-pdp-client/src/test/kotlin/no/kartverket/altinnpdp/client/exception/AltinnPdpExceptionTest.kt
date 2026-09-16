@@ -4,10 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * The response body is what keeps an Altinn error diagnosable, and also what could dump an entire
- * HTML error page into the logs. These tests pin down the compromise between the two.
- */
 class AltinnPdpExceptionTest {
 
     @Test

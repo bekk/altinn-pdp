@@ -12,8 +12,6 @@ class AccessTokenTest {
 
     @Test
     fun `counts a token expiring exactly at the leeway boundary as expired`() {
-        // The boundary is inclusive on purpose: a token that expires the moment the leeway runs
-        // out is no use. Flipping this comparison would hand out tokens that die mid-request.
         assertTrue(AccessToken("t", NOW.plus(leeway)).isExpired(NOW, leeway))
     }
 

@@ -26,7 +26,6 @@ import no.kartverket.altinnpdp.client.support.fixedClock
 
 class MaskinportenClientTest {
 
-    /** One server per test, started and stopped around it rather than inside every test body. */
     private lateinit var server: TestHttpServer
 
     @BeforeTest
@@ -59,8 +58,6 @@ class MaskinportenClientTest {
             """{"access_token":"$accessToken","token_type":"Bearer","expires_in":$expiresIn}"""
         }
 
-    // --- the client assertion: if this is wrong every call to Maskinporten fails with a 400 ---
-
     @Test
     fun `signs the client assertion with the configured key`() {
         val assertion = MaskinportenClient(config("https://test.maskinporten.no/token"), clock = fixedClock())
@@ -80,7 +77,6 @@ class MaskinportenClientTest {
 
         assertEquals("my-client-id", claims.issuer)
         assertEquals(listOf("https://test.maskinporten.no/"), claims.audience)
-        // Space-separated, not a JSON array - this is the OAuth scope encoding, not a list.
         assertEquals("altinn:a altinn:b", claims.getStringClaim("scope"))
         assertNotNull(claims.jwtid, "a jti is required so Maskinporten can reject replays")
         assertEquals(NOW.epochSecond, claims.issueTime.toInstant().epochSecond)
@@ -96,8 +92,6 @@ class MaskinportenClientTest {
 
         assertTrue(first != second, "a reused jti would be rejected as a replay")
     }
-
-    // --- the key itself ---
 
     @Test
     fun `rejects a JWK that is not RSA`() {
@@ -126,8 +120,6 @@ class MaskinportenClientTest {
         }
     }
 
-    // --- the token request ---
-
     @Test
     fun `posts the JWT grant as a form-encoded body`() = runBlocking {
         server.on(tokenPath) { TestResponse(body = tokenResponse()) }
@@ -138,7 +130,6 @@ class MaskinportenClientTest {
         val request = server.lastRequest(tokenPath)
         assertEquals("POST", request.method)
         assertEquals("application/x-www-form-urlencoded", request.header("Content-Type"))
-        // The grant type is a URN, so its colons have to be percent-encoded on the wire.
         assertContains(request.body, "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer")
 
         val form = request.body.split("&").associate {
@@ -171,8 +162,6 @@ class MaskinportenClientTest {
         assertContains(assertFailsWith<MaskinportenException> { client.getToken() }.message!!, "expires_in")
     }
 
-    // --- failures ---
-
     @Test
     fun `surfaces a non-200 with the status and body on the exception`() = runBlocking {
         server.on(tokenPath) { TestResponse(status = 400, body = """{"error":"invalid_grant"}""") }
@@ -180,7 +169,6 @@ class MaskinportenClientTest {
 
         val e = assertFailsWith<MaskinportenException> { client.getToken() }
 
-        // Callers are told to branch on statusCode rather than parse the message.
         assertEquals(400, e.statusCode)
         assertEquals("""{"error":"invalid_grant"}""", e.responseBody)
         assertContains(e.message!!, "invalid_grant")
@@ -205,13 +193,10 @@ class MaskinportenClientTest {
 
     @Test
     fun `wraps a connection failure rather than leaking an IOException`() = runBlocking {
-        // Nothing is listening on this port.
         val client = MaskinportenClient(config("http://127.0.0.1:1/token"), clock = fixedClock())
 
         assertContains(assertFailsWith<MaskinportenException> { client.getToken() }.message!!, "Maskinporten")
     }
-
-    // --- caching ---
 
     @Test
     fun `serves a cached token instead of asking Maskinporten again`() = runBlocking {

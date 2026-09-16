@@ -10,7 +10,6 @@ import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withTimeoutOrNull
 import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 
-/** Small helpers around [HttpClient] shared by every outbound call this library makes. */
 internal object Http {
 
     fun defaultClient(timeouts: Timeouts = Timeouts.DEFAULT): HttpClient = HttpClient.newBuilder()
@@ -18,7 +17,6 @@ internal object Http {
         .followRedirects(HttpClient.Redirect.NEVER)
         .build()
 
-    /** Strips a single trailing slash so a base URL can be concatenated with a path safely. */
     fun withoutTrailingSlash(url: String): String = if (url.endsWith("/")) url.dropLast(1) else url
 
     suspend fun send(

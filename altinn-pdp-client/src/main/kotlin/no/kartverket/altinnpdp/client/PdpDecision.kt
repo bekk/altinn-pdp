@@ -1,6 +1,5 @@
 package no.kartverket.altinnpdp.client
 
-/** The XACML `Decision` a PDP call resolves to. */
 enum class PdpDecision {
     PERMIT,
     DENY,

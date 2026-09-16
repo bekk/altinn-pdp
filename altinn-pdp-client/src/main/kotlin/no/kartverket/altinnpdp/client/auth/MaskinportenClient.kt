@@ -26,13 +26,6 @@ import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.Timeouts
 
-/**
- * Fetches an access token from Maskinporten using the JWT grant
- * (`urn:ietf:params:oauth:grant-type:jwt-bearer`).
- *
- * The token is cached and only refetched as it approaches expiry. Safe to call concurrently from
- * multiple coroutines and meant to be reused.
- */
 class MaskinportenClient(
     private val config: MaskinportenConfig,
     private val timeouts: Timeouts = Timeouts.DEFAULT,
@@ -43,16 +36,11 @@ class MaskinportenClient(
     private val cache = TokenCache(clock, refreshLeeway)
     private val signingKey: RSAKey = parseSigningKey(config.jwk)
 
-    /** A valid access token from Maskinporten, served from cache when possible. */
     suspend fun getToken(): AccessToken = cache.get { fetchToken() }
 
-    /** Clears the cache so the next call fetches a new token. */
     suspend fun invalidate() = cache.invalidate()
 
-    /**
-     * Builds and signs the client assertion (the grant JWT) sent to Maskinporten. Exposed for
-     * troubleshooting - call [getToken] for normal use.
-     */
+    /** Exposed for troubleshooting - call [getToken] for normal use. */
     fun createClientAssertion(): String {
         val now = clock.instant()
         val claims = JWTClaimsSet.Builder()

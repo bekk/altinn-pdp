@@ -3,13 +3,8 @@ package no.kartverket.altinnpdp.client.model
 import kotlinx.serialization.Serializable
 
 /**
- * Body of a PDP authorization request, built for the one shape `PdpClient` needs: "does this
- * systembruker have access to this resource for this org and action".
- *
- * Internal - this is wire format for the PDP call, not part of the client's public API.
- *
- * See https://docs.altinn.studio/nb/authorization/guides/resource-owner/system-user/#autorisasjon-av-systembruker
- * for the full request/response shape.
+ * The request shape is fixed by Altinn's XACML JSON profile, not by anything in this codebase:
+ * https://docs.altinn.studio/nb/authorization/guides/resource-owner/system-user/#autorisasjon-av-systembruker
  */
 @Serializable
 internal data class XacmlAuthorizationRequest(val request: Request) {
@@ -33,16 +28,13 @@ internal data class XacmlAuthorizationRequest(val request: Request) {
     data class Attribute(val attributeId: String, val value: String)
 
     companion object {
-        /** `urn:altinn:systemuser:uuid` - the systembruker id from the token's `authorization_details`. */
         const val ATTRIBUTE_SYSTEMUSER_UUID = "urn:altinn:systemuser:uuid"
 
-        /** `urn:oasis:names:tc:xacml:1.0:action:action-id` - e.g. `"read"` or `"write"`. */
         const val ATTRIBUTE_ACTION_ID = "urn:oasis:names:tc:xacml:1.0:action:action-id"
 
-        /** `urn:altinn:resource` - the resource's identifier in the Resource Registry. */
         const val ATTRIBUTE_RESOURCE = "urn:altinn:resource"
 
-        /** `urn:altinn:organization:identifier-no` - a plain Norwegian org number, no ISO6523 prefix. */
+        /** A plain Norwegian org number, no ISO6523 prefix. */
         const val ATTRIBUTE_ORGANIZATION_NUMBER = "urn:altinn:organization:identifier-no"
 
         fun forSystemUser(
