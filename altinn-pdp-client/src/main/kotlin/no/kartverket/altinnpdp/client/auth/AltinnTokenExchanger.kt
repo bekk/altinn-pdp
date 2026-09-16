@@ -9,23 +9,26 @@ import java.time.Instant
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.http.Http
+import no.kartverket.altinnpdp.client.http.Timeouts
 
 /**  Altinn's APIs do not accept Maskinporten tokens, so one has to be traded for an Altinn token. */
 class AltinnTokenExchanger(
     platformBaseUrl: String,
+    private val timeouts: Timeouts,
     private val httpClient: HttpClient = Http.defaultClient(),
 ) {
     constructor(
         environment: AltinnEnvironment,
+        timeouts: Timeouts,
         httpClient: HttpClient = Http.defaultClient(),
-    ) : this(environment.platformBaseUrl, httpClient)
+    ) : this(environment.platformBaseUrl, timeouts, httpClient)
 
     private val exchangeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + EXCHANGE_PATH)
 
     suspend fun exchange(maskinportenToken: String): AccessToken {
         val request = HttpRequest.newBuilder(exchangeUrl)
             .header("Authorization", "Bearer $maskinportenToken")
-            .timeout(Http.DEFAULT_TIMEOUT)
+            .timeout(timeouts.request)
             .GET()
             .build()
 

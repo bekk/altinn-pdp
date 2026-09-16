@@ -17,6 +17,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
+import no.kartverket.altinnpdp.client.http.Timeouts
 import no.kartverket.altinnpdp.client.support.MutableClock
 import no.kartverket.altinnpdp.client.support.NOW
 import no.kartverket.altinnpdp.client.support.TestHttpServer
@@ -60,7 +61,7 @@ class MaskinportenClientTest {
 
     @Test
     fun `signs the client assertion with the configured key`() {
-        val assertion = MaskinportenClient(config("https://test.maskinporten.no/token"), clock = fixedClock())
+        val assertion = MaskinportenClient(config("https://test.maskinporten.no/token"), Timeouts.DEFAULT, clock = fixedClock())
             .createClientAssertion()
 
         val jwt = SignedJWT.parse(assertion)
@@ -73,7 +74,7 @@ class MaskinportenClientTest {
     fun `puts the claims Maskinporten's JWT grant requires on the assertion`() {
         val config = config("https://test.maskinporten.no/token", scopes = listOf("altinn:a", "altinn:b"))
 
-        val claims = SignedJWT.parse(MaskinportenClient(config, clock = fixedClock()).createClientAssertion()).jwtClaimsSet
+        val claims = SignedJWT.parse(MaskinportenClient(config, Timeouts.DEFAULT, clock = fixedClock()).createClientAssertion()).jwtClaimsSet
 
         assertEquals("my-client-id", claims.issuer)
         assertEquals(listOf("https://test.maskinporten.no/"), claims.audience)
@@ -85,7 +86,7 @@ class MaskinportenClientTest {
 
     @Test
     fun `gives each assertion its own jti`() {
-        val client = MaskinportenClient(config("https://test.maskinporten.no/token"), clock = fixedClock())
+        val client = MaskinportenClient(config("https://test.maskinporten.no/token"), Timeouts.DEFAULT, clock = fixedClock())
 
         val first = SignedJWT.parse(client.createClientAssertion()).jwtClaimsSet.jwtid
         val second = SignedJWT.parse(client.createClientAssertion()).jwtClaimsSet.jwtid
@@ -98,7 +99,7 @@ class MaskinportenClientTest {
         val ec = ECKeyGenerator(Curve.P_256).keyID("ec-key").generate()
 
         val e = assertFailsWith<MaskinportenException> {
-            MaskinportenClient(config("https://test.maskinporten.no/token", jwk = ec.toJSONString()))
+            MaskinportenClient(config("https://test.maskinporten.no/token", jwk = ec.toJSONString()), Timeouts.DEFAULT)
         }
         assertContains(e.message!!, "RSA")
     }
@@ -108,7 +109,7 @@ class MaskinportenClientTest {
         val publicOnly = TestKeys.rsa.toPublicJWK().toJSONString()
 
         val e = assertFailsWith<MaskinportenException> {
-            MaskinportenClient(config("https://test.maskinporten.no/token", jwk = publicOnly))
+            MaskinportenClient(config("https://test.maskinporten.no/token", jwk = publicOnly), Timeouts.DEFAULT)
         }
         assertContains(e.message!!, "private key")
     }
@@ -116,14 +117,14 @@ class MaskinportenClientTest {
     @Test
     fun `rejects a JWK that is not parseable`() {
         assertFailsWith<MaskinportenException> {
-            MaskinportenClient(config("https://test.maskinporten.no/token", jwk = "not-a-jwk"))
+            MaskinportenClient(config("https://test.maskinporten.no/token", jwk = "not-a-jwk"), Timeouts.DEFAULT)
         }
     }
 
     @Test
     fun `posts the JWT grant as a form-encoded body`() = runBlocking {
         server.on(tokenPath) { TestResponse(body = tokenResponse()) }
-        val client = MaskinportenClient(config(server.baseUrl + tokenPath), clock = fixedClock())
+        val client = MaskinportenClient(config(server.baseUrl + tokenPath), Timeouts.DEFAULT, clock = fixedClock())
 
         client.getToken()
 
@@ -146,7 +147,7 @@ class MaskinportenClientTest {
     @Test
     fun `reads the access token and its lifetime from the response`() = runBlocking {
         server.on(tokenPath) { TestResponse(body = tokenResponse(expiresIn = 120)) }
-        val client = MaskinportenClient(config(server.baseUrl + tokenPath), clock = fixedClock())
+        val client = MaskinportenClient(config(server.baseUrl + tokenPath), Timeouts.DEFAULT, clock = fixedClock())
 
         val token = client.getToken()
 
@@ -157,7 +158,7 @@ class MaskinportenClientTest {
     @Test
     fun `fails when the response omits expires_in`() = runBlocking {
         server.on(tokenPath) { TestResponse(body = tokenResponse(expiresIn = null)) }
-        val client = MaskinportenClient(config(server.baseUrl + tokenPath), clock = fixedClock())
+        val client = MaskinportenClient(config(server.baseUrl + tokenPath), Timeouts.DEFAULT, clock = fixedClock())
 
         assertContains(assertFailsWith<MaskinportenException> { client.getToken() }.message!!, "expires_in")
     }
@@ -165,7 +166,7 @@ class MaskinportenClientTest {
     @Test
     fun `surfaces a non-200 with the status and body on the exception`() = runBlocking {
         server.on(tokenPath) { TestResponse(status = 400, body = """{"error":"invalid_grant"}""") }
-        val client = MaskinportenClient(config(server.baseUrl + tokenPath), clock = fixedClock())
+        val client = MaskinportenClient(config(server.baseUrl + tokenPath), Timeouts.DEFAULT, clock = fixedClock())
 
         val e = assertFailsWith<MaskinportenException> { client.getToken() }
 
@@ -177,7 +178,7 @@ class MaskinportenClientTest {
     @Test
     fun `fails when the response carries no access token`() = runBlocking {
         server.on(tokenPath) { TestResponse(body = """{"token_type":"Bearer"}""") }
-        val client = MaskinportenClient(config(server.baseUrl + tokenPath), clock = fixedClock())
+        val client = MaskinportenClient(config(server.baseUrl + tokenPath), Timeouts.DEFAULT, clock = fixedClock())
 
         assertContains(assertFailsWith<MaskinportenException> { client.getToken() }.message!!, "access_token")
     }
@@ -185,7 +186,7 @@ class MaskinportenClientTest {
     @Test
     fun `fails when the response is not JSON`() = runBlocking {
         server.on(tokenPath) { TestResponse(body = "<html>gateway error</html>") }
-        val client = MaskinportenClient(config(server.baseUrl + tokenPath), clock = fixedClock())
+        val client = MaskinportenClient(config(server.baseUrl + tokenPath), Timeouts.DEFAULT, clock = fixedClock())
 
         assertFailsWith<MaskinportenException> { client.getToken() }
         Unit
@@ -193,7 +194,7 @@ class MaskinportenClientTest {
 
     @Test
     fun `wraps a connection failure rather than leaking an IOException`() = runBlocking {
-        val client = MaskinportenClient(config("http://127.0.0.1:1/token"), clock = fixedClock())
+        val client = MaskinportenClient(config("http://127.0.0.1:1/token"), Timeouts.DEFAULT, clock = fixedClock())
 
         assertContains(assertFailsWith<MaskinportenException> { client.getToken() }.message!!, "Maskinporten")
     }
@@ -201,7 +202,7 @@ class MaskinportenClientTest {
     @Test
     fun `serves a cached token instead of asking Maskinporten again`() = runBlocking {
         server.on(tokenPath) { TestResponse(body = tokenResponse()) }
-        val client = MaskinportenClient(config(server.baseUrl + tokenPath), clock = fixedClock())
+        val client = MaskinportenClient(config(server.baseUrl + tokenPath), Timeouts.DEFAULT, clock = fixedClock())
 
         repeat(3) { client.getToken() }
 
@@ -213,7 +214,7 @@ class MaskinportenClientTest {
         var issued = 0
         server.on(tokenPath) { TestResponse(body = tokenResponse(accessToken = "token-${++issued}", expiresIn = 120)) }
         val clock = MutableClock()
-        val client = MaskinportenClient(config(server.baseUrl + tokenPath), clock = clock, refreshLeeway = Duration.ofSeconds(30))
+        val client = MaskinportenClient(config(server.baseUrl + tokenPath), Timeouts.DEFAULT, clock = clock, refreshLeeway = Duration.ofSeconds(30))
 
         assertEquals("token-1", client.getToken().value)
         clock.advance(Duration.ofSeconds(89))
@@ -226,7 +227,7 @@ class MaskinportenClientTest {
     @Test
     fun `invalidate forces the next call to fetch again`() = runBlocking {
         server.on(tokenPath) { TestResponse(body = tokenResponse()) }
-        val client = MaskinportenClient(config(server.baseUrl + tokenPath), clock = fixedClock())
+        val client = MaskinportenClient(config(server.baseUrl + tokenPath), Timeouts.DEFAULT, clock = fixedClock())
 
         client.getToken()
         client.invalidate()

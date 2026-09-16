@@ -4,8 +4,10 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
+import java.time.Duration
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
+import no.kartverket.altinnpdp.client.http.Timeouts
 
 fun Application.configurePdp(client: PdpClient = pdpClientFromEnv()) {
     install(DI)
@@ -18,8 +20,25 @@ private fun pdpClientFromEnv(): PdpClient {
         .subscriptionKey(requiredEnv("ALTINN_SUBSCRIPTION_KEY"))
         .maskinportenClientId(requiredEnv("MASKINPORTEN_CLIENT_ID"))
         .maskinportenJwk(requiredEnv("MASKINPORTEN_CLIENT_JWK"))
+        .timeouts(timeoutsFromEnv())
     Dotenv.get("MASKINPORTEN_TOKEN_URL")?.let { builder.maskinportenTokenUrl(it) }
     return builder.build()
+}
+
+internal fun timeoutsFromEnv(lookup: (String) -> String? = Dotenv::get): Timeouts = Timeouts(
+    request = millis("ALTINN_REQUEST_TIMEOUT_MS", REQUEST, lookup),
+    total = millis("ALTINN_TOTAL_TIMEOUT_MS", TOTAL, lookup),
+)
+
+private const val REQUEST = 4_000L
+private const val TOTAL = 8_000L
+
+private fun millis(name: String, default: Long, lookup: (String) -> String?): Duration {
+    val raw = lookup(name)?.takeIf { it.isNotBlank() } ?: return Duration.ofMillis(default)
+    val value = raw.trim().toLongOrNull()
+        ?: error("$name must be a whole number of milliseconds, but was \"$raw\"")
+    require(value > 0) { "$name must be positive, but was $value" }
+    return Duration.ofMillis(value)
 }
 
 private fun requiredEnv(name: String): String =
