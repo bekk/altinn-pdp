@@ -12,13 +12,18 @@ class PdpTimeoutsTest {
 
     private fun env(vararg pairs: Pair<String, String>): (String) -> String? = mapOf(*pairs)::get
 
+    private val budgetPromisedToCallersInTheReadme: Duration = Duration.ofSeconds(10)
+
     @Test
     fun `each default sits inside the one containing it, and all of them inside the response budget`() {
         val timeouts = timeoutsFromEnv(env())
 
         assertTrue(timeouts.connect < timeouts.request, "connect should be inside request")
         assertTrue(timeouts.request < timeouts.total, "request should be inside the total budget")
-        assertTrue(timeouts.total < RESPONSE_BUDGET, "the total budget should be inside what callers allow")
+        assertTrue(
+            timeouts.total < budgetPromisedToCallersInTheReadme,
+            "the total budget should be inside what callers were told to allow",
+        )
     }
 
     @Test

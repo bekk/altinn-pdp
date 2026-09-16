@@ -35,8 +35,6 @@ private const val CONNECT = 2_000L
 private const val REQUEST = 4_000L
 private const val TOTAL = 8_000L
 
-internal val RESPONSE_BUDGET: Duration = Duration.ofSeconds(10)
-
 private fun millis(name: String, default: Long, lookup: (String) -> String?): Duration {
     val raw = lookup(name)?.takeIf { it.isNotBlank() } ?: return Duration.ofMillis(default)
     val value = raw.trim().toLongOrNull()
