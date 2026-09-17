@@ -15,3 +15,8 @@ maskinporten:
   # Left absent rather than defaulted, because the right fallback depends on altinn.environment
   # (PROD uses maskinporten.no) and PdpClient already picks it from there.
   tokenUrl: "$?MASKINPORTEN_TOKEN_URL"
+
+# See "Timeouts" in the README.
+timeouts:
+  requestMs: "$?ALTINN_REQUEST_TIMEOUT_MS"
+  totalMs: "$?ALTINN_TOTAL_TIMEOUT_MS"

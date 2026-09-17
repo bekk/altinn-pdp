@@ -9,7 +9,6 @@ fun Application.module() {
     configureSerialization()
     configureErrorHandling()
     configurePdp()
-        configureOpenApi()
-    configureHttp()
+    configureOpenApi()
     configureRouting()
 }
