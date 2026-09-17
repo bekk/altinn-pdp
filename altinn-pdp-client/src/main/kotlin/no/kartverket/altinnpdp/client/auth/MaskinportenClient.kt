@@ -24,9 +24,11 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.http.Http
+import no.kartverket.altinnpdp.client.http.Timeouts
 
 class MaskinportenClient(
     private val config: MaskinportenConfig,
+    private val timeouts: Timeouts,
     private val httpClient: HttpClient = Http.defaultClient(),
     private val clock: Clock = Clock.systemUTC(),
     refreshLeeway: Duration = Duration.ofSeconds(30),
@@ -68,7 +70,7 @@ class MaskinportenClient(
         val request = HttpRequest.newBuilder(URI.create(config.tokenUrl))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Accept", "application/json")
-            .timeout(Http.DEFAULT_TIMEOUT)
+            .timeout(timeouts.request)
             .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
             .build()
 

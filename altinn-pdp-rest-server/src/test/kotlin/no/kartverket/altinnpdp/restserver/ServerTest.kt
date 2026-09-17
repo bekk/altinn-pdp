@@ -36,7 +36,12 @@ class ServerTest {
     }
 
     private fun pdpClientAgainst(server: HttpServer): PdpClient =
-        PdpClient("http://localhost:${server.address.port}", fakeTokenProvider, "test-subscription-key")
+        PdpClient(
+            "http://localhost:${server.address.port}",
+            fakeTokenProvider,
+            "test-subscription-key",
+            timeoutsFromEnv(),
+        )
 
     private fun authorizeTest(
         decision: String,

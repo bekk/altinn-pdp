@@ -13,6 +13,7 @@ import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.auth.AccessToken
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.exception.PdpException
+import no.kartverket.altinnpdp.client.http.Timeouts
 import no.kartverket.altinnpdp.client.support.TestHttpServer
 import no.kartverket.altinnpdp.client.support.TestResponse
 
@@ -48,6 +49,7 @@ class PdpClientTest {
         platformBaseUrl = baseUrl,
         tokenProvider = tokenProvider,
         subscriptionKey = subscriptionKey,
+        timeouts = Timeouts.DEFAULT,
     )
 
     private fun decision(value: String) = """{"Response":[{"Decision":"$value"}]}"""
