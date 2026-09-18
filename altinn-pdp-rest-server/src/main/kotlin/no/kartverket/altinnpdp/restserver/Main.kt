@@ -1,14 +1,14 @@
 package no.kartverket.altinnpdp.restserver
 
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
+import io.ktor.server.application.Application
+import io.ktor.server.netty.EngineMain
 
-fun main() {
-    embeddedServer(Netty, port = 8080) {
-        configureSerialization()
-        configureErrorHandling()
-        configurePdp()
-        configureOpenApi()
-        configureRouting()
-    }.start(wait = true)
+fun main(args: Array<String>) = EngineMain.main(args)
+
+fun Application.module() {
+    configureSerialization()
+    configureErrorHandling()
+    configurePdp()
+    configureOpenApi()
+    configureRouting()
 }

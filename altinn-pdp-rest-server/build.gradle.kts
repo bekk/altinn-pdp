@@ -16,6 +16,7 @@ dependencies {
     implementation(project(":altinn-pdp-client"))
 
     implementation(ktorLibs.server.core)
+    implementation(ktorLibs.server.config.yaml)
     implementation(ktorLibs.server.netty)
     implementation(ktorLibs.server.contentNegotiation)
     implementation(ktorLibs.server.statusPages)

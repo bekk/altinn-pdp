@@ -40,7 +40,7 @@ class ServerTest {
             "http://localhost:${server.address.port}",
             fakeTokenProvider,
             "test-subscription-key",
-            timeoutsFromEnv(),
+            timeoutsFromConfig(),
         )
 
     private fun authorizeTest(
