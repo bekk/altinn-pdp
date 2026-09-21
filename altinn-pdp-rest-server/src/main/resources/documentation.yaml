@@ -46,15 +46,25 @@ paths:
                   value:
                     permit: true
                     decision: "PERMIT"
+                    status: "urn:oasis:names:tc:xacml:1.0:status:ok"
+                    minimumAuthenticationLevel: 3
+                    minimumAuthenticationLevelOrg: 3
                 Deny:
                   value:
                     permit: false
                     decision: "DENY"
+                    status: "urn:oasis:names:tc:xacml:1.0:status:ok"
+                NotEvaluated:
+                  value:
+                    permit: false
+                    decision: "INDETERMINATE"
+                    status: "urn:oasis:names:tc:xacml:1.0:status:processing-error"
         "400":
           description: >
-            The request could not be understood or was rejected by Altinn as invalid - a missing
-            or blank field, a malformed organizationNumber, a malformed JSON body, or Altinn
-            reporting an unknown/invalid resourceId or systemuserId.
+            The request could not be understood - a missing or blank field, a malformed
+            organizationNumber, or a malformed JSON body. Note that an unknown resourceId is not
+            a 400: Altinn answers 200 with decision INDETERMINATE and a processing-error status,
+            which this API passes through in the "status" field.
           content:
             application/json:
               schema:
@@ -139,6 +149,27 @@ components:
             - "DENY"
             - "NOT_APPLICABLE"
             - "INDETERMINATE"
+        status:
+          type: "string"
+          nullable: true
+          description: >
+            Altinn's XACML status URN. "...:status:ok" means the request was evaluated;
+            "...:status:processing-error" means it could not be, which is how an unknown
+            resourceId shows up. Omitted when Altinn sends no status.
+        minimumAuthenticationLevel:
+          type: "integer"
+          nullable: true
+          description: >
+            From the urn:altinn:minimum-authenticationlevel obligation. When present on a PERMIT,
+            the decision is conditional: the caller must confirm its own end user met at least
+            this authentication level before acting on the permit. This API cannot check it, as
+            it never sees the caller's token. Omitted when Altinn attaches no such obligation.
+        minimumAuthenticationLevelOrg:
+          type: "integer"
+          nullable: true
+          description: >
+            As minimumAuthenticationLevel, but from the urn:altinn:minimum-authenticationlevel-org
+            obligation.
     ErrorResponse:
       type: "object"
       required:
