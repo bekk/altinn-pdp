@@ -18,14 +18,22 @@ fun Application.configureRouting() {
             val pdpClient: PdpClient by dependencies
             val request = call.receive<AuthorizeRequest>()
             request.requireValidOrganizationNumber()
-            val decision = pdpClient.authorize(
+            val authorization = pdpClient.authorize(
                 systemuserId = request.systemuserId,
                 resourceId = request.resourceId,
                 organizationNumber = request.organizationNumber,
                 action = request.action,
             )
 
-            call.respond(AuthorizeResponse(permit = decision.isPermit, decision = decision.name))
+            call.respond(
+                AuthorizeResponse(
+                    permit = authorization.isPermit,
+                    decision = authorization.decision.name,
+                    status = authorization.statusCode,
+                    minimumAuthenticationLevel = authorization.minimumAuthenticationLevel,
+                    minimumAuthenticationLevelOrg = authorization.minimumAuthenticationLevelOrg,
+                ),
+            )
         }
     }
 }

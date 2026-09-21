@@ -103,7 +103,7 @@ built yourself, which is handy in tests or to share one provider across several 
 ### Asking the PDP
 
 ```kotlin
-val decision = client.authorize(
+val authorization = client.authorize(
     systemuserId = "<systembruker uuid>",
     resourceId = "<resource id>",
     organizationNumber = "923609016",
@@ -111,9 +111,24 @@ val decision = client.authorize(
 )
 ```
 
-The answer is a `PdpDecision`: `PERMIT`, `DENY`, `NOT_APPLICABLE` (no matching policy, which is
-not in itself an error) or `INDETERMINATE` (the PDP could not evaluate the request). Use
-`isPermitted(...)` instead when a boolean is all you need.
+The answer is a `PdpAuthorization`:
+
+| Member | What it is |
+| :--- | :--- |
+| `decision` | `PdpDecision`: `PERMIT`, `DENY`, `NOT_APPLICABLE` (no matching policy, not in itself an error) or `INDETERMINATE` (the PDP could not evaluate the request) |
+| `isPermit` | Shorthand for `decision == PERMIT` |
+| `obligations` | Every obligation Altinn attached, unfiltered, including ones this library does not model |
+| `minimumAuthenticationLevel` | The `urn:altinn:minimum-authenticationlevel` obligation as an `Int`, or null |
+| `minimumAuthenticationLevelOrg` | The same for `urn:altinn:minimum-authenticationlevel-org` |
+| `statusCode` | Altinn's XACML status URN, or null |
+
+Use `isPermitted(...)` instead when a boolean is all you need.
+
+> [!WARNING]
+> A `PERMIT` that carries a `minimumAuthenticationLevel` is **conditional**. XACML expects
+> whoever enforces the decision to honour the obligation, and this library cannot: it never sees
+> your end user's token. Check the level yourself before acting on the permit, or pass it on to
+> something that can.
 
 > [!IMPORTANT]
 > `organizationNumber` is the **customer's** plain Norwegian org number, the party whose access
@@ -240,11 +255,17 @@ Response body (`200 OK`):
 ```json
 {
   "permit": true,
-  "decision": "PERMIT"
+  "decision": "PERMIT",
+  "status": "urn:oasis:names:tc:xacml:1.0:status:ok",
+  "minimumAuthenticationLevel": 3,
+  "minimumAuthenticationLevelOrg": 3
 }
 ```
 
 `permit` is a boolean shorthand for `decision == "PERMIT"`.
+
+`status`, `minimumAuthenticationLevel` and `minimumAuthenticationLevelOrg` are omitted when
+Altinn sends nothing for them, so a response may still be just `permit` and `decision`.
 
 `decision` is one of:
 
@@ -254,6 +275,24 @@ Response body (`200 OK`):
 | `DENY` | Explicitly denied |
 | `NOT_APPLICABLE` | No matching policy - not necessarily an error |
 | `INDETERMINATE` | The PDP couldn't evaluate the request |
+
+#### Authentication level obligations
+
+A `PERMIT` can be **conditional**. When Altinn attaches a minimum authentication level to the
+decision, it arrives as `minimumAuthenticationLevel` (and `minimumAuthenticationLevelOrg` for the
+organisation-level equivalent).
+
+This service cannot check those levels. It never sees your token - that is the point of the
+design - so it passes them to you instead. **A `PERMIT` carrying a level you have not met is not
+a permit.** Before acting on one, confirm your own end user authenticated at that level or higher.
+Callers that ignore these fields are trusting a condition nobody verified.
+
+#### Telling "no" apart from "couldn't tell"
+
+`status` is Altinn's XACML status URN. `...:status:ok` means the question was evaluated;
+`...:status:processing-error` means it wasn't. This matters because both come back as
+`permit: false`: a misspelled `resourceId` returns `INDETERMINATE` with a processing-error status,
+which is a bug in the caller, not a denial. Branch on `status` if you need to tell them apart.
 
 Error responses (any non-2xx) share one shape:
 
@@ -265,7 +304,7 @@ Error responses (any non-2xx) share one shape:
 
 | Status | Cause |
 | :--- | :--- |
-| `400 Bad Request` | Malformed/missing JSON fields, or Altinn rejected the request itself (e.g. unknown `resourceId`) |
+| `400 Bad Request` | Malformed or missing JSON fields, or a malformed `organizationNumber`. An unknown `resourceId` is *not* a 400: Altinn answers `200` with `INDETERMINATE` and a processing-error `status` |
 | `502 Bad Gateway` | Calling Maskinporten or Altinn failed for a reason unrelated to this request's content |
 | `500 Internal Server Error` | Anything unanticipated |
 

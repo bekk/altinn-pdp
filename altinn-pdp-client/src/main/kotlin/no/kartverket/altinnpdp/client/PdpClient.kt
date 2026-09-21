@@ -39,7 +39,7 @@ class PdpClient(
         resourceId: String,
         organizationNumber: String,
         action: String,
-    ): PdpDecision {
+    ): PdpAuthorization {
         val subject = required(systemuserId, "systemuserId")
         val resource = required(resourceId, "resourceId")
         val org = required(organizationNumber, "organizationNumber")
@@ -50,16 +50,16 @@ class PdpClient(
             operation = "The PDP authorization lookup",
             exception = { message -> PdpException(message) },
         ) {
-            fetchDecision(subject, resource, org, actionId)
+            fetchAuthorization(subject, resource, org, actionId)
         }
     }
 
-    private suspend fun fetchDecision(
+    private suspend fun fetchAuthorization(
         subject: String,
         resource: String,
         org: String,
         actionId: String,
-    ): PdpDecision {
+    ): PdpAuthorization {
         val token = tokenProvider.getAltinnToken()
         val body = json.encodeToString(
             XacmlAuthorizationRequest.serializer(),
@@ -84,7 +84,7 @@ class PdpClient(
                 responseBody = response.body(),
             )
         }
-        return decisionOf(response)
+        return authorizationOf(response)
     }
 
     suspend fun isPermitted(
@@ -94,19 +94,28 @@ class PdpClient(
         action: String,
     ): Boolean = authorize(systemuserId, resourceId, organizationNumber, action).isPermit
 
-    private fun decisionOf(response: HttpResponse<String>): PdpDecision {
+    private fun authorizationOf(response: HttpResponse<String>): PdpAuthorization {
         val parsed = try {
             json.decodeFromString(XacmlAuthorizationResponse.serializer(), response.body())
         } catch (e: SerializationException) {
             throw PdpException("Failed to parse the PDP response: ${e.message}", cause = e)
         }
-        val decision = parsed.response?.firstOrNull()?.decision
+        val results = parsed.response.orEmpty()
+        if (results.size > 1) {
+            throw PdpException(
+                "The PDP response had ${results.size} Response entries, but only one decision was requested",
+                statusCode = response.statusCode(),
+                responseBody = response.body(),
+            )
+        }
+        val result = results.firstOrNull()
+        val decision = result?.decision
             ?: throw PdpException(
                 "The PDP response had no Response entries with a decision",
                 statusCode = response.statusCode(),
                 responseBody = response.body(),
             )
-        return try {
+        val parsedDecision = try {
             PdpDecision.fromXacmlValue(decision)
         } catch (e: IllegalArgumentException) {
             throw PdpException(
@@ -116,7 +125,21 @@ class PdpClient(
                 cause = e,
             )
         }
+        return PdpAuthorization(
+            decision = parsedDecision,
+            statusCode = result.status?.statusCode?.value,
+            obligations = obligationsOf(result),
+        )
     }
+
+    private fun obligationsOf(result: XacmlAuthorizationResponse.Result): List<PdpObligation> =
+        result.obligations.orEmpty().flatMap { obligation ->
+            obligation.attributeAssignment.orEmpty().mapNotNull { assignment ->
+                val category = assignment.category ?: return@mapNotNull null
+                val value = assignment.value ?: return@mapNotNull null
+                PdpObligation(id = obligation.id, category = category, value = value)
+            }
+        }
 
     private fun required(value: String, name: String): String {
         require(value.isNotBlank()) { "$name is required" }

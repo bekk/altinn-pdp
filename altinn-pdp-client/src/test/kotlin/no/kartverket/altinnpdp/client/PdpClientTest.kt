@@ -8,6 +8,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.auth.AccessToken
@@ -114,7 +115,7 @@ class PdpClientTest {
         for ((value, expectedDecision) in expected) {
             server.on(path) { TestResponse(body = decision(value)) }
 
-            assertEquals(expectedDecision, client(server.baseUrl).authorizeSample(), "for $value")
+            assertEquals(expectedDecision, client(server.baseUrl).authorizeSample().decision, "for $value")
         }
     }
 
@@ -130,7 +131,7 @@ class PdpClientTest {
     fun `reads the decision from a camelCase response too`() = runBlocking {
         server.on(path) { TestResponse(body = """{"response":[{"decision":"Deny"}]}""") }
 
-        assertEquals(PdpDecision.DENY, client(server.baseUrl).authorizeSample())
+        assertEquals(PdpDecision.DENY, client(server.baseUrl).authorizeSample().decision)
     }
 
     @Test
@@ -184,5 +185,61 @@ class PdpClientTest {
         assertFailsWith<IllegalArgumentException> { client.authorize("sys-1", "urn:res", "", "read") }
         assertFailsWith<IllegalArgumentException> { client.authorize("sys-1", "urn:res", "923609016", " ") }
         Unit
+    }
+
+    @Test
+    fun `surfaces the obligations and status URN Altinn attaches to a permit`() = runBlocking {
+        val body = """
+            {"response":[{"decision":"Permit","status":{"statusCode":{"value":"urn:oasis:names:tc:xacml:1.0:status:ok"}},
+            "obligations":[{"id":"urn:altinn:obligation:authenticationLevel1","attributeAssignment":[
+            {"attributeId":"urn:altinn:obligation1-assignment1","value":"3",
+            "category":"urn:altinn:minimum-authenticationlevel"}]},
+            {"id":"urn:altinn:obligation:authenticationLevel2","attributeAssignment":[
+            {"attributeId":"urn:altinn:obligation2-assignment2","value":"3",
+            "category":"urn:altinn:minimum-authenticationlevel-org"}]}]}]}
+        """.trimIndent().replace("\n", "")
+        server.on(path) { TestResponse(body = body) }
+
+        val authorization = client(server.baseUrl).authorizeSample()
+
+        assertEquals(PdpDecision.PERMIT, authorization.decision)
+        assertEquals("urn:oasis:names:tc:xacml:1.0:status:ok", authorization.statusCode)
+        assertEquals(3, authorization.minimumAuthenticationLevel)
+        assertEquals(3, authorization.minimumAuthenticationLevelOrg)
+        assertEquals(2, authorization.obligations.size)
+    }
+
+    @Test
+    fun `keeps the processing-error status that marks an unevaluatable request`() = runBlocking {
+        val body = """
+            {"response":[{"decision":"Indeterminate",
+            "status":{"statusCode":{"value":"urn:oasis:names:tc:xacml:1.0:status:processing-error"}}}]}
+        """.trimIndent().replace("\n", "")
+        server.on(path) { TestResponse(body = body) }
+
+        val authorization = client(server.baseUrl).authorizeSample()
+
+        assertEquals(PdpDecision.INDETERMINATE, authorization.decision)
+        assertEquals("urn:oasis:names:tc:xacml:1.0:status:processing-error", authorization.statusCode)
+        assertTrue(authorization.obligations.isEmpty())
+    }
+
+    @Test
+    fun `a decision with no obligations reports no authentication level`() = runBlocking {
+        server.on(path) { TestResponse(body = decision("Permit")) }
+
+        val authorization = client(server.baseUrl).authorizeSample()
+
+        assertNull(authorization.minimumAuthenticationLevel)
+        assertNull(authorization.statusCode)
+    }
+
+    @Test
+    fun `refuses a response carrying more decisions than were asked for`() = runBlocking {
+        server.on(path) { TestResponse(body = """{"response":[{"decision":"Permit"},{"decision":"Deny"}]}""") }
+
+        val e = assertFailsWith<PdpException> { client(server.baseUrl).authorizeSample() }
+
+        assertContains(e.message!!, "2 Response entries")
     }
 }

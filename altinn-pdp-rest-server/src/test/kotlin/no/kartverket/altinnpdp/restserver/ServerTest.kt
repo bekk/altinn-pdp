@@ -24,15 +24,38 @@ class ServerTest {
         override suspend fun getAltinnToken() = AccessToken("fake-token", Instant.now().plusSeconds(60))
     }
 
-    private fun stubPdpServer(decision: String, statusCode: Int = 200): HttpServer {
+    private fun stubPdpServer(
+        decision: String,
+        statusCode: Int = 200,
+        obligations: Boolean = false,
+    ): HttpServer {
         val server = HttpServer.create(InetSocketAddress("localhost", 0), 0)
         server.createContext(PdpClient.AUTHORIZE_PATH) { exchange ->
-            val body = """{"Response":[{"Decision":"$decision"}]}""".toByteArray()
+            val body = pdpBody(decision, obligations).toByteArray()
             exchange.sendResponseHeaders(statusCode, body.size.toLong())
             exchange.responseBody.use { it.write(body) }
         }
         server.start()
         return server
+    }
+
+    // Copied from a real TT02 answer.
+    private fun pdpBody(decision: String, obligations: Boolean): String {
+        val obligationsJson = if (obligations) {
+            """[{"id":"urn:altinn:obligation:authenticationLevel1","attributeAssignment":[
+               {"attributeId":"urn:altinn:obligation1-assignment1","value":"3",
+                "category":"urn:altinn:minimum-authenticationlevel"}]},
+               {"id":"urn:altinn:obligation:authenticationLevel2","attributeAssignment":[
+               {"attributeId":"urn:altinn:obligation2-assignment2","value":"3",
+                "category":"urn:altinn:minimum-authenticationlevel-org"}]}]"""
+                .trimIndent().replace("\n", "").replace(" ", "")
+        } else {
+            "null"
+        }
+        return """{"response":[{"decision":"$decision","status":{"statusMessage":null,"statusDetails":null,
+            "statusCode":{"value":"$OK_STATUS","statusCode":null}},"obligations":$obligationsJson,
+            "associateAdvice":null,"category":null,"policyIdentifierList":null}]}"""
+            .trimIndent().replace("\n", "")
     }
 
     private fun pdpClientAgainst(server: HttpServer): PdpClient =
@@ -46,9 +69,10 @@ class ServerTest {
     private fun authorizeTest(
         decision: String,
         statusCode: Int = 200,
+        obligations: Boolean = false,
         block: suspend ApplicationTestBuilder.() -> Unit,
     ) = testApplication {
-        val server = stubPdpServer(decision, statusCode)
+        val server = stubPdpServer(decision, statusCode, obligations)
         try {
             application {
                 configureSerialization()
@@ -104,7 +128,7 @@ class ServerTest {
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertEquals(
-            AuthorizeResponse(permit = true, decision = "PERMIT"),
+            AuthorizeResponse(permit = true, decision = "PERMIT", status = OK_STATUS),
             Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
         )
     }
@@ -120,7 +144,7 @@ class ServerTest {
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertEquals(
-            AuthorizeResponse(permit = false, decision = "DENY"),
+            AuthorizeResponse(permit = false, decision = "DENY", status = OK_STATUS),
             Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
         )
     }
@@ -136,7 +160,7 @@ class ServerTest {
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertEquals(
-            AuthorizeResponse(permit = false, decision = "NOT_APPLICABLE"),
+            AuthorizeResponse(permit = false, decision = "NOT_APPLICABLE", status = OK_STATUS),
             Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
         )
     }
@@ -152,7 +176,7 @@ class ServerTest {
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertEquals(
-            AuthorizeResponse(permit = false, decision = "INDETERMINATE"),
+            AuthorizeResponse(permit = false, decision = "INDETERMINATE", status = OK_STATUS),
             Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
         )
     }
@@ -248,4 +272,44 @@ class ServerTest {
 
             assertEquals(HttpStatusCode.BadRequest, response.status)
         }
+
+    @Test
+    fun `authorize passes the minimum authentication levels through to the caller`() =
+        authorizeTest(decision = "Permit", obligations = true) {
+            val response = client.post("/authorize") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+                )
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals(
+                AuthorizeResponse(
+                    permit = true,
+                    decision = "PERMIT",
+                    status = OK_STATUS,
+                    minimumAuthenticationLevel = 3,
+                    minimumAuthenticationLevelOrg = 3,
+                ),
+                Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
+            )
+        }
+
+    @Test
+    fun `the added fields are omitted when Altinn sends nothing for them`() = authorizeTest(decision = "Permit") {
+        val response = client.post("/authorize") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+            )
+        }
+
+        val body = response.bodyAsText()
+        assertFalse(body.contains("minimumAuthenticationLevel"), "expected no level fields in: $body")
+    }
+
+    companion object {
+        private const val OK_STATUS = "urn:oasis:names:tc:xacml:1.0:status:ok"
+    }
 }
