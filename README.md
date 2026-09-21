@@ -106,7 +106,7 @@ built yourself, which is handy in tests or to share one provider across several 
 val authorization = client.authorize(
     systemuserId = "<systembruker uuid>",
     resourceId = "<resource id>",
-    organizationNumber = "923609016",
+    customerOrganizationNumber = "923609016",
     action = "read",
 )
 ```
@@ -131,9 +131,10 @@ Use `isPermitted(...)` instead when a boolean is all you need.
 > something that can.
 
 > [!IMPORTANT]
-> `organizationNumber` is the **customer's** plain Norwegian org number, the party whose access
-> is being checked. It is not the vendor's, and not the ISO6523-prefixed form Maskinporten tokens
-> use.
+> This is the org number of the customer the systembruker acts **on behalf of**, not your own.
+> In the Maskinporten token it is `authorization_details[].systemuser_org`. It is **not** the
+> `consumer` claim, which holds the vendor's org number. Strip the ISO6523 prefix: send
+> `311718371`, not `0192:311718371`.
 
 ### Timeouts
 
@@ -238,7 +239,7 @@ Request body:
 {
   "systemuserId": "<systembruker id from the token's authorization_details>",
   "resourceId": "<resource identifier in the Altinn Resource Registry>",
-  "organizationNumber": "923609016",
+  "customerOrganizationNumber": "923609016",
   "action": "read"
 }
 ```
@@ -249,10 +250,10 @@ All four fields are required strings, and are validated before Altinn is called:
 | :--- | :--- |
 | `systemuserId` | UUID |
 | `resourceId` | `^[a-z0-9_-]{4,}$`, the Resource Registry's own rule |
-| `organizationNumber` | 9 digits with a valid MOD11 check digit |
+| `customerOrganizationNumber` | 9 digits with a valid MOD11 check digit |
 | `action` | Non-empty, no format constraint |
 
-`organizationNumber` is the plain Norwegian org number (no ISO6523 prefix). The Altinn subscription key and Maskinporten credentials are configured
+The Altinn subscription key and Maskinporten credentials are configured
 server-side (see [Environment variables](#-environment-variables)) - callers never supply them.
 
 Allow at least 10 seconds for a response, so a stalled Altinn reaches you as a `502` rather than
@@ -320,8 +321,8 @@ just the first:
   "error": "Validation failed",
   "code": "VALIDATION_ERROR",
   "errors": [
-    { "field": "organizationNumber", "code": "INVALID_FORMAT",
-      "message": "organizationNumber must have a valid MOD11 check digit" },
+    { "field": "customerOrganizationNumber", "code": "INVALID_FORMAT",
+      "message": "customerOrganizationNumber must have a valid MOD11 check digit" },
     { "field": "action", "code": "MISSING", "message": "action is required" }
   ]
 }
