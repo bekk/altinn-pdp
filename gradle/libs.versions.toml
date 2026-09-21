@@ -1,5 +1,7 @@
 [versions]
 kotlin = "2.4.0"
+ktlint-cli = "1.8.0"
+ktlint-gradle = "14.2.0"
 logback = "1.5.37"
 jib = "3.5.4"
 kotlinx-coroutines = "1.11.0"
@@ -17,3 +19,4 @@ nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimb
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 jib = { id = "com.google.cloud.tools.jib", version.ref = "jib" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }

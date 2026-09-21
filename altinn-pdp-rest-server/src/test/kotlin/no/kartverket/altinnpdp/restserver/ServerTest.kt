@@ -12,7 +12,9 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import java.net.InetSocketAddress
 import java.time.Instant
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.auth.AccessToken
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
