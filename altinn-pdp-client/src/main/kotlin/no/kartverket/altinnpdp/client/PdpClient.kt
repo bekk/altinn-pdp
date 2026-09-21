@@ -39,10 +39,10 @@ class PdpClient(
     suspend fun authorize(
         systemuserId: String,
         resourceId: String,
-        organizationNumber: String,
+        customerOrganizationNumber: String,
         action: String,
     ): PdpAuthorization {
-        val errors = PdpRequestValidation.validate(systemuserId, resourceId, organizationNumber, action)
+        val errors = PdpRequestValidation.validate(systemuserId, resourceId, customerOrganizationNumber, action)
         if (errors.isNotEmpty()) throw PdpValidationException(errors)
 
         return Http.withBudget(
@@ -50,7 +50,7 @@ class PdpClient(
             operation = "The PDP authorization lookup",
             exception = { message -> PdpException(message) },
         ) {
-            fetchAuthorization(systemuserId, resourceId, organizationNumber, action)
+            fetchAuthorization(systemuserId, resourceId, customerOrganizationNumber, action)
         }
     }
 
@@ -90,9 +90,9 @@ class PdpClient(
     suspend fun isPermitted(
         systemuserId: String,
         resourceId: String,
-        organizationNumber: String,
+        customerOrganizationNumber: String,
         action: String,
-    ): Boolean = authorize(systemuserId, resourceId, organizationNumber, action).isPermit
+    ): Boolean = authorize(systemuserId, resourceId, customerOrganizationNumber, action).isPermit
 
     private fun authorizationOf(response: HttpResponse<String>): PdpAuthorization {
         val parsed = try {
