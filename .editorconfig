@@ -1,0 +1,8 @@
+root = true
+
+[*.{kt,kts}]
+# Vi bruker ktlint kun til én ting: å stoppe * imports. Hele standard-settet er
+# derfor slått av, og bare no-wildcard-imports er slått på igjen. Vil vi ta i
+# bruk ktlint som formatter for alvor, er det en egen jobb med en egen commit.
+ktlint_standard = disabled
+ktlint_standard_no-wildcard-imports = enabled
