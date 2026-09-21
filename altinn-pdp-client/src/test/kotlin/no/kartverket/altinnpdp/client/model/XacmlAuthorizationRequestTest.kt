@@ -10,7 +10,7 @@ class XacmlAuthorizationRequestTest {
 
     private fun request() = XacmlAuthorizationRequest.forSystemUser(
         systemuserId = "5f2c1a8e-0000-4000-8000-2b3c4d5e6f70",
-        resourceId = "urn:altinn:resource:kartverket-eiendom",
+        resourceId = "kartverket-eiendom",
         organizationNumber = "923609016",
         action = "read",
     )
@@ -18,7 +18,7 @@ class XacmlAuthorizationRequestTest {
     @Test
     fun `serializes to the exact body Altinn's PDP expects`() {
         val expected = """
-            {"request":{"returnPolicyIdList":true,"accessSubject":[{"attribute":[{"attributeId":"urn:altinn:systemuser:uuid","value":"5f2c1a8e-0000-4000-8000-2b3c4d5e6f70"}]}],"action":[{"attribute":[{"attributeId":"urn:oasis:names:tc:xacml:1.0:action:action-id","value":"read"}]}],"resource":[{"attribute":[{"attributeId":"urn:altinn:resource","value":"urn:altinn:resource:kartverket-eiendom"},{"attributeId":"urn:altinn:organization:identifier-no","value":"923609016"}]}]}}
+            {"request":{"returnPolicyIdList":true,"accessSubject":[{"attribute":[{"attributeId":"urn:altinn:systemuser:uuid","value":"5f2c1a8e-0000-4000-8000-2b3c4d5e6f70"}]}],"action":[{"attribute":[{"attributeId":"urn:oasis:names:tc:xacml:1.0:action:action-id","value":"read"}]}],"resource":[{"attribute":[{"attributeId":"urn:altinn:resource","value":"kartverket-eiendom"},{"attributeId":"urn:altinn:organization:identifier-no","value":"923609016"}]}]}}
         """.trimIndent()
 
         assertEquals(expected, json.encodeToString(XacmlAuthorizationRequest.serializer(), request()))
@@ -31,7 +31,7 @@ class XacmlAuthorizationRequestTest {
         assertEquals(1, resource.size, "both attributes belong to a single resource category")
         assertEquals(
             listOf(
-                XacmlAuthorizationRequest.ATTRIBUTE_RESOURCE to "urn:altinn:resource:kartverket-eiendom",
+                XacmlAuthorizationRequest.ATTRIBUTE_RESOURCE to "kartverket-eiendom",
                 XacmlAuthorizationRequest.ATTRIBUTE_ORGANIZATION_NUMBER to "923609016",
             ),
             resource.single().attribute.map { it.attributeId to it.value },

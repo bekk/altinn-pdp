@@ -11,66 +11,64 @@ import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 import no.kartverket.altinnpdp.client.exception.PdpException
+import no.kartverket.altinnpdp.client.exception.PdpValidationException
 
 fun Application.configureErrorHandling() {
     install(StatusPages) {
+        exception<PdpValidationException> { call, cause ->
+            call.respond(
+                HttpStatusCode.BadRequest,
+                ErrorResponse(
+                    error = "Validation failed",
+                    code = ErrorCode.VALIDATION_ERROR,
+                    errors = cause.errors.map { FieldError(it.field, it.code.name, it.message) },
+                ),
+            )
+        }
         exception<IllegalArgumentException> { call, cause ->
-            call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message ?: "Invalid request"))
+            call.respond(
+                HttpStatusCode.BadRequest,
+                ErrorResponse(cause.message ?: "Invalid request", ErrorCode.VALIDATION_ERROR),
+            )
         }
-        exception<JsonConvertException> { call, cause ->
-            call.respond(HttpStatusCode.BadRequest, ErrorResponse(bodyErrorMessage(cause)))
-        }
-        // ContentNegotiation throws this when it finds no converter at all, typically a missing
-        // or wrong `Content-Type` - not a conversion that was attempted and failed.
-        exception<ContentTransformationException> { call, cause ->
-            call.respond(HttpStatusCode.BadRequest, ErrorResponse("Malformed request body: ${cause.message}"))
-        }
-        exception<BadRequestException> { call, cause ->
-            call.respond(HttpStatusCode.BadRequest, ErrorResponse(bodyErrorMessage(cause)))
-        }
-        // cause.message carries Altinn's own response body, which can expose details of this
-        // service's Altinn integration. Log it, never respond with it.
+        // kotlinx's text quotes the caller's body back at them, so it is logged, never returned.
+        exception<JsonConvertException> { call, cause -> call.respondMalformedBody(cause) }
+        exception<ContentTransformationException> { call, cause -> call.respondMalformedBody(cause) }
+        exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
         exception<PdpException> { call, cause ->
             call.application.log.error(
                 "PDP call failed: statusCode=${cause.statusCode}, responseBody=${cause.responseBody}",
                 cause,
             )
-            val status = cause.statusCode
-            if (status != null && status in 400..499) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Altinn rejected the request"))
-            } else {
-                call.respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Altinn failed"))
-            }
+            call.respondUpstream(cause.statusCode)
         }
         exception<AltinnPdpException> { call, cause ->
             call.application.log.error(
                 "Maskinporten/Altinn call failed: statusCode=${cause.statusCode}, responseBody=${cause.responseBody}",
                 cause,
             )
-            call.respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Altinn failed"))
+            call.respondUpstream(cause.statusCode)
         }
         exception<Throwable> { call, cause ->
             call.application.log.error("Unhandled exception", cause)
-            call.respond(HttpStatusCode.InternalServerError, ErrorResponse("Internal server error"))
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                ErrorResponse("Internal server error", ErrorCode.INTERNAL_ERROR),
+            )
         }
     }
 }
 
-// The outer message names no field and leaks an internal class name, hence the walk to the inner
-// JsonConvertException. The patterns match kotlinx's wording; ServerTest catches an upgrade.
-private fun bodyErrorMessage(cause: Throwable): String {
-    val detail = generateSequence(cause) { it.cause }
-        .filterIsInstance<JsonConvertException>()
-        .firstOrNull()
-        ?.message
-        ?.removePrefix("Illegal input: ")
-        ?: return "Malformed request body"
+private suspend fun io.ktor.server.application.ApplicationCall.respondMalformedBody(cause: Throwable) {
+    application.log.warn("Malformed request body", cause)
+    respond(HttpStatusCode.BadRequest, ErrorResponse("Malformed request body", ErrorCode.MALFORMED_BODY))
+}
 
-    Regex("""Field '(\w+)' is required""").find(detail)?.let {
-        return "Missing required field: ${it.groupValues[1]}"
+// Only Altinn's own 400 is the caller's fault. 401, 403 and 429 are our credentials and quota.
+private suspend fun io.ktor.server.application.ApplicationCall.respondUpstream(statusCode: Int?) {
+    if (statusCode == 400) {
+        respond(HttpStatusCode.BadRequest, ErrorResponse("Altinn rejected the request", ErrorCode.UPSTREAM_REJECTED))
+    } else {
+        respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Altinn failed", ErrorCode.UPSTREAM_ERROR))
     }
-    Regex("""Fields \[(.+?)] are required""").find(detail)?.let {
-        return "Missing required fields: ${it.groupValues[1]}"
-    }
-    return "Malformed request body: $detail"
 }

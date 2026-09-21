@@ -243,8 +243,16 @@ Request body:
 }
 ```
 
-All four fields are required strings. `organizationNumber` is the plain Norwegian org number
-(no ISO6523 prefix). The Altinn subscription key and Maskinporten credentials are configured
+All four fields are required strings, and are validated before Altinn is called:
+
+| Felt | Regel |
+| :--- | :--- |
+| `systemuserId` | UUID |
+| `resourceId` | `^[a-z0-9_-]{4,}$`, the Resource Registry's own rule |
+| `organizationNumber` | 9 digits with a valid MOD11 check digit |
+| `action` | Non-empty, no format constraint |
+
+`organizationNumber` is the plain Norwegian org number (no ISO6523 prefix). The Altinn subscription key and Maskinporten credentials are configured
 server-side (see [Environment variables](#-environment-variables)) - callers never supply them.
 
 Allow at least 10 seconds for a response, so a stalled Altinn reaches you as a `502` rather than
@@ -298,14 +306,41 @@ Error responses (any non-2xx) share one shape:
 
 ```json
 {
-  "error": "<human-readable message>"
+  "error": "<human-readable summary>",
+  "code": "<stable machine-readable code>"
 }
 ```
 
+Branch on `code`, never on `error`. `error` is prose and may be reworded; `code` is part of the
+contract. A validation failure adds an `errors` array listing **every** field that failed, not
+just the first:
+
+```json
+{
+  "error": "Validation failed",
+  "code": "VALIDATION_ERROR",
+  "errors": [
+    { "field": "organizationNumber", "code": "INVALID_FORMAT",
+      "message": "organizationNumber must have a valid MOD11 check digit" },
+    { "field": "action", "code": "MISSING", "message": "action is required" }
+  ]
+}
+```
+
+| `code` | Status | Meaning |
+| :--- | :--- | :--- |
+| `VALIDATION_ERROR` | 400 | One or more fields failed validation. See `errors` |
+| `MALFORMED_BODY` | 400 | Not valid JSON, or a field of the wrong type |
+| `UPSTREAM_REJECTED` | 400 | Altinn itself answered 400 to the request we built |
+| `UPSTREAM_ERROR` | 502 | Calling Maskinporten or Altinn failed, including our own auth and quota problems |
+| `INTERNAL_ERROR` | 500 | Anything unanticipated |
+
+Per-field `code` is `MISSING` (absent, null or blank) or `INVALID_FORMAT` (present but wrong shape).
+
 | Status | Cause |
 | :--- | :--- |
-| `400 Bad Request` | Malformed or missing JSON fields, or a malformed `organizationNumber`. An unknown `resourceId` is *not* a 400: Altinn answers `200` with `INDETERMINATE` and a processing-error `status` |
-| `502 Bad Gateway` | Calling Maskinporten or Altinn failed for a reason unrelated to this request's content |
+| `400 Bad Request` | A field failed validation, the body was malformed, or Altinn itself answered 400. An unknown `resourceId` is *not* a 400: Altinn answers `200` with `INDETERMINATE` and a processing-error `status` |
+| `502 Bad Gateway` | Calling Maskinporten or Altinn failed. This includes Altinn answering 401, 403 or 429, which are this service's credentials and quota, not the caller's problem |
 | `500 Internal Server Error` | Anything unanticipated |
 
 ### `GET /health/live`
