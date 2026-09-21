@@ -21,7 +21,6 @@ private val ORG_NUMBER_REGEX = Regex("""\d{9}""")
 
 // `decision` carries the raw XACML name alongside `permit` so a caller can tell an explicit DENY
 // from NOT_APPLICABLE - a distinction `permit` collapses into the same `false`.
-// The added fields are null-by-default so they stay absent for callers that predate them.
 @Serializable
 data class AuthorizeResponse(
     val permit: Boolean,
