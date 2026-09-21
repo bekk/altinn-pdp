@@ -1,10 +1,11 @@
 package no.kartverket.altinnpdp.restserver
 
 import io.ktor.http.ContentType
-import io.ktor.server.application.*
+import io.ktor.server.application.Application
 import io.ktor.server.plugins.swagger.swaggerUI
 import io.ktor.server.response.respondText
-import io.ktor.server.routing.*
+import io.ktor.server.routing.get
+import io.ktor.server.routing.routing
 
 private const val SPEC_RESOURCE = "documentation.yaml"
 
