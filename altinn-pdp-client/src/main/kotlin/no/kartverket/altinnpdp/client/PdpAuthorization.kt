@@ -1,6 +1,6 @@
 package no.kartverket.altinnpdp.client
 
-/** Passed out unevaluated: XACML expects the enforcer to honour these, and we never see the token. */
+/** We never see the caller's token, so obligations are passed out rather than enforced here. */
 data class PdpObligation(
     val id: String?,
     val category: String,

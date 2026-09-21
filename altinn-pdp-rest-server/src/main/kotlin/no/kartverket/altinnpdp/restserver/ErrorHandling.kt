@@ -31,8 +31,7 @@ fun Application.configureErrorHandling() {
                 ErrorResponse(cause.message ?: "Invalid request", ErrorCode.VALIDATION_ERROR),
             )
         }
-        // kotlinx's own text names our Json builder and quotes the caller's body back at them, so it
-        // is logged rather than returned.
+        // kotlinx's text quotes the caller's body back at them, so it is logged, never returned.
         exception<JsonConvertException> { call, cause -> call.respondMalformedBody(cause) }
         exception<ContentTransformationException> { call, cause -> call.respondMalformedBody(cause) }
         exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
@@ -65,8 +64,7 @@ private suspend fun io.ktor.server.application.ApplicationCall.respondMalformedB
     respond(HttpStatusCode.BadRequest, ErrorResponse("Malformed request body", ErrorCode.MALFORMED_BODY))
 }
 
-// Only Altinn's own 400 means the request we built was wrong. 401, 403 and 429 are our credentials
-// and our quota, so they are ours to answer for, not the caller's.
+// Only Altinn's own 400 is the caller's fault. 401, 403 and 429 are our credentials and quota.
 private suspend fun io.ktor.server.application.ApplicationCall.respondUpstream(statusCode: Int?) {
     if (statusCode == 400) {
         respond(HttpStatusCode.BadRequest, ErrorResponse("Altinn rejected the request", ErrorCode.UPSTREAM_REJECTED))

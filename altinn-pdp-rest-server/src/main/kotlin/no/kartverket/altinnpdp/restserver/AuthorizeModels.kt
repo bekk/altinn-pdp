@@ -4,8 +4,7 @@ import kotlinx.serialization.Serializable
 import no.kartverket.altinnpdp.client.exception.PdpValidationException
 import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 
-// Nullable so a missing field reaches our own validation as a MISSING error, rather than kotlinx
-// throwing first and leaving us to parse its English wording back out.
+// Nullable so a missing field becomes our own MISSING error instead of a kotlinx parse failure.
 @Serializable
 data class AuthorizeRequest(
     val systemuserId: String? = null,
@@ -30,7 +29,6 @@ data class AuthorizeRequest(
 
 // `decision` carries the raw XACML name alongside `permit` so a caller can tell an explicit DENY
 // from NOT_APPLICABLE - a distinction `permit` collapses into the same `false`.
-// The added fields are null-by-default so they stay absent for callers that predate them.
 @Serializable
 data class AuthorizeResponse(
     val permit: Boolean,

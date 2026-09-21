@@ -14,6 +14,7 @@ import java.net.InetSocketAddress
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.auth.AccessToken
