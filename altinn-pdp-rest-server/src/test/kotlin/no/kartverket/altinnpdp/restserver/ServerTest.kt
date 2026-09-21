@@ -17,6 +17,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import no.kartverket.altinnpdp.client.auth.AccessToken
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.PdpClient
@@ -99,25 +101,18 @@ class ServerTest {
     }
 
     @Test
-    fun `openapi endpoint serves the spec from the classpath`() = testApplication {
+    fun `openapi endpoint serves the spec as json from the classpath`() = testApplication {
         application {
             configureOpenApi()
             configureRouting()
         }
         val response = client.get("/openapi")
         assertEquals(HttpStatusCode.OK, response.status)
-        assertTrue(response.bodyAsText().startsWith("openapi:"))
-    }
+        assertEquals(ContentType.Application.Json, response.contentType()?.withoutParameters())
 
-    @Test
-    fun `swagger ui is served`() = testApplication {
-        application {
-            configureOpenApi()
-            configureRouting()
-        }
-        val response = client.get("/swagger")
-        assertEquals(HttpStatusCode.OK, response.status)
-        assertTrue(response.bodyAsText().contains("swagger-ui"))
+        val spec = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        assertEquals("3.0.3", spec.getValue("openapi").jsonPrimitive.content)
+        assertTrue(spec.getValue("paths").jsonObject.containsKey("/authorize"))
     }
 
     @Test
