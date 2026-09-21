@@ -362,6 +362,7 @@ API.
 | `MASKINPORTEN_TOKEN_URL` | no | TT02's Maskinporten token endpoint |
 | `ALTINN_REQUEST_TIMEOUT_MS` | no | `4000` |
 | `ALTINN_TOTAL_TIMEOUT_MS` | no | `8000` |
+| `ACCESS_LOG_ENABLED` | no | `true` |
 
 See `.env.example` for what each variable is and where to get it.
 
