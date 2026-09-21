@@ -19,7 +19,6 @@ subprojects {
         jvmToolchain(21)
     }
 
-    // Reglene som faktisk håndheves står i .editorconfig.
     extensions.configure<KtlintExtension> {
         version.set(ktlintVersion)
     }
