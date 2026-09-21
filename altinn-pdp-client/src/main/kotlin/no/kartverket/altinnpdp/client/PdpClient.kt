@@ -12,10 +12,12 @@ import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
 import no.kartverket.altinnpdp.client.exception.PdpException
+import no.kartverket.altinnpdp.client.exception.PdpValidationException
 import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.Timeouts
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
+import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 
 class PdpClient(
     platformBaseUrl: String,
@@ -40,17 +42,15 @@ class PdpClient(
         organizationNumber: String,
         action: String,
     ): PdpAuthorization {
-        val subject = required(systemuserId, "systemuserId")
-        val resource = required(resourceId, "resourceId")
-        val org = required(organizationNumber, "organizationNumber")
-        val actionId = required(action, "action")
+        val errors = PdpRequestValidation.validate(systemuserId, resourceId, organizationNumber, action)
+        if (errors.isNotEmpty()) throw PdpValidationException(errors)
 
         return Http.withBudget(
             budget = timeouts.total,
             operation = "The PDP authorization lookup",
             exception = { message -> PdpException(message) },
         ) {
-            fetchAuthorization(subject, resource, org, actionId)
+            fetchAuthorization(systemuserId, resourceId, organizationNumber, action)
         }
     }
 
@@ -140,11 +140,6 @@ class PdpClient(
                 PdpObligation(id = obligation.id, category = category, value = value)
             }
         }
-
-    private fun required(value: String, name: String): String {
-        require(value.isNotBlank()) { "$name is required" }
-        return value
-    }
 
     class Builder {
         private var environment: AltinnEnvironment? = null

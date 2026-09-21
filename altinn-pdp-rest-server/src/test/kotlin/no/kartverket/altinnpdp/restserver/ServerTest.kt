@@ -124,7 +124,7 @@ class ServerTest {
         val response = client.post("/authorize") {
             contentType(ContentType.Application.Json)
             setBody(
-                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","organizationNumber":"923609016","action":"read"}""",
             )
         }
 
@@ -140,7 +140,7 @@ class ServerTest {
         val response = client.post("/authorize") {
             contentType(ContentType.Application.Json)
             setBody(
-                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","organizationNumber":"923609016","action":"read"}""",
             )
         }
 
@@ -156,7 +156,7 @@ class ServerTest {
         val response = client.post("/authorize") {
             contentType(ContentType.Application.Json)
             setBody(
-                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","organizationNumber":"923609016","action":"read"}""",
             )
         }
 
@@ -172,7 +172,7 @@ class ServerTest {
         val response = client.post("/authorize") {
             contentType(ContentType.Application.Json)
             setBody(
-                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","organizationNumber":"923609016","action":"read"}""",
             )
         }
 
@@ -188,7 +188,7 @@ class ServerTest {
         val response = client.post("/authorize") {
             contentType(ContentType.Application.Json)
             setBody(
-                """{"systemuserId":"","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+                """{"systemuserId":"","resourceId":"test-resource","organizationNumber":"923609016","action":"read"}""",
             )
         }
 
@@ -200,13 +200,19 @@ class ServerTest {
         val response = client.post("/authorize") {
             contentType(ContentType.Application.Json)
             setBody(
-                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"12345","action":"read"}""",
+                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","organizationNumber":"12345","action":"read"}""",
             )
         }
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
         assertEquals(
-            ErrorResponse("organizationNumber must be exactly 9 digits"),
+            ErrorResponse(
+                error = "Validation failed",
+                code = "VALIDATION_ERROR",
+                errors = listOf(
+                    FieldError("organizationNumber", "INVALID_FORMAT", "organizationNumber must be exactly 9 digits"),
+                ),
+            ),
             Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()),
         )
     }
@@ -215,12 +221,16 @@ class ServerTest {
     fun `authorize reports the missing field when one is absent`() = authorizeTest(decision = "Permit") {
         val response = client.post("/authorize") {
             contentType(ContentType.Application.Json)
-            setBody("""{"resourceId":"res-1","organizationNumber":"923609016","action":"read"}""")
+            setBody("""{"resourceId":"test-resource","organizationNumber":"923609016","action":"read"}""")
         }
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
         assertEquals(
-            ErrorResponse("Missing required field: systemuserId"),
+            ErrorResponse(
+                error = "Validation failed",
+                code = "VALIDATION_ERROR",
+                errors = listOf(FieldError("systemuserId", "MISSING", "systemuserId is required")),
+            ),
             Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()),
         )
     }
@@ -234,7 +244,14 @@ class ServerTest {
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
         assertEquals(
-            ErrorResponse("Missing required fields: systemuserId, resourceId"),
+            ErrorResponse(
+                error = "Validation failed",
+                code = "VALIDATION_ERROR",
+                errors = listOf(
+                    FieldError("systemuserId", "MISSING", "systemuserId is required"),
+                    FieldError("resourceId", "MISSING", "resourceId is required"),
+                ),
+            ),
             Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()),
         )
     }
@@ -243,7 +260,7 @@ class ServerTest {
     fun `authorize without a Content-Type header returns 400, not 500`() = authorizeTest(decision = "Permit") {
         val response = client.post("/authorize") {
             setBody(
-                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","organizationNumber":"923609016","action":"read"}""",
             )
         }
 
@@ -255,7 +272,7 @@ class ServerTest {
         val response = client.post("/authorize") {
             contentType(ContentType.Application.Json)
             setBody(
-                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","organizationNumber":"923609016","action":"read"}""",
             )
         }
 
@@ -268,7 +285,7 @@ class ServerTest {
             val response = client.post("/authorize") {
                 contentType(ContentType.Application.Json)
                 setBody(
-                    """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+                    """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","organizationNumber":"923609016","action":"read"}""",
                 )
             }
 
@@ -281,7 +298,7 @@ class ServerTest {
             val response = client.post("/authorize") {
                 contentType(ContentType.Application.Json)
                 setBody(
-                    """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+                    """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","organizationNumber":"923609016","action":"read"}""",
                 )
             }
 
@@ -303,12 +320,118 @@ class ServerTest {
         val response = client.post("/authorize") {
             contentType(ContentType.Application.Json)
             setBody(
-                """{"systemuserId":"su-1","resourceId":"res-1","organizationNumber":"923609016","action":"read"}""",
+                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","organizationNumber":"923609016","action":"read"}""",
             )
         }
 
         val body = response.bodyAsText()
         assertFalse(body.contains("minimumAuthenticationLevel"), "expected no level fields in: $body")
+    }
+
+    @Test
+    fun `every validation error is reported in one response`() = authorizeTest(decision = "Permit") {
+        val response = client.post("/authorize") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"systemuserId":"nope","resourceId":"ab","organizationNumber":"12345"}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        val body = Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText())
+        assertEquals("VALIDATION_ERROR", body.code)
+        val errors = body.errors!!
+        assertEquals(listOf("systemuserId", "resourceId", "organizationNumber", "action"), errors.map { it.field })
+        assertEquals(listOf("INVALID_FORMAT", "INVALID_FORMAT", "INVALID_FORMAT", "MISSING"), errors.map { it.code })
+    }
+
+    @Test
+    fun `an organizationNumber with a bad check digit is rejected before Altinn is called`() =
+        authorizeTest(decision = "Permit") {
+            val response = client.post("/authorize") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource",""" +
+                        """"organizationNumber":"123456789","action":"read"}""",
+                )
+            }
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            val body = Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText())
+            assertEquals("MOD11", body.errors!!.single().message.substringAfterLast("valid ").substringBefore(" "))
+        }
+
+    @Test
+    fun `a malformed body never echoes the request or kotlinx's own advice back`() =
+        authorizeTest(decision = "Permit") {
+            val response = client.post("/authorize") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource",""" +
+                        """"organizationNumber":923609016,"action":"read"}""",
+                )
+            }
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            val text = response.bodyAsText()
+            assertEquals(
+                ErrorResponse("Malformed request body", "MALFORMED_BODY"),
+                Json.decodeFromString(ErrorResponse.serializer(), text),
+            )
+            assertFalse(text.contains("coerceInputValues"), "leaks kotlinx advice: $text")
+            assertFalse(text.contains("JSON input"), "echoes the caller's body: $text")
+            assertFalse(text.contains("923609016"), "echoes the caller's values: $text")
+        }
+
+    @Test
+    fun `an explicit null is reported as a missing field, not as malformed JSON`() =
+        authorizeTest(decision = "Permit") {
+            val response = client.post("/authorize") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource",""" +
+                        """"organizationNumber":null,"action":"read"}""",
+                )
+            }
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            val body = Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText())
+            assertEquals("VALIDATION_ERROR", body.code)
+            assertEquals(FieldError("organizationNumber", "MISSING", "organizationNumber is required"), body.errors!!.single())
+        }
+
+    @Test
+    fun `only Altinn's own 400 is the caller's fault`() {
+        for ((upstream, expected) in mapOf(400 to HttpStatusCode.BadRequest, 401 to HttpStatusCode.BadGateway)) {
+            authorizeTest(decision = "Permit", statusCode = upstream) {
+                val response = client.post("/authorize") {
+                    contentType(ContentType.Application.Json)
+                    setBody(
+                        """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource",""" +
+                            """"organizationNumber":"923609016","action":"read"}""",
+                    )
+                }
+                assertEquals(expected, response.status, "for upstream $upstream")
+            }
+        }
+    }
+
+    @Test
+    fun `our own credential and quota failures are not blamed on the caller`() {
+        for (upstream in listOf(401, 403, 429)) {
+            authorizeTest(decision = "Permit", statusCode = upstream) {
+                val response = client.post("/authorize") {
+                    contentType(ContentType.Application.Json)
+                    setBody(
+                        """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource",""" +
+                            """"organizationNumber":"923609016","action":"read"}""",
+                    )
+                }
+                assertEquals(HttpStatusCode.BadGateway, response.status, "for upstream $upstream")
+                assertEquals(
+                    "UPSTREAM_ERROR",
+                    Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()).code,
+                )
+            }
+        }
     }
 
     companion object {

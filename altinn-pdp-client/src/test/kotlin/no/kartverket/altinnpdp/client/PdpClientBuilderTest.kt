@@ -144,7 +144,7 @@ class PdpClientBuilderTest {
             .build()
 
         val e = assertFailsWith<PdpException> {
-            client.authorize("sys-1", "urn:altinn:resource:x", "923609016", "read")
+            client.authorize("1725580f-70f4-4ace-a748-4f912497a0d7", "test-resource", "923609016", "read")
         }
 
         assertContains(e.message!!, "50 ms")

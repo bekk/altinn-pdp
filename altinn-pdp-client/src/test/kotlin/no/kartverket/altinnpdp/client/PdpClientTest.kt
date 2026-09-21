@@ -56,7 +56,7 @@ class PdpClientTest {
     private fun decision(value: String) = """{"Response":[{"Decision":"$value"}]}"""
 
     private suspend fun PdpClient.authorizeSample() =
-        authorize("sys-1", "urn:altinn:resource:x", "923609016", "read")
+        authorize("1725580f-70f4-4ace-a748-4f912497a0d7", "test-resource", "923609016", "read")
 
     @Test
     fun `sends the bearer token and the subscription key the gateway requires`() = runBlocking {
@@ -78,8 +78,8 @@ class PdpClientTest {
         client(server.baseUrl).authorizeSample()
 
         val body = server.lastRequest(path).body
-        assertContains(body, """"attributeId":"urn:altinn:systemuser:uuid","value":"sys-1"""")
-        assertContains(body, """"attributeId":"urn:altinn:resource","value":"urn:altinn:resource:x"""")
+        assertContains(body, """"attributeId":"urn:altinn:systemuser:uuid","value":"1725580f-70f4-4ace-a748-4f912497a0d7"""")
+        assertContains(body, """"attributeId":"urn:altinn:resource","value":"test-resource"""")
         assertContains(body, """"attributeId":"urn:altinn:organization:identifier-no","value":"923609016"""")
     }
 
@@ -122,9 +122,9 @@ class PdpClientTest {
     @Test
     fun `isPermitted collapses the decision to a boolean`() = runBlocking {
         server.on(path) { TestResponse(body = decision("Permit")) }
-        assertTrue(client(server.baseUrl).isPermitted("sys-1", "urn:res", "923609016", "read"))
+        assertTrue(client(server.baseUrl).isPermitted("1725580f-70f4-4ace-a748-4f912497a0d7", "test-resource", "923609016", "read"))
         server.on(path) { TestResponse(body = decision("NotApplicable")) }
-        assertFalse(client(server.baseUrl).isPermitted("sys-1", "urn:res", "923609016", "read"))
+        assertFalse(client(server.baseUrl).isPermitted("1725580f-70f4-4ace-a748-4f912497a0d7", "test-resource", "923609016", "read"))
     }
 
     @Test
@@ -180,10 +180,10 @@ class PdpClientTest {
     fun `rejects blank arguments before making a call`() = runBlocking {
         val client = client("http://127.0.0.1:1")
 
-        assertFailsWith<IllegalArgumentException> { client.authorize(" ", "urn:res", "923609016", "read") }
-        assertFailsWith<IllegalArgumentException> { client.authorize("sys-1", "", "923609016", "read") }
-        assertFailsWith<IllegalArgumentException> { client.authorize("sys-1", "urn:res", "", "read") }
-        assertFailsWith<IllegalArgumentException> { client.authorize("sys-1", "urn:res", "923609016", " ") }
+        assertFailsWith<IllegalArgumentException> { client.authorize(" ", "test-resource", "923609016", "read") }
+        assertFailsWith<IllegalArgumentException> { client.authorize("1725580f-70f4-4ace-a748-4f912497a0d7", "", "923609016", "read") }
+        assertFailsWith<IllegalArgumentException> { client.authorize("1725580f-70f4-4ace-a748-4f912497a0d7", "test-resource", "", "read") }
+        assertFailsWith<IllegalArgumentException> { client.authorize("1725580f-70f4-4ace-a748-4f912497a0d7", "test-resource", "923609016", " ") }
         Unit
     }
 

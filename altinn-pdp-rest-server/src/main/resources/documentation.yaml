@@ -61,27 +61,43 @@ paths:
                     status: "urn:oasis:names:tc:xacml:1.0:status:processing-error"
         "400":
           description: >
-            The request could not be understood - a missing or blank field, a malformed
-            organizationNumber, or a malformed JSON body. Note that an unknown resourceId is not
-            a 400: Altinn answers 200 with decision INDETERMINATE and a processing-error status,
-            which this API passes through in the "status" field.
+            The request could not be understood. Validation failures carry code VALIDATION_ERROR
+            and list every failing field in "errors". A body that is not valid JSON, or has a field
+            of the wrong type, carries MALFORMED_BODY. Note that an unknown resourceId is not a 400:
+            Altinn answers 200 with decision INDETERMINATE and a processing-error status, which this
+            API passes through in the "status" field.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               examples:
-                MissingField:
-                  value:
-                    error: "Missing required field: systemuserId"
                 MissingFields:
                   value:
-                    error: "Missing required fields: systemuserId, resourceId"
-                BlankField:
-                  value:
-                    error: "systemuserId is required"
+                    error: "Validation failed"
+                    code: "VALIDATION_ERROR"
+                    errors:
+                      - field: "systemuserId"
+                        code: "MISSING"
+                        message: "systemuserId is required"
+                      - field: "resourceId"
+                        code: "MISSING"
+                        message: "resourceId is required"
                 InvalidOrganizationNumber:
                   value:
-                    error: "organizationNumber must be exactly 9 digits"
+                    error: "Validation failed"
+                    code: "VALIDATION_ERROR"
+                    errors:
+                      - field: "organizationNumber"
+                        code: "INVALID_FORMAT"
+                        message: "organizationNumber must have a valid MOD11 check digit"
+                MalformedBody:
+                  value:
+                    error: "Malformed request body"
+                    code: "MALFORMED_BODY"
+                AltinnRejected:
+                  value:
+                    error: "Altinn rejected the request"
+                    code: "UPSTREAM_REJECTED"
         "502":
           description: >
             The call to Altinn or Maskinporten failed for a reason unrelated to this request's
@@ -95,6 +111,7 @@ paths:
                 Example#1:
                   value:
                     error: "The call to Altinn failed"
+                    code: "UPSTREAM_ERROR"
         "500":
           description: "An unanticipated server error."
           content:
@@ -105,6 +122,7 @@ paths:
                 Example#1:
                   value:
                     error: "Internal server error"
+                    code: "INTERNAL_ERROR"
 components:
   schemas:
     AuthorizeRequest:
@@ -117,15 +135,21 @@ components:
       properties:
         systemuserId:
           type: "string"
-          description: "The systembruker id from the token's authorization_details."
+          format: "uuid"
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          description: "The systembruker id from the token's authorization_details. Always a UUID."
         resourceId:
           type: "string"
-          description: "The resource's identifier in the Altinn Resource Registry."
+          pattern: "^[a-z0-9_-]{4,}$"
+          description: >
+            The resource's identifier in the Altinn Resource Registry. Lowercase letters, digits,
+            underscore and hyphen, at least 4 characters - the Resource Registry's own rule.
         organizationNumber:
           type: "string"
           pattern: "^[0-9]{9}$"
           description: >
-            The plain Norwegian org number (exactly 9 digits) of the party whose access is being
+            The plain Norwegian org number (exactly 9 digits, with a valid MOD11 check digit) of
+            the party whose access is being
             checked - the customer/business systemuserId is acting on behalf of, e.g. "923609016".
             Not the caller's own org number, and not the ISO6523-prefixed form Maskinporten tokens
             use.
@@ -174,6 +198,40 @@ components:
       type: "object"
       required:
         - "error"
+        - "code"
       properties:
         error:
+          type: "string"
+          description: "Human-readable summary. Not stable - branch on `code`, not on this."
+        code:
+          type: "string"
+          description: "Stable machine-readable code."
+          enum:
+            - "VALIDATION_ERROR"
+            - "MALFORMED_BODY"
+            - "UPSTREAM_REJECTED"
+            - "UPSTREAM_ERROR"
+            - "INTERNAL_ERROR"
+        errors:
+          type: "array"
+          description: >
+            Present when code is VALIDATION_ERROR. Every field that failed, not just the first.
+          items:
+            $ref: "#/components/schemas/FieldError"
+    FieldError:
+      type: "object"
+      required:
+        - "field"
+        - "code"
+        - "message"
+      properties:
+        field:
+          type: "string"
+          description: "The request field that failed."
+        code:
+          type: "string"
+          enum:
+            - "MISSING"
+            - "INVALID_FORMAT"
+        message:
           type: "string"

@@ -55,7 +55,7 @@ class PdpClientTimeoutTest {
     }
 
     private suspend fun PdpClient.authorizeSample() =
-        authorize("sys-1", "urn:altinn:resource:x", "923609016", "read")
+        authorize("1725580f-70f4-4ace-a748-4f912497a0d7", "test-resource", "923609016", "read")
 
     @Test
     fun `one stalled call fails on the request timeout, well inside the budget`() = runBlocking {
