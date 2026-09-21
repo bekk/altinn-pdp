@@ -11,7 +11,7 @@ class XacmlAuthorizationRequestTest {
     private fun request() = XacmlAuthorizationRequest.forSystemUser(
         systemuserId = "5f2c1a8e-0000-4000-8000-2b3c4d5e6f70",
         resourceId = "kartverket-eiendom",
-        organizationNumber = "923609016",
+        customerOrganizationNumber = "923609016",
         action = "read",
     )
 

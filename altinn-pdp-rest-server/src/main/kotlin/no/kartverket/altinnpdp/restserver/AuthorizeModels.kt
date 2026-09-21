@@ -9,20 +9,19 @@ import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 data class AuthorizeRequest(
     val systemuserId: String? = null,
     val resourceId: String? = null,
-    // The party (customer) whose access is being checked, not the calling system's own org number.
-    val organizationNumber: String? = null,
+    val customerOrganizationNumber: String? = null,
     val action: String? = null,
 ) {
     fun validated(): Validated {
-        val errors = PdpRequestValidation.validate(systemuserId, resourceId, organizationNumber, action)
+        val errors = PdpRequestValidation.validate(systemuserId, resourceId, customerOrganizationNumber, action)
         if (errors.isNotEmpty()) throw PdpValidationException(errors)
-        return Validated(systemuserId!!, resourceId!!, organizationNumber!!, action!!)
+        return Validated(systemuserId!!, resourceId!!, customerOrganizationNumber!!, action!!)
     }
 
     data class Validated(
         val systemuserId: String,
         val resourceId: String,
-        val organizationNumber: String,
+        val customerOrganizationNumber: String,
         val action: String,
     )
 }
