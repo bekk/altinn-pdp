@@ -19,9 +19,12 @@ import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.auth.AccessToken
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
-import no.kartverket.altinnpdp.client.PdpClient
+import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
+import no.kartverket.altinnpdp.restserver.models.ErrorResponse
+import no.kartverket.altinnpdp.restserver.models.FieldError
 
 class ServerTest {
 

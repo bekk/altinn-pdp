@@ -12,6 +12,9 @@ import io.ktor.server.response.respond
 import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.exception.PdpValidationException
+import no.kartverket.altinnpdp.restserver.models.ErrorCode
+import no.kartverket.altinnpdp.restserver.models.ErrorResponse
+import no.kartverket.altinnpdp.restserver.models.FieldError
 
 fun Application.configureErrorHandling() {
     install(StatusPages) {

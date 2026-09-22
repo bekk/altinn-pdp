@@ -1,4 +1,4 @@
-package no.kartverket.altinnpdp.restserver
+package no.kartverket.altinnpdp.restserver.models
 
 import kotlinx.serialization.Serializable
 import no.kartverket.altinnpdp.client.exception.PdpValidationException
@@ -24,33 +24,4 @@ data class AuthorizeRequest(
         val customerOrganizationNumber: String,
         val action: String,
     )
-}
-
-// `decision` carries the raw XACML name alongside `permit` so a caller can tell an explicit DENY
-// from NOT_APPLICABLE - a distinction `permit` collapses into the same `false`.
-@Serializable
-data class AuthorizeResponse(
-    val permit: Boolean,
-    val decision: String,
-    val status: String? = null,
-    val minimumAuthenticationLevel: Int? = null,
-    val minimumAuthenticationLevelOrg: Int? = null,
-)
-
-@Serializable
-data class FieldError(val field: String, val code: String, val message: String)
-
-@Serializable
-data class ErrorResponse(
-    val error: String,
-    val code: String = ErrorCode.INTERNAL_ERROR,
-    val errors: List<FieldError>? = null,
-)
-
-object ErrorCode {
-    const val VALIDATION_ERROR = "VALIDATION_ERROR"
-    const val MALFORMED_BODY = "MALFORMED_BODY"
-    const val UPSTREAM_REJECTED = "UPSTREAM_REJECTED"
-    const val UPSTREAM_ERROR = "UPSTREAM_ERROR"
-    const val INTERNAL_ERROR = "INTERNAL_ERROR"
 }
