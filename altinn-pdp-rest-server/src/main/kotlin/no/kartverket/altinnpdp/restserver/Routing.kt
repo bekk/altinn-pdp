@@ -9,6 +9,8 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import no.kartverket.altinnpdp.client.PdpClient
+import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
+import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 
 fun Application.configureRouting() {
     routing {
