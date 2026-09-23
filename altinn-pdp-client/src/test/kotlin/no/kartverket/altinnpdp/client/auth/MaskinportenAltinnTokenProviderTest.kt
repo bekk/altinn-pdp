@@ -80,18 +80,6 @@ class MaskinportenAltinnTokenProviderTest {
     }
 
     @Test
-    fun `exposes the underlying Maskinporten token without exchanging again`() = runBlocking {
-        server.serveBothTokens()
-        val provider = provider(server)
-
-        provider.getAltinnToken()
-
-        assertEquals("mp-token", provider.getMaskinportenToken().value)
-        assertEquals(1, server.requestCount(tokenPath))
-        assertEquals(1, server.requestCount(exchangePath))
-    }
-
-    @Test
     fun `invalidate clears both caches so the next call refetches everything`() = runBlocking {
         server.serveBothTokens()
         val provider = provider(server)

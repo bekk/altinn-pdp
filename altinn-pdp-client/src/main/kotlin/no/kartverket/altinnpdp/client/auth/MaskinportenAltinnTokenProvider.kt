@@ -42,8 +42,6 @@ class MaskinportenAltinnTokenProvider(
             cache.get { exchanger.exchange(maskinportenClient.getToken().value) }
         }
 
-    suspend fun getMaskinportenToken(): AccessToken = maskinportenClient.getToken()
-
     suspend fun invalidate() {
         cache.invalidate()
         maskinportenClient.invalidate()
