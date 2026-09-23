@@ -122,8 +122,6 @@ The answer is a `PdpAuthorization`:
 | `minimumAuthenticationLevelOrg` | The same for `urn:altinn:minimum-authenticationlevel-org` |
 | `statusCode` | Altinn's XACML status URN, or null |
 
-Use `isPermitted(...)` instead when a boolean is all you need.
-
 > [!WARNING]
 > A `PERMIT` that carries a `minimumAuthenticationLevel` is **conditional**. XACML expects
 > whoever enforces the decision to honour the obligation, and this library cannot: it never sees
