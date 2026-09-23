@@ -138,7 +138,6 @@ class PdpClient(
         private var tokenProvider: AltinnTokenProvider? = null
         private var timeouts: Timeouts? = null
 
-        private var maskinportenTokenUrl: String? = null
         private var maskinportenClientId: String? = null
         private var maskinportenJwk: String? = null
 
@@ -151,8 +150,6 @@ class PdpClient(
         fun timeouts(timeouts: Timeouts): Builder = apply { this.timeouts = timeouts }
 
         fun tokenProvider(tokenProvider: AltinnTokenProvider): Builder = apply { this.tokenProvider = tokenProvider }
-
-        fun maskinportenTokenUrl(tokenUrl: String): Builder = apply { this.maskinportenTokenUrl = tokenUrl }
 
         fun maskinportenClientId(clientId: String): Builder = apply { this.maskinportenClientId = clientId }
 
@@ -169,7 +166,7 @@ class PdpClient(
 
             val provider = tokenProvider ?: MaskinportenAltinnTokenProvider(
                 maskinportenConfig = MaskinportenConfig(
-                    tokenUrl = maskinportenTokenUrl ?: env.maskinportenTokenUrl,
+                    tokenUrl = env.maskinportenTokenUrl,
                     clientId = requireNotNull(maskinportenClientId) {
                         "maskinportenClientId is required (or call tokenProvider(...) directly)"
                     },
