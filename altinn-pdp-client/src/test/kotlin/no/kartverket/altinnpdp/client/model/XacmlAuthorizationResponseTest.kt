@@ -1,10 +1,10 @@
 package no.kartverket.altinnpdp.client.model
 
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.serialization.json.Json
 
 class XacmlAuthorizationResponseTest {
 

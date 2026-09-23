@@ -1,10 +1,10 @@
 package no.kartverket.altinnpdp.client.auth
 
+import no.kartverket.altinnpdp.client.support.TestKeys
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import no.kartverket.altinnpdp.client.support.TestKeys
 
 class MaskinportenConfigTest {
 

@@ -2,11 +2,11 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.yaml.YamlConfig
+import no.kartverket.altinnpdp.client.AltinnEnvironment
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
-import no.kartverket.altinnpdp.client.AltinnEnvironment
 
 class ApplicationConfigTest {
 

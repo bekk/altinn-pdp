@@ -1,14 +1,14 @@
 package no.kartverket.altinnpdp.client.http
 
+import kotlinx.coroutines.future.await
+import kotlinx.coroutines.withTimeoutOrNull
+import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 import java.io.IOException
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 import kotlin.time.toKotlinDuration
-import kotlinx.coroutines.future.await
-import kotlinx.coroutines.withTimeoutOrNull
-import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 
 internal object Http {
 

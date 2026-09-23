@@ -1,9 +1,18 @@
 package no.kartverket.altinnpdp.client.auth
 
+import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jwt.SignedJWT
+import kotlinx.coroutines.runBlocking
+import no.kartverket.altinnpdp.client.exception.MaskinportenException
+import no.kartverket.altinnpdp.client.http.Timeouts
+import no.kartverket.altinnpdp.client.support.MutableClock
+import no.kartverket.altinnpdp.client.support.NOW
+import no.kartverket.altinnpdp.client.support.TestHttpServer
+import no.kartverket.altinnpdp.client.support.TestKeys
+import no.kartverket.altinnpdp.client.support.TestResponse
+import no.kartverket.altinnpdp.client.support.fixedClock
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Duration
@@ -15,15 +24,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.runBlocking
-import no.kartverket.altinnpdp.client.exception.MaskinportenException
-import no.kartverket.altinnpdp.client.http.Timeouts
-import no.kartverket.altinnpdp.client.support.MutableClock
-import no.kartverket.altinnpdp.client.support.NOW
-import no.kartverket.altinnpdp.client.support.TestHttpServer
-import no.kartverket.altinnpdp.client.support.TestKeys
-import no.kartverket.altinnpdp.client.support.TestResponse
-import no.kartverket.altinnpdp.client.support.fixedClock
 
 class MaskinportenClientTest {
 

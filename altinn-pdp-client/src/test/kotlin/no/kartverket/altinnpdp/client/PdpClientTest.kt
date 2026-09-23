@@ -1,5 +1,12 @@
 package no.kartverket.altinnpdp.client
 
+import kotlinx.coroutines.runBlocking
+import no.kartverket.altinnpdp.client.auth.AccessToken
+import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
+import no.kartverket.altinnpdp.client.exception.PdpException
+import no.kartverket.altinnpdp.client.http.Timeouts
+import no.kartverket.altinnpdp.client.support.TestHttpServer
+import no.kartverket.altinnpdp.client.support.TestResponse
 import java.time.Instant
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -10,13 +17,6 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.runBlocking
-import no.kartverket.altinnpdp.client.auth.AccessToken
-import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
-import no.kartverket.altinnpdp.client.exception.PdpException
-import no.kartverket.altinnpdp.client.http.Timeouts
-import no.kartverket.altinnpdp.client.support.TestHttpServer
-import no.kartverket.altinnpdp.client.support.TestResponse
 
 class PdpClientTest {
 

@@ -1,9 +1,9 @@
 package no.kartverket.altinnpdp.client.auth
 
-import java.time.Clock
-import java.time.Duration
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.time.Clock
+import java.time.Duration
 
 internal class TokenCache(
     private val clock: Clock,
