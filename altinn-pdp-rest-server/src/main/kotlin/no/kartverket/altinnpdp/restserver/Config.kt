@@ -3,8 +3,7 @@ package no.kartverket.altinnpdp.restserver
 import io.ktor.server.config.ApplicationConfig
 import java.time.Duration
 
-// Ktor's "$VAR" substitution rejects a variable that is unset, but not one exported as an empty
-// string - which is exactly what a freshly copied .env gives you.
+// Every value from .env and secrets is read through these, so all are trimmed and errors look the same.
 internal fun ApplicationConfig.optional(path: String): String? =
     propertyOrNull(path)?.getString()?.trim()?.takeIf { it.isNotEmpty() }
 
