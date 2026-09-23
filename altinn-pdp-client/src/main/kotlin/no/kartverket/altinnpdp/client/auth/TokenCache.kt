@@ -20,6 +20,4 @@ internal class TokenCache(
             current
         }
     }
-
-    suspend fun invalidate() = mutex.withLock { token = null }
 }

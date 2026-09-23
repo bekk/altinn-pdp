@@ -80,19 +80,6 @@ class MaskinportenAltinnTokenProviderTest {
     }
 
     @Test
-    fun `invalidate clears both caches so the next call refetches everything`() = runBlocking {
-        server.serveBothTokens()
-        val provider = provider(server)
-
-        provider.getAltinnToken()
-        provider.invalidate()
-        provider.getAltinnToken()
-
-        assertEquals(2, server.requestCount(tokenPath), "the Maskinporten token should be refetched too")
-        assertEquals(2, server.requestCount(exchangePath))
-    }
-
-    @Test
     fun `the total budget covers the exchange as well as the Maskinporten call`() = runBlocking {
         val timeouts = Timeouts(request = Duration.ofSeconds(5), total = Duration.ofMillis(350))
         server.on(tokenPath) {

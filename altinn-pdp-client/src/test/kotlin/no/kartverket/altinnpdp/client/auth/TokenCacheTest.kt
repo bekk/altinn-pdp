@@ -45,20 +45,6 @@ class TokenCacheTest {
     }
 
     @Test
-    fun `invalidate drops a token that is still fresh`() = runBlocking {
-        val cache = TokenCache(MutableClock(), leeway)
-        val loads = AtomicInteger()
-        val load: suspend () -> AccessToken = {
-            AccessToken("token-${loads.incrementAndGet()}", NOW.plusSeconds(300))
-        }
-
-        assertEquals("token-1", cache.get(load).value)
-        cache.invalidate()
-
-        assertEquals("token-2", cache.get(load).value)
-    }
-
-    @Test
     fun `concurrent callers on a cold cache trigger exactly one load`() = runBlocking {
         val cache = TokenCache(MutableClock(), leeway)
         val loads = AtomicInteger()
