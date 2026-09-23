@@ -73,16 +73,7 @@ class PdpClient(
             .POST(HttpRequest.BodyPublishers.ofString(body))
             .build()
 
-        val response = Http.send(httpClient, request, "Altinn PDP") { message, cause ->
-            PdpException(message, cause = cause)
-        }
-        if (response.statusCode() != 200) {
-            throw PdpException(
-                "Altinn responded ${response.statusCode()} to the PDP authorization request",
-                statusCode = response.statusCode(),
-                responseBody = response.body(),
-            )
-        }
+        val response = Http.sendExpectingOk(httpClient, request, "Altinn PDP", ::PdpException)
         return authorizationOf(response)
     }
 

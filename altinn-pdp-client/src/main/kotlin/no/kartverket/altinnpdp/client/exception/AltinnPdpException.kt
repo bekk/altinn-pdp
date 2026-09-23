@@ -2,16 +2,16 @@ package no.kartverket.altinnpdp.client.exception
 
 sealed class AltinnPdpException(
     message: String,
-    cause: Throwable? = null,
     val statusCode: Int? = null,
     val responseBody: String? = null,
-) : RuntimeException(message, cause) {
+    cause: Throwable? = null,
+) : RuntimeException(messageWithBody(message, responseBody), cause) {
 
     companion object {
         /** Keeps large error pages out of the logs. */
         private const val MAX_BODY_LENGTH = 500
 
-        internal fun messageWithBody(message: String, body: String?): String {
+        private fun messageWithBody(message: String, body: String?): String {
             val shown = abbreviate(body)
             return if (shown.isEmpty()) message else "$message: $shown"
         }

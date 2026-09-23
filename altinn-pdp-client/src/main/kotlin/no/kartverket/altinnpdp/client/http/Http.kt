@@ -18,17 +18,22 @@ internal object Http {
 
     fun withoutTrailingSlash(url: String): String = if (url.endsWith("/")) url.dropLast(1) else url
 
-    suspend fun send(
+    suspend fun sendExpectingOk(
         httpClient: HttpClient,
         request: HttpRequest,
         target: String,
-        exception: (message: String, cause: Throwable) -> AltinnPdpException,
-    ): HttpResponse<String> =
-        try {
+        exception: (message: String, statusCode: Int?, responseBody: String?, cause: Throwable?) -> AltinnPdpException,
+    ): HttpResponse<String> {
+        val response = try {
             httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).await()
         } catch (e: IOException) {
-            throw exception("Call to $target failed: ${e.message}", e)
+            throw exception("Call to $target failed: ${e.message}", null, null, e)
         }
+        if (response.statusCode() != 200) {
+            throw exception("$target responded ${response.statusCode()}", response.statusCode(), response.body(), null)
+        }
+        return response
+    }
 
     /** `T : Any` so that a null from `withTimeoutOrNull` can only mean the budget expired. */
     suspend fun <T : Any> withBudget(

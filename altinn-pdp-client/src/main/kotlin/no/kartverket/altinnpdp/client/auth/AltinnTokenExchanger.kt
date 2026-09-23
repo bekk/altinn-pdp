@@ -32,16 +32,7 @@ class AltinnTokenExchanger(
             .GET()
             .build()
 
-        val response = Http.send(httpClient, request, "Altinn token exchange") { message, cause ->
-            AltinnException(message, cause = cause)
-        }
-        if (response.statusCode() != 200) {
-            throw AltinnException(
-                "Altinn responded ${response.statusCode()} to the token exchange",
-                statusCode = response.statusCode(),
-                responseBody = response.body(),
-            )
-        }
+        val response = Http.sendExpectingOk(httpClient, request, "Altinn token exchange", ::AltinnException)
         val token = response.body().trim()
         if (token.isEmpty()) {
             throw AltinnException(

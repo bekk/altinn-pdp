@@ -6,9 +6,4 @@ class PdpException(
     statusCode: Int? = null,
     responseBody: String? = null,
     cause: Throwable? = null,
-) : AltinnPdpException(
-    message = messageWithBody(message, responseBody),
-    cause = cause,
-    statusCode = statusCode,
-    responseBody = responseBody,
-)
+) : AltinnPdpException(message, statusCode, responseBody, cause)
