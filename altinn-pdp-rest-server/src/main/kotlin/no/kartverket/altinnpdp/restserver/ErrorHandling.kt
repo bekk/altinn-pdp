@@ -57,8 +57,6 @@ private suspend fun io.ktor.server.application.ApplicationCall.respondMalformedB
     respond(HttpStatusCode.BadRequest, ErrorResponse("Malformed request body", ErrorCode.MALFORMED_BODY))
 }
 
-// Only the PDP's own 400 is the caller's fault. A 400 while fetching our token, like any 401,
-// 403 or 429, is our credentials and quota.
 private suspend fun io.ktor.server.application.ApplicationCall.respondUpstream(cause: AltinnPdpException) {
     if (cause is PdpException && cause.statusCode == 400) {
         respond(HttpStatusCode.BadRequest, ErrorResponse("Altinn rejected the request", ErrorCode.UPSTREAM_REJECTED))
