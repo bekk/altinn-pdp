@@ -19,7 +19,6 @@ internal data class XacmlAuthorizationResponse(
 
     @Serializable
     data class Status(
-        @JsonNames("StatusMessage") val statusMessage: String? = null,
         @JsonNames("StatusCode") val statusCode: StatusCode? = null,
     )
 
@@ -36,9 +35,7 @@ internal data class XacmlAuthorizationResponse(
 
     @Serializable
     data class AttributeAssignment(
-        @JsonNames("AttributeId") val attributeId: String? = null,
         @JsonNames("Value") val value: String? = null,
         @JsonNames("Category") val category: String? = null,
-        @JsonNames("DataType") val dataType: String? = null,
     )
 }
