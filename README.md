@@ -359,7 +359,7 @@ API.
 | `MASKINPORTEN_CLIENT_JWK` | yes | - |
 | `ALTINN_SUBSCRIPTION_KEY` | yes | - |
 | `ALTINN_ENVIRONMENT` | no | `TT02` |
-| `MASKINPORTEN_TOKEN_URL` | no | TT02's Maskinporten token endpoint |
+| `MASKINPORTEN_TOKEN_URL` | no | Follows `ALTINN_ENVIRONMENT`, see [Environments](#-environments) |
 | `ALTINN_REQUEST_TIMEOUT_MS` | no | `4000` |
 | `ALTINN_TOTAL_TIMEOUT_MS` | no | `8000` |
 | `ACCESS_LOG_ENABLED` | no | `true` |
