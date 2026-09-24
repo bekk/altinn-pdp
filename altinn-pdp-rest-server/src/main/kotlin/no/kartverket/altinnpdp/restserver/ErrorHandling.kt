@@ -24,7 +24,7 @@ fun Application.configureErrorHandling() {
                 ErrorResponse(
                     error = "Validation failed",
                     code = ErrorCode.VALIDATION_ERROR,
-                    errors = cause.errors.map { FieldError(it.field, it.code.name, it.message) },
+                    errors = cause.errors.map { FieldError(it.field, it.code, it.message) },
                 ),
             )
         }

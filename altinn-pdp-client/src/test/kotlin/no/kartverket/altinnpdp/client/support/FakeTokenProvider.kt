@@ -1,7 +1,7 @@
 package no.kartverket.altinnpdp.client.support
 
 import kotlinx.coroutines.delay
-import no.kartverket.altinnpdp.client.auth.AccessToken
+import no.kartverket.altinnpdp.client.auth.AltinnToken
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import java.time.Duration
 import java.time.Instant
@@ -18,9 +18,9 @@ internal class FakeTokenProvider(
     var calls = 0
         private set
 
-    override suspend fun getAltinnToken(): AccessToken {
+    override suspend fun getAltinnToken(): AltinnToken {
         calls++
         if (!takes.isZero) delay(takes.toMillis())
-        return AccessToken(token, Instant.MAX)
+        return AltinnToken(token, Instant.MAX)
     }
 }

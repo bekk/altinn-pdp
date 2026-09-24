@@ -25,9 +25,9 @@ class AltinnTokenExchanger(
 
     private val exchangeUrl: URI = Http.url(platformBaseUrl, EXCHANGE_PATH)
 
-    suspend fun exchange(maskinportenToken: String): AccessToken {
+    suspend fun exchange(maskinportenToken: MaskinportenToken): AltinnToken {
         val request = HttpRequest.newBuilder(exchangeUrl)
-            .header("Authorization", "Bearer $maskinportenToken")
+            .header("Authorization", "Bearer ${maskinportenToken.value}")
             .timeout(timeouts.request)
             .GET()
             .build()
@@ -41,7 +41,7 @@ class AltinnTokenExchanger(
                 responseBody = response.body(),
             )
         }
-        return AccessToken(token, expiresAt(token))
+        return AltinnToken(token, expiresAt(token))
     }
 
     private fun expiresAt(token: String): Instant = try {

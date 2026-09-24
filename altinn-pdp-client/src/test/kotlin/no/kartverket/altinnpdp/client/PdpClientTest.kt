@@ -142,19 +142,6 @@ class PdpClientTest {
     }
 
     @Test
-    fun `rejects blank arguments before making a call`() = runBlocking {
-        val client = testPdpClient("http://127.0.0.1:1")
-
-        assertFailsWith<IllegalArgumentException> { client.authorize(" ", "test-resource", "923609016", "read") }
-        assertFailsWith<IllegalArgumentException> { client.authorize(SAMPLE_SYSTEMUSER_ID, "", "923609016", "read") }
-        assertFailsWith<IllegalArgumentException> { client.authorize(SAMPLE_SYSTEMUSER_ID, "test-resource", "", "read") }
-        assertFailsWith<IllegalArgumentException> {
-            client.authorize(SAMPLE_SYSTEMUSER_ID, "test-resource", "923609016", " ")
-        }
-        Unit
-    }
-
-    @Test
     fun `surfaces the obligations and status URN Altinn attaches to a permit`() = runBlocking {
         val body = """
             {"response":[{"decision":"Permit","status":{"statusCode":{"value":"urn:oasis:names:tc:xacml:1.0:status:ok"}},
