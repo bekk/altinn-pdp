@@ -11,9 +11,5 @@ fun Application.configureAccessLogging() {
     install(CallLogging)
 }
 
-internal fun accessLogEnabled(config: ApplicationConfig = MapApplicationConfig()): Boolean {
-    val raw = config.propertyOrNull("accessLog.enabled")?.getString()?.trim()?.takeIf { it.isNotBlank() }
-        ?: return true
-    return raw.toBooleanStrictOrNull()
-        ?: error("accessLog.enabled must be true or false, but was \"$raw\" (see .env.example)")
-}
+internal fun accessLogEnabled(config: ApplicationConfig = MapApplicationConfig()): Boolean =
+    config.boolean("accessLog.enabled", default = true)
