@@ -97,7 +97,7 @@ val client = PdpClient.builder()
 Build one client and reuse it. Both the Maskinporten token and the Altinn token are cached and
 fetched again shortly before they expire, and it is safe to call from several coroutines at once.
 
-`tokenProvider(...)` replaces the three Maskinporten setters with an `AltinnTokenProvider` you
+`tokenProvider(...)` replaces the two Maskinporten setters with an `AltinnTokenProvider` you
 built yourself, which is handy in tests or to share one provider across several clients.
 
 ### Asking the PDP
@@ -359,7 +359,6 @@ API.
 | `MASKINPORTEN_CLIENT_JWK` | yes | - |
 | `ALTINN_SUBSCRIPTION_KEY` | yes | - |
 | `ALTINN_ENVIRONMENT` | no | `TT02` |
-| `MASKINPORTEN_TOKEN_URL` | no | TT02's Maskinporten token endpoint |
 | `ALTINN_REQUEST_TIMEOUT_MS` | no | `4000` |
 | `ALTINN_TOTAL_TIMEOUT_MS` | no | `8000` |
 | `ACCESS_LOG_ENABLED` | no | `true` |

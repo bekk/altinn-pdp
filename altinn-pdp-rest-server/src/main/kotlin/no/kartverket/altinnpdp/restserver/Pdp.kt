@@ -18,14 +18,13 @@ fun Application.configurePdp(client: PdpClient = pdpClientFromConfig()) {
 
 private fun Application.pdpClientFromConfig(): PdpClient {
     val config = environment.config
-    val builder = PdpClient.builder()
+    return PdpClient.builder()
         .environment(AltinnEnvironment.valueOf(config.required("altinn.environment")))
         .subscriptionKey(config.required("altinn.subscriptionKey"))
         .maskinportenClientId(config.required("maskinporten.clientId"))
         .maskinportenJwk(config.required("maskinporten.clientJwk"))
         .timeouts(timeoutsFromConfig(config))
-    config.optional("maskinporten.tokenUrl")?.let { builder.maskinportenTokenUrl(it) }
-    return builder.build()
+        .build()
 }
 
 internal fun timeoutsFromConfig(config: ApplicationConfig = MapApplicationConfig()): Timeouts = Timeouts(

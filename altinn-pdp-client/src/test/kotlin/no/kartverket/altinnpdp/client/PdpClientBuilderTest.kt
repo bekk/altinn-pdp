@@ -112,19 +112,6 @@ class PdpClientBuilderTest {
     }
 
     @Test
-    fun `passes a Maskinporten token URL override on to the config rather than dropping it`() {
-        val e = assertFailsWith<IllegalArgumentException> {
-            builder()
-                .maskinportenClientId("client-id")
-                .maskinportenJwk(jwk)
-                .maskinportenTokenUrl("")
-                .build()
-        }
-
-        assertContains(e.message!!, "tokenUrl")
-    }
-
-    @Test
     fun `tokenProvider builds without any Maskinporten settings`() {
         val client = PdpClient.builder()
             .environment(AltinnEnvironment.TT02)

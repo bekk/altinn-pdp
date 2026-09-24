@@ -12,9 +12,6 @@ altinn:
 maskinporten:
   clientId: "$MASKINPORTEN_CLIENT_ID"
   clientJwk: "$MASKINPORTEN_CLIENT_JWK"
-  # Left absent rather than defaulted, because the right fallback depends on altinn.environment
-  # (PROD uses maskinporten.no) and PdpClient already picks it from there.
-  tokenUrl: "$?MASKINPORTEN_TOKEN_URL"
 
 accessLog:
   enabled: "$?ACCESS_LOG_ENABLED"
