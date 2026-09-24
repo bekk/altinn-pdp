@@ -20,4 +20,8 @@ internal class TokenCache(
             current
         }
     }
+
+    companion object {
+        val DEFAULT_REFRESH_LEEWAY: Duration = Duration.ofSeconds(30)
+    }
 }

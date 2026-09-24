@@ -23,7 +23,7 @@ class AltinnTokenExchanger(
         httpClient: HttpClient = Http.defaultClient(),
     ) : this(environment.platformBaseUrl, timeouts, httpClient)
 
-    private val exchangeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + EXCHANGE_PATH)
+    private val exchangeUrl: URI = Http.url(platformBaseUrl, EXCHANGE_PATH)
 
     suspend fun exchange(maskinportenToken: String): AccessToken {
         val request = HttpRequest.newBuilder(exchangeUrl)

@@ -1,7 +1,6 @@
 package no.kartverket.altinnpdp.client
 
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.auth.AltinnScopes
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
@@ -33,7 +32,7 @@ class PdpClient(
         httpClient: HttpClient = Http.defaultClient(),
     ) : this(environment.platformBaseUrl, tokenProvider, subscriptionKey, timeouts, httpClient)
 
-    private val authorizeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + AUTHORIZE_PATH)
+    private val authorizeUrl: URI = Http.url(platformBaseUrl, AUTHORIZE_PATH)
 
     suspend fun authorize(
         systemuserId: String,
@@ -60,7 +59,7 @@ class PdpClient(
         actionId: String,
     ): PdpAuthorization {
         val token = tokenProvider.getAltinnToken()
-        val body = json.encodeToString(
+        val body = Http.json.encodeToString(
             XacmlAuthorizationRequest.serializer(),
             XacmlAuthorizationRequest.forSystemUser(subject, resource, org, actionId),
         )
@@ -78,35 +77,24 @@ class PdpClient(
     }
 
     private fun authorizationOf(response: HttpResponse<String>): PdpAuthorization {
+        fun unusable(message: String, cause: Throwable? = null) =
+            PdpException(message, response.statusCode(), response.body(), cause)
+
         val parsed = try {
-            json.decodeFromString(XacmlAuthorizationResponse.serializer(), response.body())
+            Http.json.decodeFromString(XacmlAuthorizationResponse.serializer(), response.body())
         } catch (e: SerializationException) {
-            throw PdpException("Failed to parse the PDP response: ${e.message}", cause = e)
+            throw unusable("Failed to parse the PDP response: ${e.message}", e)
         }
         val results = parsed.response.orEmpty()
         if (results.size > 1) {
-            throw PdpException(
-                "The PDP response had ${results.size} Response entries, but only one decision was requested",
-                statusCode = response.statusCode(),
-                responseBody = response.body(),
-            )
+            throw unusable("The PDP response had ${results.size} Response entries, but only one decision was requested")
         }
         val result = results.firstOrNull()
-        val decision = result?.decision
-            ?: throw PdpException(
-                "The PDP response had no Response entries with a decision",
-                statusCode = response.statusCode(),
-                responseBody = response.body(),
-            )
+        val decision = result?.decision ?: throw unusable("The PDP response had no Response entries with a decision")
         val parsedDecision = try {
             PdpDecision.fromXacmlValue(decision)
         } catch (e: IllegalArgumentException) {
-            throw PdpException(
-                "Unknown XACML decision \"$decision\" in PDP response",
-                statusCode = response.statusCode(),
-                responseBody = response.body(),
-                cause = e,
-            )
+            throw unusable("Unknown XACML decision \"$decision\" in PDP response", e)
         }
         return PdpAuthorization(
             decision = parsedDecision,
@@ -183,8 +171,6 @@ class PdpClient(
         const val AUTHORIZE_PATH = "/authorization/api/v1/authorize"
 
         const val SUBSCRIPTION_KEY_HEADER = "Ocp-Apim-Subscription-Key"
-
-        private val json = Json { ignoreUnknownKeys = true }
 
         fun builder(): Builder = Builder()
     }

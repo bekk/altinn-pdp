@@ -39,7 +39,6 @@ jib {
         image = findProperty("dockerImage")?.toString() ?: "altinn-pdp-rest-server:local"
     }
     container {
-        mainClass = "no.kartverket.altinnpdp.restserver.MainKt"
         ports = listOf("8080")
         user = "1000:1000"
     }

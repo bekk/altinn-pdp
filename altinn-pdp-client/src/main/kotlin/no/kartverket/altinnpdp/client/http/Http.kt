@@ -2,8 +2,10 @@ package no.kartverket.altinnpdp.client.http
 
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 import java.io.IOException
+import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -16,7 +18,10 @@ internal object Http {
         .followRedirects(HttpClient.Redirect.NEVER)
         .build()
 
-    fun withoutTrailingSlash(url: String): String = if (url.endsWith("/")) url.dropLast(1) else url
+    /** Altinn and Maskinporten answer with more fields than we model. */
+    val json = Json { ignoreUnknownKeys = true }
+
+    fun url(baseUrl: String, path: String): URI = URI.create(baseUrl.removeSuffix("/") + path)
 
     suspend fun sendExpectingOk(
         httpClient: HttpClient,
