@@ -74,16 +74,7 @@ class MaskinportenClient(
             .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
             .build()
 
-        val response = Http.send(httpClient, request, "Maskinporten") { message, cause ->
-            MaskinportenException(message, cause = cause)
-        }
-        if (response.statusCode() != 200) {
-            throw MaskinportenException(
-                "Maskinporten responded ${response.statusCode()} to the token request",
-                statusCode = response.statusCode(),
-                responseBody = response.body(),
-            )
-        }
+        val response = Http.sendExpectingOk(httpClient, request, "Maskinporten", ::MaskinportenException)
         return parseTokenResponse(response.body())
     }
 
