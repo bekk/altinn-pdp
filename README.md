@@ -120,10 +120,8 @@ The answer is a `PdpAuthorization`:
 | `statusCode`                    | Altinn's XACML status URN, or null                                                                                                                         |
 
 > [!WARNING]
-> A `PERMIT` that carries a `minimumAuthenticationLevel` is **conditional**. XACML expects
-> whoever enforces the decision to honour the obligation, and this library cannot: it never sees
-> your end user's token. Check the level yourself before acting on the permit, or pass it on to
-> something that can.
+> A `PERMIT` that carries a `minimumAuthenticationLevel` is **conditional**. See
+> [Authentication level obligations](#authentication-level-obligations).
 
 > [!IMPORTANT]
 > This is the org number of the customer the systembruker acts **on behalf of**, not your own.
@@ -277,12 +275,6 @@ just the first:
 | `INTERNAL_ERROR`    | 500    | Anything unanticipated                                                           |
 
 Per-field `code` is `MISSING` (absent, null or blank) or `INVALID_FORMAT` (present but wrong shape).
-
-| Status                      | Cause                                                                                                                                                                                               |
-| :-------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `400 Bad Request`           | A field failed validation, the body was malformed, or Altinn itself answered 400. An unknown `resourceId` is _not_ a 400: Altinn answers `200` with `INDETERMINATE` and a processing-error `status` |
-| `502 Bad Gateway`           | Calling Maskinporten or Altinn failed. This includes Altinn answering 401, 403 or 429, which are this service's credentials and quota, not the caller's problem                                     |
-| `500 Internal Server Error` | Anything unanticipated                                                                                                                                                                              |
 
 ### `GET /health/live`
 
