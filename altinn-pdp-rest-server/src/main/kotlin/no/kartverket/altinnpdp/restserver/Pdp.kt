@@ -2,8 +2,6 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
-import io.ktor.server.config.ApplicationConfig
-import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
 import no.kartverket.altinnpdp.client.AltinnEnvironment
@@ -19,7 +17,6 @@ fun Application.configurePdp(client: PdpClient = pdpClientFromConfig()) {
 
 private fun Application.pdpClientFromConfig(): PdpClient {
     val config = environment.config
-    val timeouts = timeoutsFromConfig(config)
     return PdpClient.builder()
         .environment(config.enum<AltinnEnvironment>("altinn.environment"))
         .subscriptionKey(config.required("altinn.subscriptionKey"))
@@ -28,21 +25,14 @@ private fun Application.pdpClientFromConfig(): PdpClient {
         .httpClient(
             JavaPdpHttpClient(
                 HttpClient.newBuilder()
-                    .connectTimeout(timeouts.connect)
+                    .connectTimeout(CONNECT_TIMEOUT)
                     .followRedirects(HttpClient.Redirect.NEVER)
                     .build(),
-                timeouts.request,
+                REQUEST_TIMEOUT,
             ),
         )
         .build()
 }
 
-internal data class Timeouts(val connect: Duration, val request: Duration)
-
-internal fun timeoutsFromConfig(config: ApplicationConfig = MapApplicationConfig()): Timeouts = Timeouts(
-    connect = config.millis("timeouts.connectMs", CONNECT),
-    request = config.millis("timeouts.requestMs", REQUEST),
-)
-
-private const val CONNECT = 2_000L
-private const val REQUEST = 3_000L
+internal val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(2)
+internal val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(3)

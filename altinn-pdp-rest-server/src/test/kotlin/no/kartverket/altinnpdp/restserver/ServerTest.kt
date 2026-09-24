@@ -75,7 +75,7 @@ class ServerTest {
             "http://localhost:${server.address.port}",
             tokenProvider,
             "test-subscription-key",
-            JavaPdpHttpClient(HttpClient.newHttpClient(), timeoutsFromConfig().request),
+            JavaPdpHttpClient(HttpClient.newHttpClient(), REQUEST_TIMEOUT),
         )
 
     private fun authorizeTest(

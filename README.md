@@ -25,7 +25,7 @@
 - [🚀 Getting started](#-getting-started)
   - [Building the client](#building-the-client)
   - [Asking the PDP](#asking-the-pdp)
-  - [Timeouts](#timeouts)
+  - [HTTP client](#http-client)
   - [Running the server](#running-the-server)
 - [🔌 API](#-api)
 - [🔑 Environment variables](#-environment-variables)
@@ -134,10 +134,10 @@ The answer is a `PdpAuthorization`:
 > `consumer` claim, which holds the vendor's org number. Strip the ISO6523 prefix: send
 > `311718371`, not `0192:311718371`.
 
-### Timeouts
+### HTTP client
 
-Timeouts are set on the HTTP client you pass to `httpClient(...)`. It takes a `PdpHttpClient`, so
-you can implement it on the HTTP client you already use, or use `JavaPdpHttpClient`:
+`httpClient(...)` takes a `PdpHttpClient`, and timeouts, proxy and so on are set on it. Implement
+it on the HTTP client you already use, or use `JavaPdpHttpClient`:
 
 ```kotlin
 JavaPdpHttpClient(
@@ -150,9 +150,8 @@ JavaPdpHttpClient(
 > A `PdpHttpClient` must not follow redirects, since the calls carry tokens, and must throw an
 > `IOException` when a call fails.
 
-The server connects within 2 s and waits at most 3 s per call (see
-[Environment variables](#-environment-variables)). A lookup makes at most three calls, so callers
-of `POST /authorize` should allow 10 s.
+The server connects within 2 s and waits at most 3 s per call. A lookup makes at most three
+calls, so callers of `POST /authorize` should allow 10 s.
 
 ### Running the server
 
@@ -197,7 +196,7 @@ The Altinn subscription key and Maskinporten credentials are configured
 server-side (see [Environment variables](#-environment-variables)) - callers never supply them.
 
 Allow at least 10 seconds for a response, so a stalled Altinn reaches you as a `502` rather than
-as a timeout of your own - see [Timeouts](#timeouts).
+as a timeout of your own - see [HTTP client](#http-client).
 
 Response body (`200 OK`):
 
@@ -299,8 +298,6 @@ API.
 | `MASKINPORTEN_CLIENT_JWK` | yes | - |
 | `ALTINN_SUBSCRIPTION_KEY` | yes | - |
 | `ALTINN_ENVIRONMENT` | no | `TT02` |
-| `ALTINN_CONNECT_TIMEOUT_MS` | no | `2000` |
-| `ALTINN_REQUEST_TIMEOUT_MS` | no | `3000` |
 | `ACCESS_LOG_ENABLED` | no | `true` |
 
 See `.env.example` for what each variable is and where to get it.

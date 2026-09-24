@@ -15,8 +15,3 @@ maskinporten:
 
 accessLog:
   enabled: "$?ACCESS_LOG_ENABLED"
-
-# See "Timeouts" in the README.
-timeouts:
-  connectMs: "$?ALTINN_CONNECT_TIMEOUT_MS"
-  requestMs: "$?ALTINN_REQUEST_TIMEOUT_MS"
