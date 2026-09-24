@@ -7,7 +7,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.http.Timeouts
-import no.kartverket.altinnpdp.client.support.MutableClock
 import no.kartverket.altinnpdp.client.support.NOW
 import no.kartverket.altinnpdp.client.support.TOKEN_PATH
 import no.kartverket.altinnpdp.client.support.TestHttpServer
@@ -43,7 +42,7 @@ class MaskinportenAltinnTokenProviderTest {
     fun `fetches a Maskinporten token and exchanges it for an Altinn token`() = runBlocking {
         server.serveBothTokens()
 
-        val token = maskinportenAltinnTokenProvider(server, clock = MutableClock()).getAltinnToken()
+        val token = maskinportenAltinnTokenProvider(server).getAltinnToken()
 
         assertEquals("Bearer mp-token", server.lastRequest(exchangePath).header("Authorization"))
         assertEquals(NOW.plusSeconds(300).epochSecond, token.expiresAt.epochSecond)
@@ -52,7 +51,7 @@ class MaskinportenAltinnTokenProviderTest {
     @Test
     fun `serves both tokens from cache on later calls`() = runBlocking {
         server.serveBothTokens()
-        val provider = maskinportenAltinnTokenProvider(server, clock = MutableClock())
+        val provider = maskinportenAltinnTokenProvider(server)
 
         repeat(3) { provider.getAltinnToken() }
 
@@ -76,7 +75,7 @@ class MaskinportenAltinnTokenProviderTest {
     @Test
     fun `concurrent callers on cold caches fetch one of each token`() = runBlocking {
         server.serveBothTokens()
-        val provider = maskinportenAltinnTokenProvider(server, clock = MutableClock())
+        val provider = maskinportenAltinnTokenProvider(server)
 
         coroutineScope {
             List(20) { async(Dispatchers.Default) { provider.getAltinnToken() } }.awaitAll()

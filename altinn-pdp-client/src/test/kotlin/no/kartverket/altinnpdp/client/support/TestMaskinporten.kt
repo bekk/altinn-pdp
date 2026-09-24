@@ -41,7 +41,7 @@ internal fun TestHttpServer.serveBothTokens(altinnTokenLifetime: Duration = Dura
 internal fun maskinportenAltinnTokenProvider(
     server: TestHttpServer,
     timeouts: Timeouts = Timeouts.DEFAULT,
-    clock: Clock = Clock.systemUTC(),
+    clock: Clock = MutableClock(),
 ) = MaskinportenAltinnTokenProvider(
     maskinportenClient = MaskinportenClient(
         maskinportenConfig(tokenUrl = server.baseUrl + TOKEN_PATH),
