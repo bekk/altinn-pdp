@@ -195,7 +195,7 @@ class ServerTest {
     }
 
     @Test
-    fun `authorize rejects an customerOrganizationNumber that isn't 9 digits`() = authorizeTest(decision = "Permit") {
+    fun `authorize rejects a customerOrganizationNumber that isn't 9 digits`() = authorizeTest(decision = "Permit") {
         val response = client.post("/authorize") {
             contentType(ContentType.Application.Json)
             setBody(
@@ -343,7 +343,7 @@ class ServerTest {
     }
 
     @Test
-    fun `an customerOrganizationNumber with a bad check digit is rejected before Altinn is called`() =
+    fun `a customerOrganizationNumber with a bad check digit is rejected before Altinn is called`() =
         authorizeTest(decision = "Permit") {
             val response = client.post("/authorize") {
                 contentType(ContentType.Application.Json)

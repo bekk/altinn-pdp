@@ -24,7 +24,6 @@ fun Application.module() {
     configureRouting()
 }
 
-// Its own function, not inlined above, so a test can compose the routes with only the plugins it needs.
 fun Application.configureRouting() {
     routing {
         get("/health/live") {

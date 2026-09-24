@@ -2,7 +2,6 @@ package no.kartverket.altinnpdp.client
 
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.auth.AltinnScopes
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider

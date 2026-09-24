@@ -62,7 +62,7 @@ class PdpRequestValidationTest {
     }
 
     @Test
-    fun `an customerOrganizationNumber of the wrong length is reported as such`() {
+    fun `a customerOrganizationNumber of the wrong length is reported as such`() {
         assertEquals(
             "customerOrganizationNumber must be exactly 9 digits",
             validate(customerOrganizationNumber = "92360901").single().message,
