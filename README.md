@@ -148,7 +148,8 @@ JavaPdpHttpClient(
 
 > [!IMPORTANT]
 > A `PdpHttpClient` must not follow redirects, since the calls carry tokens, and must throw an
-> `IOException` when a call fails.
+> `IOException` when a call fails. OkHttp and Ktor client follow redirects by default, so turn
+> that off if you build on one of them.
 
 The server connects within 2 s and waits at most 3 s per call. A lookup makes at most three
 calls, so callers of `POST /authorize` should allow 10 s.
