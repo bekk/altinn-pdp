@@ -13,7 +13,7 @@ class MaskinportenAltinnTokenProvider(
     private val exchanger: AltinnTokenExchanger,
     private val timeouts: Timeouts,
     clock: Clock = Clock.systemUTC(),
-    refreshLeeway: Duration = Duration.ofSeconds(30),
+    refreshLeeway: Duration = TokenCache.DEFAULT_REFRESH_LEEWAY,
 ) : AltinnTokenProvider {
 
     constructor(
@@ -22,7 +22,7 @@ class MaskinportenAltinnTokenProvider(
         timeouts: Timeouts,
         httpClient: HttpClient = Http.defaultClient(),
         clock: Clock = Clock.systemUTC(),
-        refreshLeeway: Duration = Duration.ofSeconds(30),
+        refreshLeeway: Duration = TokenCache.DEFAULT_REFRESH_LEEWAY,
     ) : this(
         MaskinportenClient(maskinportenConfig, timeouts, httpClient, clock, refreshLeeway),
         AltinnTokenExchanger(environment, timeouts, httpClient),
