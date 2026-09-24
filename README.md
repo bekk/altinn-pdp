@@ -314,8 +314,7 @@ Never commit `.env`, and never print secrets in logs.
 
 ## 🌍 Environments
 
-`AltinnEnvironment` fixes, from one choice, every value that has to stay consistent across an
-environment: the Altinn platform base URL and the Maskinporten token endpoint.
+`environment` decides which Altinn and Maskinporten the client talks to:
 
 | Environment | Altinn platform                   | Maskinporten                         |
 | :---------- | :-------------------------------- | :----------------------------------- |
