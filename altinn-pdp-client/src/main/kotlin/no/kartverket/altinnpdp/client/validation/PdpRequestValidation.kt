@@ -1,5 +1,8 @@
 package no.kartverket.altinnpdp.client.validation
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class PdpValidationCode {
     MISSING,
     INVALID_FORMAT,
@@ -27,23 +30,33 @@ object PdpRequestValidation {
         resourceId: String?,
         customerOrganizationNumber: String?,
         action: String?,
-    ): List<PdpValidationError> = buildList {
-        check(systemuserId, "systemuserId") {
-            it.matches(UUID_FORMAT) to "must be a UUID"
-        }
-        check(resourceId, "resourceId") {
+    ): List<PdpValidationError> = listOfNotNull(
+        systemuserIdError(systemuserId),
+        resourceIdError(resourceId),
+        organizationNumberError(customerOrganizationNumber),
+        actionError(action),
+    )
+
+    internal fun systemuserIdError(value: String?): PdpValidationError? =
+        check(value, "systemuserId") { it.matches(UUID_FORMAT) to "must be a UUID" }
+
+    internal fun resourceIdError(value: String?): PdpValidationError? =
+        check(value, "resourceId") {
             it.matches(RESOURCE_ID_FORMAT) to
                 "must be at least 4 characters of lowercase letters, digits, underscore or hyphen"
         }
-        check(customerOrganizationNumber, "customerOrganizationNumber") {
+
+    internal fun organizationNumberError(value: String?): PdpValidationError? =
+        check(value, "customerOrganizationNumber") {
             when {
                 !it.matches(ORGANIZATION_NUMBER_FORMAT) -> false to "must be exactly 9 digits"
                 !hasValidMod11(it) -> false to "must have a valid MOD11 check digit"
                 else -> true to ""
             }
         }
-        check(action, "action") { true to "" }
-    }
+
+    internal fun actionError(value: String?): PdpValidationError? =
+        check(value, "action") { true to "" }
 
     fun hasValidMod11(customerOrganizationNumber: String): Boolean {
         if (!customerOrganizationNumber.matches(ORGANIZATION_NUMBER_FORMAT)) return false
@@ -53,16 +66,15 @@ object PdpRequestValidation {
         return control != 10 && control == customerOrganizationNumber[8] - '0'
     }
 
-    private inline fun MutableList<PdpValidationError>.check(
+    private inline fun check(
         value: String?,
         field: String,
         rule: (String) -> Pair<Boolean, String>,
-    ) {
+    ): PdpValidationError? {
         if (value.isNullOrBlank()) {
-            add(PdpValidationError(field, PdpValidationCode.MISSING, "$field is required"))
-            return
+            return PdpValidationError(field, PdpValidationCode.MISSING, "$field is required")
         }
         val (ok, message) = rule(value)
-        if (!ok) add(PdpValidationError(field, PdpValidationCode.INVALID_FORMAT, "$field $message"))
+        return if (ok) null else PdpValidationError(field, PdpValidationCode.INVALID_FORMAT, "$field $message")
     }
 }

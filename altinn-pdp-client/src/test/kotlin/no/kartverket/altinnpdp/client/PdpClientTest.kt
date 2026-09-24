@@ -145,11 +145,17 @@ class PdpClientTest {
     fun `rejects blank arguments before making a call`() = runBlocking {
         val client = testPdpClient("http://127.0.0.1:1")
 
-        assertFailsWith<IllegalArgumentException> { client.authorize(" ", "test-resource", "923609016", "read") }
-        assertFailsWith<IllegalArgumentException> { client.authorize(SAMPLE_SYSTEMUSER_ID, "", "923609016", "read") }
-        assertFailsWith<IllegalArgumentException> { client.authorize(SAMPLE_SYSTEMUSER_ID, "test-resource", "", "read") }
         assertFailsWith<IllegalArgumentException> {
-            client.authorize(SAMPLE_SYSTEMUSER_ID, "test-resource", "923609016", " ")
+            client.authorize(SystemUserId(" "), ResourceId("test-resource"), OrganizationNumber("923609016"), ActionId("read"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            client.authorize(SystemUserId(SAMPLE_SYSTEMUSER_ID), ResourceId(""), OrganizationNumber("923609016"), ActionId("read"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            client.authorize(SystemUserId(SAMPLE_SYSTEMUSER_ID), ResourceId("test-resource"), OrganizationNumber(""), ActionId("read"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            client.authorize(SystemUserId(SAMPLE_SYSTEMUSER_ID), ResourceId("test-resource"), OrganizationNumber("923609016"), ActionId(" "))
         }
         Unit
     }

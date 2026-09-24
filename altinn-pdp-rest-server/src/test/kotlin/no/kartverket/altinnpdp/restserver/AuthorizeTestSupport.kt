@@ -11,7 +11,7 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.PdpClient
-import no.kartverket.altinnpdp.client.auth.AccessToken
+import no.kartverket.altinnpdp.client.auth.AltinnToken
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
@@ -23,11 +23,11 @@ internal const val OK_STATUS = "urn:oasis:names:tc:xacml:1.0:status:ok"
 internal const val SAMPLE_SYSTEMUSER_ID = "1725580f-70f4-4ace-a748-4f912497a0d7"
 
 internal val fakeTokenProvider = object : AltinnTokenProvider {
-    override suspend fun getAltinnToken() = AccessToken("fake-token", Instant.now().plusSeconds(60))
+    override suspend fun getAltinnToken() = AltinnToken("fake-token", Instant.now().plusSeconds(60))
 }
 
 internal fun failingTokenProvider(failure: Throwable) = object : AltinnTokenProvider {
-    override suspend fun getAltinnToken(): AccessToken = throw failure
+    override suspend fun getAltinnToken(): AltinnToken = throw failure
 }
 
 /** The body every test starts from; a `null` leaves the field out of the JSON entirely. */

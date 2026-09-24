@@ -7,12 +7,10 @@ import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
 import no.kartverket.altinnpdp.client.exception.PdpException
-import no.kartverket.altinnpdp.client.exception.PdpValidationException
 import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.Timeouts
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
-import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -36,28 +34,24 @@ class PdpClient(
     private val authorizeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + AUTHORIZE_PATH)
 
     suspend fun authorize(
-        systemuserId: String,
-        resourceId: String,
-        customerOrganizationNumber: String,
-        action: String,
-    ): PdpAuthorization {
-        val errors = PdpRequestValidation.validate(systemuserId, resourceId, customerOrganizationNumber, action)
-        if (errors.isNotEmpty()) throw PdpValidationException(errors)
-
-        return Http.withBudget(
+        systemuserId: SystemUserId,
+        resourceId: ResourceId,
+        customerOrganizationNumber: OrganizationNumber,
+        action: ActionId,
+    ): PdpAuthorization =
+        Http.withBudget(
             budget = timeouts.total,
             operation = "The PDP authorization lookup",
             exception = { message -> PdpException(message) },
         ) {
             fetchAuthorization(systemuserId, resourceId, customerOrganizationNumber, action)
         }
-    }
 
     private suspend fun fetchAuthorization(
-        subject: String,
-        resource: String,
-        org: String,
-        actionId: String,
+        subject: SystemUserId,
+        resource: ResourceId,
+        org: OrganizationNumber,
+        actionId: ActionId,
     ): PdpAuthorization {
         val token = tokenProvider.getAltinnToken()
         val body = json.encodeToString(

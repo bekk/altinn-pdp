@@ -1,6 +1,10 @@
 package no.kartverket.altinnpdp.restserver.models
 
 import kotlinx.serialization.Serializable
+import no.kartverket.altinnpdp.client.ActionId
+import no.kartverket.altinnpdp.client.OrganizationNumber
+import no.kartverket.altinnpdp.client.ResourceId
+import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.client.exception.PdpValidationException
 import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 
@@ -15,13 +19,18 @@ data class AuthorizeRequest(
     fun validated(): Validated {
         val errors = PdpRequestValidation.validate(systemuserId, resourceId, customerOrganizationNumber, action)
         if (errors.isNotEmpty()) throw PdpValidationException(errors)
-        return Validated(systemuserId!!, resourceId!!, customerOrganizationNumber!!, action!!)
+        return Validated(
+            SystemUserId(systemuserId!!),
+            ResourceId(resourceId!!),
+            OrganizationNumber(customerOrganizationNumber!!),
+            ActionId(action!!),
+        )
     }
 
     data class Validated(
-        val systemuserId: String,
-        val resourceId: String,
-        val customerOrganizationNumber: String,
-        val action: String,
+        val systemuserId: SystemUserId,
+        val resourceId: ResourceId,
+        val customerOrganizationNumber: OrganizationNumber,
+        val action: ActionId,
     )
 }

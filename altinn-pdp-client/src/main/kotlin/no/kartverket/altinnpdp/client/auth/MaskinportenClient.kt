@@ -33,10 +33,10 @@ class MaskinportenClient(
     private val clock: Clock = Clock.systemUTC(),
     refreshLeeway: Duration = Duration.ofSeconds(30),
 ) {
-    private val cache = TokenCache(clock, refreshLeeway)
+    private val cache = TokenCache<MaskinportenToken>(clock, refreshLeeway)
     private val signingKey: RSAKey = parseSigningKey(config.jwk)
 
-    suspend fun getToken(): AccessToken = cache.get { fetchToken() }
+    suspend fun getToken(): MaskinportenToken = cache.get { fetchToken() }
 
     /** Exposed for troubleshooting - call [getToken] for normal use. */
     fun createClientAssertion(): String {
@@ -62,7 +62,7 @@ class MaskinportenClient(
         return jwt.serialize()
     }
 
-    private suspend fun fetchToken(): AccessToken {
+    private suspend fun fetchToken(): MaskinportenToken {
         val body = "grant_type=${urlEncode(GRANT_TYPE)}&assertion=${urlEncode(createClientAssertion())}"
 
         val request = HttpRequest.newBuilder(URI.create(config.tokenUrl))
@@ -76,7 +76,7 @@ class MaskinportenClient(
         return parseTokenResponse(response.body())
     }
 
-    private fun parseTokenResponse(body: String): AccessToken {
+    private fun parseTokenResponse(body: String): MaskinportenToken {
         val parsed = try {
             json.decodeFromString(MaskinportenTokenResponse.serializer(), body)
         } catch (e: SerializationException) {
@@ -90,7 +90,7 @@ class MaskinportenClient(
         }
         val lifetimeSeconds = parsed.expiresIn
             ?: throw MaskinportenException("The response from Maskinporten had no expires_in")
-        return AccessToken(parsed.accessToken, clock.instant().plusSeconds(lifetimeSeconds))
+        return MaskinportenToken(parsed.accessToken, clock.instant().plusSeconds(lifetimeSeconds))
     }
 
     companion object {

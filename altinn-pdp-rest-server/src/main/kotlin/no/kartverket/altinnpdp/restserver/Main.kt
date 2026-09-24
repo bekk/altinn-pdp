@@ -43,7 +43,7 @@ fun Application.configureRouting() {
             call.respond(
                 AuthorizeResponse(
                     permit = authorization.isPermit,
-                    decision = authorization.decision.name,
+                    decision = authorization.decision,
                     status = authorization.statusCode,
                     minimumAuthenticationLevel = authorization.minimumAuthenticationLevel,
                     minimumAuthenticationLevelOrg = authorization.minimumAuthenticationLevelOrg,

@@ -5,8 +5,8 @@ import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.http.Timeouts
 import no.kartverket.altinnpdp.client.support.FakeTokenProvider
-import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.client.support.TestKeys
+import no.kartverket.altinnpdp.client.support.authorizeSample
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -118,7 +118,7 @@ class PdpClientBuilderTest {
             .build()
 
         val e = assertFailsWith<PdpException> {
-            client.authorize(SAMPLE_SYSTEMUSER_ID, "test-resource", "923609016", "read")
+            client.authorizeSample()
         }
 
         assertContains(e.message!!, "50 ms")

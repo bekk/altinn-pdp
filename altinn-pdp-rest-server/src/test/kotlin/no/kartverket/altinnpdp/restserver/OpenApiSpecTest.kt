@@ -14,7 +14,6 @@ import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
-import java.lang.reflect.Modifier
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -51,12 +50,7 @@ class OpenApiSpecTest {
 
     @Test
     fun `the spec lists every error code the API can return`() {
-        val errorCodes = ErrorCode::class.java.declaredFields
-            .filter { Modifier.isStatic(it.modifiers) && it.type == String::class.java }
-            .map { it.get(null) as String }
-            .toSet()
-
-        assertEquals(errorCodes, allowedValues("ErrorResponse", "code"))
+        assertEquals(ErrorCode.entries.map { it.name }.toSet(), allowedValues("ErrorResponse", "code"))
     }
 
     @Test
