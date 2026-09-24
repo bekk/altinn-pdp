@@ -14,7 +14,6 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -117,14 +116,6 @@ class PdpClientTest {
 
             assertEquals(expectedDecision, client(server.baseUrl).authorizeSample().decision, "for $value")
         }
-    }
-
-    @Test
-    fun `isPermitted collapses the decision to a boolean`() = runBlocking {
-        server.on(path) { TestResponse(body = decision("Permit")) }
-        assertTrue(client(server.baseUrl).isPermitted("1725580f-70f4-4ace-a748-4f912497a0d7", "test-resource", "923609016", "read"))
-        server.on(path) { TestResponse(body = decision("NotApplicable")) }
-        assertFalse(client(server.baseUrl).isPermitted("1725580f-70f4-4ace-a748-4f912497a0d7", "test-resource", "923609016", "read"))
     }
 
     @Test

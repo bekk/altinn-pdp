@@ -38,8 +38,6 @@ class MaskinportenClient(
 
     suspend fun getToken(): AccessToken = cache.get { fetchToken() }
 
-    suspend fun invalidate() = cache.invalidate()
-
     /** Exposed for troubleshooting - call [getToken] for normal use. */
     fun createClientAssertion(): String {
         val now = clock.instant()

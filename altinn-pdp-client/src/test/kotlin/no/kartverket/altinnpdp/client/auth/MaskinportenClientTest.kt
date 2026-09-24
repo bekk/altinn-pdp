@@ -223,16 +223,4 @@ class MaskinportenClientTest {
         assertEquals("token-2", client.getToken().value, "now within the 30s refresh leeway")
         assertEquals(2, server.requestCount(tokenPath))
     }
-
-    @Test
-    fun `invalidate forces the next call to fetch again`() = runBlocking {
-        server.on(tokenPath) { TestResponse(body = tokenResponse()) }
-        val client = MaskinportenClient(config(server.baseUrl + tokenPath), Timeouts.DEFAULT, clock = fixedClock())
-
-        client.getToken()
-        client.invalidate()
-        client.getToken()
-
-        assertEquals(2, server.requestCount(tokenPath))
-    }
 }

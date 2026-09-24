@@ -77,13 +77,6 @@ class PdpClient(
         return authorizationOf(response)
     }
 
-    suspend fun isPermitted(
-        systemuserId: String,
-        resourceId: String,
-        customerOrganizationNumber: String,
-        action: String,
-    ): Boolean = authorize(systemuserId, resourceId, customerOrganizationNumber, action).isPermit
-
     private fun authorizationOf(response: HttpResponse<String>): PdpAuthorization {
         val parsed = try {
             json.decodeFromString(XacmlAuthorizationResponse.serializer(), response.body())
