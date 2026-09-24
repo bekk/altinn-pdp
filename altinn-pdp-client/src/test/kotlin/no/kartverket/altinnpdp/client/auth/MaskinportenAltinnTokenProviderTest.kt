@@ -7,12 +7,15 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.http.Timeouts
-import no.kartverket.altinnpdp.client.support.MutableClock
 import no.kartverket.altinnpdp.client.support.NOW
+import no.kartverket.altinnpdp.client.support.TOKEN_PATH
 import no.kartverket.altinnpdp.client.support.TestHttpServer
-import no.kartverket.altinnpdp.client.support.TestKeys
 import no.kartverket.altinnpdp.client.support.TestResponse
+import no.kartverket.altinnpdp.client.support.maskinportenAltinnTokenProvider
+import no.kartverket.altinnpdp.client.support.maskinportenTokenResponse
+import no.kartverket.altinnpdp.client.support.serveBothTokens
 import no.kartverket.altinnpdp.client.support.signedJwt
+import no.kartverket.altinnpdp.client.support.slowly
 import java.time.Duration
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -33,36 +36,13 @@ class MaskinportenAltinnTokenProviderTest {
     @AfterTest
     fun stopServer() = server.close()
 
-    private val tokenPath = "/token"
     private val exchangePath = AltinnTokenExchanger.EXCHANGE_PATH
-
-    private fun provider(server: TestHttpServer, clock: MutableClock = MutableClock()) =
-        MaskinportenAltinnTokenProvider(
-            maskinportenClient = MaskinportenClient(
-                MaskinportenConfig(
-                    tokenUrl = server.baseUrl + tokenPath,
-                    clientId = "my-client-id",
-                    jwk = TestKeys.rsa.toJSONString(),
-                    scopes = listOf(AltinnScopes.AUTHORIZE),
-                ),
-                Timeouts.DEFAULT,
-                clock = clock,
-            ),
-            exchanger = AltinnTokenExchanger(server.baseUrl, Timeouts.DEFAULT),
-            timeouts = Timeouts.DEFAULT,
-            clock = clock,
-        )
-
-    private fun TestHttpServer.serveBothTokens(altinnTokenLifetime: Duration = Duration.ofSeconds(300)) = apply {
-        on(tokenPath) { TestResponse(body = """{"access_token":"mp-token","expires_in":3600}""") }
-        on(exchangePath) { TestResponse(body = signedJwt(NOW.plus(altinnTokenLifetime))) }
-    }
 
     @Test
     fun `fetches a Maskinporten token and exchanges it for an Altinn token`() = runBlocking {
         server.serveBothTokens()
 
-        val token = provider(server).getAltinnToken()
+        val token = maskinportenAltinnTokenProvider(server).getAltinnToken()
 
         assertEquals("Bearer mp-token", server.lastRequest(exchangePath).header("Authorization"))
         assertEquals(NOW.plusSeconds(300).epochSecond, token.expiresAt.epochSecond)
@@ -71,38 +51,20 @@ class MaskinportenAltinnTokenProviderTest {
     @Test
     fun `serves both tokens from cache on later calls`() = runBlocking {
         server.serveBothTokens()
-        val provider = provider(server)
+        val provider = maskinportenAltinnTokenProvider(server)
 
         repeat(3) { provider.getAltinnToken() }
 
-        assertEquals(1, server.requestCount(tokenPath))
+        assertEquals(1, server.requestCount(TOKEN_PATH))
         assertEquals(1, server.requestCount(exchangePath))
     }
 
     @Test
     fun `the total budget covers the exchange as well as the Maskinporten call`() = runBlocking {
         val timeouts = Timeouts(request = Duration.ofSeconds(5), total = Duration.ofMillis(350))
-        server.on(tokenPath) {
-            Thread.sleep(200)
-            TestResponse(body = """{"access_token":"mp-token","expires_in":3600}""")
-        }
-        server.on(exchangePath) {
-            Thread.sleep(200)
-            TestResponse(body = signedJwt(NOW.plusSeconds(300)))
-        }
-        val provider = MaskinportenAltinnTokenProvider(
-            maskinportenClient = MaskinportenClient(
-                MaskinportenConfig(
-                    tokenUrl = server.baseUrl + tokenPath,
-                    clientId = "my-client-id",
-                    jwk = TestKeys.rsa.toJSONString(),
-                    scopes = listOf(AltinnScopes.AUTHORIZE),
-                ),
-                timeouts,
-            ),
-            exchanger = AltinnTokenExchanger(server.baseUrl, timeouts),
-            timeouts = timeouts,
-        )
+        server.on(TOKEN_PATH, slowly(200, TestResponse(body = maskinportenTokenResponse())))
+        server.on(exchangePath, slowly(200, TestResponse(body = signedJwt(NOW.plusSeconds(300)))))
+        val provider = maskinportenAltinnTokenProvider(server, timeouts)
 
         val e = assertFailsWith<AltinnException> { provider.getAltinnToken() }
 
@@ -113,13 +75,13 @@ class MaskinportenAltinnTokenProviderTest {
     @Test
     fun `concurrent callers on cold caches fetch one of each token`() = runBlocking {
         server.serveBothTokens()
-        val provider = provider(server)
+        val provider = maskinportenAltinnTokenProvider(server)
 
         coroutineScope {
             List(20) { async(Dispatchers.Default) { provider.getAltinnToken() } }.awaitAll()
         }
 
-        assertEquals(1, server.requestCount(tokenPath))
+        assertEquals(1, server.requestCount(TOKEN_PATH))
         assertEquals(1, server.requestCount(exchangePath))
     }
 }
