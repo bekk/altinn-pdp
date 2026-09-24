@@ -1,10 +1,3 @@
-ktor:
-  application:
-    modules:
-      - no.kartverket.altinnpdp.restserver.MainKt.module
-  deployment:
-    port: 8080
-
 altinn:
   environment: "$ALTINN_ENVIRONMENT:TT02"
   subscriptionKey: "$ALTINN_SUBSCRIPTION_KEY"

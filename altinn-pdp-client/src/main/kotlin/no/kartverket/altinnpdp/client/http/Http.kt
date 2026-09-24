@@ -1,11 +1,16 @@
 package no.kartverket.altinnpdp.client.http
 
+import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 import java.io.IOException
+import java.net.URI
 
 internal object Http {
 
-    fun withoutTrailingSlash(url: String): String = if (url.endsWith("/")) url.dropLast(1) else url
+    /** Altinn and Maskinporten answer with more fields than we model. */
+    val json = Json { ignoreUnknownKeys = true }
+
+    fun url(baseUrl: String, path: String): URI = URI.create(baseUrl.removeSuffix("/") + path)
 
     suspend fun sendExpectingOk(
         httpClient: PdpHttpClient,

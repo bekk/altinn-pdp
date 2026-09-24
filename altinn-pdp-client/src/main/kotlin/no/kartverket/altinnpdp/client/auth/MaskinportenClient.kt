@@ -11,7 +11,6 @@ import com.nimbusds.jwt.SignedJWT
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.PdpHttpClient
@@ -29,7 +28,7 @@ class MaskinportenClient(
     private val config: MaskinportenConfig,
     private val httpClient: PdpHttpClient,
     private val clock: Clock = Clock.systemUTC(),
-    refreshLeeway: Duration = Duration.ofSeconds(30),
+    refreshLeeway: Duration = TokenCache.DEFAULT_REFRESH_LEEWAY,
 ) {
     private val cache = TokenCache(clock, refreshLeeway)
     private val signingKey: RSAKey = parseSigningKey(config.jwk)
@@ -76,7 +75,7 @@ class MaskinportenClient(
 
     private fun parseTokenResponse(body: String): AccessToken {
         val parsed = try {
-            json.decodeFromString(MaskinportenTokenResponse.serializer(), body)
+            Http.json.decodeFromString(MaskinportenTokenResponse.serializer(), body)
         } catch (e: SerializationException) {
             throw MaskinportenException(
                 "Failed to parse the response from Maskinporten as JSON: ${e.message}",
@@ -93,9 +92,6 @@ class MaskinportenClient(
 
     companion object {
         private const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-
-        // The token response carries fields we don't model (token_type, scope, ...); ignore them.
-        private val json = Json { ignoreUnknownKeys = true }
 
         private fun urlEncode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
 

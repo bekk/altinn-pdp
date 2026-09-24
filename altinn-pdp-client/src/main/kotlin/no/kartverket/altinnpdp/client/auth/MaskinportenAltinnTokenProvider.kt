@@ -9,7 +9,7 @@ class MaskinportenAltinnTokenProvider(
     private val maskinportenClient: MaskinportenClient,
     private val exchanger: AltinnTokenExchanger,
     clock: Clock = Clock.systemUTC(),
-    refreshLeeway: Duration = Duration.ofSeconds(30),
+    refreshLeeway: Duration = TokenCache.DEFAULT_REFRESH_LEEWAY,
 ) : AltinnTokenProvider {
 
     constructor(
@@ -17,7 +17,7 @@ class MaskinportenAltinnTokenProvider(
         environment: AltinnEnvironment,
         httpClient: PdpHttpClient,
         clock: Clock = Clock.systemUTC(),
-        refreshLeeway: Duration = Duration.ofSeconds(30),
+        refreshLeeway: Duration = TokenCache.DEFAULT_REFRESH_LEEWAY,
     ) : this(
         MaskinportenClient(maskinportenConfig, httpClient, clock, refreshLeeway),
         AltinnTokenExchanger(environment, httpClient),

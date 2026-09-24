@@ -20,7 +20,7 @@ class AltinnTokenExchanger(
         httpClient: PdpHttpClient,
     ) : this(environment.platformBaseUrl, httpClient)
 
-    private val exchangeUrl: URI = URI.create(Http.withoutTrailingSlash(platformBaseUrl) + EXCHANGE_PATH)
+    private val exchangeUrl: URI = Http.url(platformBaseUrl, EXCHANGE_PATH)
 
     suspend fun exchange(maskinportenToken: String): AccessToken {
         val request = PdpHttpRequest("GET", exchangeUrl, mapOf("Authorization" to "Bearer $maskinportenToken"))
