@@ -18,5 +18,5 @@ accessLog:
 
 # See "Timeouts" in the README.
 timeouts:
+  connectMs: "$?ALTINN_CONNECT_TIMEOUT_MS"
   requestMs: "$?ALTINN_REQUEST_TIMEOUT_MS"
-  totalMs: "$?ALTINN_TOTAL_TIMEOUT_MS"

@@ -1,7 +1,6 @@
 package no.kartverket.altinnpdp.restserver
 
 import io.ktor.server.config.MapApplicationConfig
-import no.kartverket.altinnpdp.client.http.Timeouts
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -16,39 +15,32 @@ class PdpTimeoutsTest {
     private val budgetPromisedToCallersInTheReadme: Duration = Duration.ofSeconds(10)
 
     @Test
-    fun `each default sits inside the one containing it, and all of them inside the response budget`() {
+    fun `connecting fits inside a request, and three requests back to back inside the response budget`() {
         val timeouts = timeoutsFromConfig(config())
 
-        assertTrue(timeouts.request < timeouts.total, "request should be inside the total budget")
+        assertTrue(timeouts.connect < timeouts.request, "connecting should fit inside a request")
         assertTrue(
-            timeouts.total < budgetPromisedToCallersInTheReadme,
-            "the total budget should be inside what callers were told to allow",
+            timeouts.request.multipliedBy(3) < budgetPromisedToCallersInTheReadme,
+            "a lookup on cold caches makes three calls, which should fit inside what callers were told to allow",
         )
-    }
-
-    @Test
-    fun `the server sets its own timeouts rather than inheriting the library defaults`() {
-        val timeouts = timeoutsFromConfig(config())
-
-        assertTrue(timeouts.total < Timeouts.DEFAULT_TOTAL)
     }
 
     @Test
     fun `a deployment can override both values`() {
         val timeouts = timeoutsFromConfig(
             config(
-                "timeouts.requestMs" to "1500",
-                "timeouts.totalMs" to "3000",
+                "timeouts.connectMs" to "1500",
+                "timeouts.requestMs" to "3000",
             )
         )
 
-        assertEquals(Duration.ofMillis(1500), timeouts.request)
-        assertEquals(Duration.ofMillis(3000), timeouts.total)
+        assertEquals(Duration.ofMillis(1500), timeouts.connect)
+        assertEquals(Duration.ofMillis(3000), timeouts.request)
     }
 
     @Test
     fun `a blank override falls back to the default instead of failing`() {
-        assertEquals(timeoutsFromConfig(config()).total, timeoutsFromConfig(config("timeouts.totalMs" to "  ")).total)
+        assertEquals(timeoutsFromConfig(config()).request, timeoutsFromConfig(config("timeouts.requestMs" to "  ")).request)
     }
 
     @Test
@@ -63,9 +55,9 @@ class PdpTimeoutsTest {
     @Test
     fun `a non-positive value fails at startup, naming the property`() {
         val e = assertFailsWith<IllegalArgumentException> {
-            timeoutsFromConfig(config("timeouts.totalMs" to "0"))
+            timeoutsFromConfig(config("timeouts.connectMs" to "0"))
         }
 
-        assertContains(e.message!!, "timeouts.totalMs")
+        assertContains(e.message!!, "timeouts.connectMs")
     }
 }

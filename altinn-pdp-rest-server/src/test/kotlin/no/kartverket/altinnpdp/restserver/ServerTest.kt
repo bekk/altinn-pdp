@@ -18,10 +18,12 @@ import no.kartverket.altinnpdp.client.auth.AccessToken
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
+import no.kartverket.altinnpdp.client.http.JavaPdpHttpClient
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
 import java.net.InetSocketAddress
+import java.net.http.HttpClient
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -73,7 +75,7 @@ class ServerTest {
             "http://localhost:${server.address.port}",
             tokenProvider,
             "test-subscription-key",
-            timeoutsFromConfig(),
+            JavaPdpHttpClient(HttpClient.newHttpClient(), timeoutsFromConfig().request),
         )
 
     private fun authorizeTest(

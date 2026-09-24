@@ -90,7 +90,7 @@ val client = PdpClient.builder()
     .subscriptionKey("<subscription key>")
     .maskinportenClientId("<client id>")
     .maskinportenJwk(jwkJson)
-    .timeouts(Timeouts.DEFAULT)
+    .httpClient(JavaPdpHttpClient(HttpClient.newHttpClient(), requestTimeout = Duration.ofSeconds(3)))
     .build()
 ```
 
@@ -136,31 +136,49 @@ The answer is a `PdpAuthorization`:
 
 ### Timeouts
 
-Two values bound a lookup, and `PdpClient.builder()` **requires you to choose them** -
-a library cannot know what call chain it has been dropped into, so it will not decide on your
-behalf. `Timeouts.DEFAULT` carries the reference values below for a caller with no opinion yet,
-but passing it is a deliberate act; `build()` fails if `timeouts(...)` was never called.
+The library sets no timeouts of its own, because it cannot know what call chain it has been
+dropped into. They all belong to the HTTP client you pass to `httpClient(...)`, which is required.
 
-| Timeout | `Timeouts.DEFAULT` | Bounds |
-| :--- | :--- | :--- |
-| `request` | 10 s | one call end to end, connecting included |
-| `total` | 20 s | a whole `authorize(...)` call |
+It takes a `PdpHttpClient`: one method that sends a request and returns the response. Implement it
+on whatever HTTP client you already use, with its timeouts, proxy and logging. For
+`java.net.http`, `JavaPdpHttpClient` is ready-made. It takes the request timeout itself, since
+`java.net.http` can only set that per request:
 
 ```kotlin
+val http = JavaPdpHttpClient(
+    HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build(),
+    requestTimeout = Duration.ofSeconds(3),
+)
+
 val client = PdpClient.builder()
     // ...
-    .timeouts(Timeouts(request = ..., total = ...))
+    .httpClient(http)
     .build()
 ```
 
-`total` is the one that matters most. A lookup on cold caches fetches a Maskinporten token,
-exchanges it and then calls the PDP, so without a budget across all three the worst case is three
-request timeouts back to back. Exceeding it fails the call with a `PdpException`.
+> [!IMPORTANT]
+> Your `PdpHttpClient` must not follow redirects, and must throw an `IOException` when a call fails
+> or times out. These calls carry a client assertion and a bearer token, and a followed redirect
+> would hand them to whatever host the redirect names. `JavaPdpHttpClient` refuses a client that
+> follows them.
+
+The library always passes a full URL, taken from `AltinnEnvironment`, so your client decides how a
+call travels but never where it goes. A base URL on the client could not work anyway: the calls go
+to two hosts, Maskinporten and Altinn.
+
+A lookup on cold caches fetches a Maskinporten token, exchanges it and then calls the PDP, so it
+can take up to three request timeouts back to back. To bound the whole lookup, wrap it in your
+own `withTimeout`:
+
+```kotlin
+val authorization = withTimeout(8.seconds) { client.authorize(...) }
+```
 
 #### Choosing values
 
 The rule: **a timeout must be shorter than the one it sits inside**, and the deeper into the call
-chain you go, the shorter it gets. `request` < `total` < whatever your own caller allows you.
+chain you go, the shorter it gets. Connecting < the request timeout, and three request timeouts <
+whatever your own caller allows you.
 
 Getting this backwards is not merely untidy - it breaks four things at once:
 
@@ -179,38 +197,13 @@ a deadline is an absolute point in time set by the original caller, and each hop
 *left* of it rather than a fresh budget. Fixed, decreasing timeouts are the poor-man's version of
 the same idea - and what this client offers today, since it takes no deadline from its caller.
 
-#### Connecting
-
-Connect timeouts belong to the `HttpClient`, which is the only place `java.net.http` keeps them
-and the only place they can still be set once a client exists. The client this library builds for
-you sets none, so connecting is bounded by `request`, which the JDK counts from before the
-connection is made. To keep connecting on a shorter leash, build the client yourself:
-
-```kotlin
-val http = HttpClient.newBuilder()
-    .connectTimeout(Duration.ofSeconds(2))
-    .followRedirects(HttpClient.Redirect.NEVER)
-    .build()
-
-PdpClient.builder()
-    // ...
-    .httpClient(http)
-    .timeouts(Timeouts(request = ..., total = ...))
-    .build()
-```
-
-> [!IMPORTANT]
-> Set `followRedirects(NEVER)` on any client you pass to `httpClient(...)`. These calls carry a
-> client assertion and a bearer token, and a followed redirect would hand them to whatever host
-> the redirect names. The client this library builds sets it for you; yours is your own.
-
 #### What the server picks
 
-`altinn-pdp-rest-server` is a consumer like any other, so it chooses explicitly rather than
-inheriting the defaults above (`request` 4 s, `total` 8 s, both overridable per
-deployment - see [Environment variables](#-environment-variables)). That leaves roughly **10 s**
-as the response budget callers of `POST /authorize` should allow, so that a stalled Altinn comes
-back to them as a `502` with a message rather than as a timeout of their own.
+`altinn-pdp-rest-server` is a consumer like any other: its `JavaPdpHttpClient` connects within 2 s
+and waits at most 3 s per call, both overridable per deployment (see [Environment variables](#-environment-variables)).
+Three calls back to back is 9 s, which leaves roughly **10 s** as the response budget callers of
+`POST /authorize` should allow, so that a stalled Altinn comes back to them as a `502` with a
+message rather than as a timeout of their own.
 
 ### Running the server
 
@@ -357,8 +350,8 @@ API.
 | `MASKINPORTEN_CLIENT_JWK` | yes | - |
 | `ALTINN_SUBSCRIPTION_KEY` | yes | - |
 | `ALTINN_ENVIRONMENT` | no | `TT02` |
-| `ALTINN_REQUEST_TIMEOUT_MS` | no | `4000` |
-| `ALTINN_TOTAL_TIMEOUT_MS` | no | `8000` |
+| `ALTINN_CONNECT_TIMEOUT_MS` | no | `2000` |
+| `ALTINN_REQUEST_TIMEOUT_MS` | no | `3000` |
 | `ACCESS_LOG_ENABLED` | no | `true` |
 
 See `.env.example` for what each variable is and where to get it.

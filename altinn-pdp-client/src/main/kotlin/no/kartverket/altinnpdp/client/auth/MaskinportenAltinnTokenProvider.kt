@@ -1,17 +1,13 @@
 package no.kartverket.altinnpdp.client.auth
 
 import no.kartverket.altinnpdp.client.AltinnEnvironment
-import no.kartverket.altinnpdp.client.exception.AltinnException
-import no.kartverket.altinnpdp.client.http.Http
-import no.kartverket.altinnpdp.client.http.Timeouts
-import java.net.http.HttpClient
+import no.kartverket.altinnpdp.client.http.PdpHttpClient
 import java.time.Clock
 import java.time.Duration
 
 class MaskinportenAltinnTokenProvider(
     private val maskinportenClient: MaskinportenClient,
     private val exchanger: AltinnTokenExchanger,
-    private val timeouts: Timeouts,
     clock: Clock = Clock.systemUTC(),
     refreshLeeway: Duration = Duration.ofSeconds(30),
 ) : AltinnTokenProvider {
@@ -19,14 +15,12 @@ class MaskinportenAltinnTokenProvider(
     constructor(
         maskinportenConfig: MaskinportenConfig,
         environment: AltinnEnvironment,
-        timeouts: Timeouts,
-        httpClient: HttpClient = Http.defaultClient(),
+        httpClient: PdpHttpClient,
         clock: Clock = Clock.systemUTC(),
         refreshLeeway: Duration = Duration.ofSeconds(30),
     ) : this(
-        MaskinportenClient(maskinportenConfig, timeouts, httpClient, clock, refreshLeeway),
-        AltinnTokenExchanger(environment, timeouts, httpClient),
-        timeouts,
+        MaskinportenClient(maskinportenConfig, httpClient, clock, refreshLeeway),
+        AltinnTokenExchanger(environment, httpClient),
         clock,
         refreshLeeway,
     )
@@ -34,11 +28,5 @@ class MaskinportenAltinnTokenProvider(
     private val cache = TokenCache(clock, refreshLeeway)
 
     override suspend fun getAltinnToken(): AccessToken =
-        Http.withBudget(
-            budget = timeouts.total,
-            operation = "Altinn token retrieval",
-            exception = { message -> AltinnException(message) },
-        ) {
-            cache.get { exchanger.exchange(maskinportenClient.getToken().value) }
-        }
+        cache.get { exchanger.exchange(maskinportenClient.getToken().value) }
 }

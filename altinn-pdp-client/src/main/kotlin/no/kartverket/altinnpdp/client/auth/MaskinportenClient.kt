@@ -14,11 +14,10 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.http.Http
-import no.kartverket.altinnpdp.client.http.Timeouts
+import no.kartverket.altinnpdp.client.http.PdpHttpClient
+import no.kartverket.altinnpdp.client.http.PdpHttpRequest
 import java.net.URI
 import java.net.URLEncoder
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
 import java.nio.charset.StandardCharsets
 import java.text.ParseException
 import java.time.Clock
@@ -28,8 +27,7 @@ import java.util.UUID
 
 class MaskinportenClient(
     private val config: MaskinportenConfig,
-    private val timeouts: Timeouts,
-    private val httpClient: HttpClient = Http.defaultClient(),
+    private val httpClient: PdpHttpClient,
     private val clock: Clock = Clock.systemUTC(),
     refreshLeeway: Duration = Duration.ofSeconds(30),
 ) {
@@ -65,15 +63,15 @@ class MaskinportenClient(
     private suspend fun fetchToken(): AccessToken {
         val body = "grant_type=${urlEncode(GRANT_TYPE)}&assertion=${urlEncode(createClientAssertion())}"
 
-        val request = HttpRequest.newBuilder(URI.create(config.tokenUrl))
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .header("Accept", "application/json")
-            .timeout(timeouts.request)
-            .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
-            .build()
+        val request = PdpHttpRequest(
+            method = "POST",
+            url = URI.create(config.tokenUrl),
+            headers = mapOf("Content-Type" to "application/x-www-form-urlencoded", "Accept" to "application/json"),
+            body = body,
+        )
 
         val response = Http.sendExpectingOk(httpClient, request, "Maskinporten", ::MaskinportenException)
-        return parseTokenResponse(response.body())
+        return parseTokenResponse(response.body)
     }
 
     private fun parseTokenResponse(body: String): AccessToken {
