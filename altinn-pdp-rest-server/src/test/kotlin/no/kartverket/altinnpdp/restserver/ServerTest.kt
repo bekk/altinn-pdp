@@ -1,103 +1,25 @@
 package no.kartverket.altinnpdp.restserver
 
-import com.sun.net.httpserver.HttpServer
 import io.ktor.client.request.get
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import no.kartverket.altinnpdp.client.PdpClient
-import no.kartverket.altinnpdp.client.auth.AccessToken
-import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
-import no.kartverket.altinnpdp.client.http.JavaPdpHttpClient
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
-import java.net.InetSocketAddress
-import java.net.http.HttpClient
-import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ServerTest {
-
-    private val fakeTokenProvider = object : AltinnTokenProvider {
-        override suspend fun getAltinnToken() = AccessToken("fake-token", Instant.now().plusSeconds(60))
-    }
-
-    private fun stubPdpServer(
-        decision: String,
-        statusCode: Int = 200,
-        obligations: Boolean = false,
-    ): HttpServer {
-        val server = HttpServer.create(InetSocketAddress("localhost", 0), 0)
-        server.createContext(PdpClient.AUTHORIZE_PATH) { exchange ->
-            val body = pdpBody(decision, obligations).toByteArray()
-            exchange.sendResponseHeaders(statusCode, body.size.toLong())
-            exchange.responseBody.use { it.write(body) }
-        }
-        server.start()
-        return server
-    }
-
-    // Copied from a real TT02 answer.
-    private fun pdpBody(decision: String, obligations: Boolean): String {
-        val obligationsJson = if (obligations) {
-            """[{"id":"urn:altinn:obligation:authenticationLevel1","attributeAssignment":[
-               {"attributeId":"urn:altinn:obligation1-assignment1","value":"3",
-                "category":"urn:altinn:minimum-authenticationlevel"}]},
-               {"id":"urn:altinn:obligation:authenticationLevel2","attributeAssignment":[
-               {"attributeId":"urn:altinn:obligation2-assignment2","value":"3",
-                "category":"urn:altinn:minimum-authenticationlevel-org"}]}]"""
-                .trimIndent().replace("\n", "").replace(" ", "")
-        } else {
-            "null"
-        }
-        return """{"response":[{"decision":"$decision","status":{"statusMessage":null,"statusDetails":null,
-            "statusCode":{"value":"$OK_STATUS","statusCode":null}},"obligations":$obligationsJson,
-            "associateAdvice":null,"category":null,"policyIdentifierList":null}]}"""
-            .trimIndent().replace("\n", "")
-    }
-
-    private fun pdpClientAgainst(server: HttpServer, tokenProvider: AltinnTokenProvider): PdpClient =
-        PdpClient(
-            "http://localhost:${server.address.port}",
-            tokenProvider,
-            "test-subscription-key",
-            JavaPdpHttpClient(HttpClient.newHttpClient(), REQUEST_TIMEOUT),
-        )
-
-    private fun authorizeTest(
-        decision: String,
-        statusCode: Int = 200,
-        obligations: Boolean = false,
-        tokenProvider: AltinnTokenProvider = fakeTokenProvider,
-        block: suspend ApplicationTestBuilder.() -> Unit,
-    ) = testApplication {
-        val server = stubPdpServer(decision, statusCode, obligations)
-        try {
-            application {
-                configureSerialization()
-                configureErrorHandling()
-                configurePdp(pdpClientAgainst(server, tokenProvider))
-                configureRouting()
-            }
-            block()
-        } finally {
-            server.stop(0)
-        }
-    }
 
     @Test
     fun `test health liveness endpoint`() = testApplication {
@@ -124,187 +46,27 @@ class ServerTest {
     }
 
     @Test
-    fun `authorize returns the PDP decision`() = authorizeTest(decision = "Permit") {
-        val response = client.post("/authorize") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","customerOrganizationNumber":"923609016","action":"read"}""",
-            )
-        }
-
-        assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals(
-            AuthorizeResponse(permit = true, decision = "PERMIT", status = OK_STATUS),
-            Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
+    fun `authorize returns every decision Altinn can answer with`() {
+        val expected = mapOf(
+            "Permit" to AuthorizeResponse(permit = true, decision = "PERMIT", status = OK_STATUS),
+            "Deny" to AuthorizeResponse(permit = false, decision = "DENY", status = OK_STATUS),
+            "NotApplicable" to AuthorizeResponse(permit = false, decision = "NOT_APPLICABLE", status = OK_STATUS),
+            "Indeterminate" to AuthorizeResponse(permit = false, decision = "INDETERMINATE", status = OK_STATUS),
         )
-    }
+        for ((decision, expectedResponse) in expected) {
+            authorizeTest(decision = decision) {
+                val response = postAuthorize()
 
-    @Test
-    fun `authorize returns a Deny decision`() = authorizeTest(decision = "Deny") {
-        val response = client.post("/authorize") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","customerOrganizationNumber":"923609016","action":"read"}""",
-            )
-        }
-
-        assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals(
-            AuthorizeResponse(permit = false, decision = "DENY", status = OK_STATUS),
-            Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
-        )
-    }
-
-    @Test
-    fun `authorize returns a NotApplicable decision`() = authorizeTest(decision = "NotApplicable") {
-        val response = client.post("/authorize") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","customerOrganizationNumber":"923609016","action":"read"}""",
-            )
-        }
-
-        assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals(
-            AuthorizeResponse(permit = false, decision = "NOT_APPLICABLE", status = OK_STATUS),
-            Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
-        )
-    }
-
-    @Test
-    fun `authorize returns an Indeterminate decision`() = authorizeTest(decision = "Indeterminate") {
-        val response = client.post("/authorize") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","customerOrganizationNumber":"923609016","action":"read"}""",
-            )
-        }
-
-        assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals(
-            AuthorizeResponse(permit = false, decision = "INDETERMINATE", status = OK_STATUS),
-            Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
-        )
-    }
-
-    @Test
-    fun `authorize rejects a blank field with 400`() = authorizeTest(decision = "Permit") {
-        val response = client.post("/authorize") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                """{"systemuserId":"","resourceId":"test-resource","customerOrganizationNumber":"923609016","action":"read"}""",
-            )
-        }
-
-        assertEquals(HttpStatusCode.BadRequest, response.status)
-    }
-
-    @Test
-    fun `authorize rejects a customerOrganizationNumber that isn't 9 digits`() = authorizeTest(decision = "Permit") {
-        val response = client.post("/authorize") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","customerOrganizationNumber":"12345","action":"read"}""",
-            )
-        }
-
-        assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertEquals(
-            ErrorResponse(
-                error = "Validation failed",
-                code = "VALIDATION_ERROR",
-                errors = listOf(
-                    FieldError("customerOrganizationNumber", "INVALID_FORMAT", "customerOrganizationNumber must be exactly 9 digits"),
-                ),
-            ),
-            Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()),
-        )
-    }
-
-    @Test
-    fun `authorize reports the missing field when one is absent`() = authorizeTest(decision = "Permit") {
-        val response = client.post("/authorize") {
-            contentType(ContentType.Application.Json)
-            setBody("""{"resourceId":"test-resource","customerOrganizationNumber":"923609016","action":"read"}""")
-        }
-
-        assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertEquals(
-            ErrorResponse(
-                error = "Validation failed",
-                code = "VALIDATION_ERROR",
-                errors = listOf(FieldError("systemuserId", "MISSING", "systemuserId is required")),
-            ),
-            Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()),
-        )
-    }
-
-    @Test
-    fun `authorize reports every missing field when several are absent`() = authorizeTest(decision = "Permit") {
-        val response = client.post("/authorize") {
-            contentType(ContentType.Application.Json)
-            setBody("""{"customerOrganizationNumber":"923609016","action":"read"}""")
-        }
-
-        assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertEquals(
-            ErrorResponse(
-                error = "Validation failed",
-                code = "VALIDATION_ERROR",
-                errors = listOf(
-                    FieldError("systemuserId", "MISSING", "systemuserId is required"),
-                    FieldError("resourceId", "MISSING", "resourceId is required"),
-                ),
-            ),
-            Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()),
-        )
-    }
-
-    @Test
-    fun `authorize without a Content-Type header returns 400, not 500`() = authorizeTest(decision = "Permit") {
-        val response = client.post("/authorize") {
-            setBody(
-                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","customerOrganizationNumber":"923609016","action":"read"}""",
-            )
-        }
-
-        assertEquals(HttpStatusCode.BadRequest, response.status)
-    }
-
-    @Test
-    fun `authorize maps a PDP server failure to 502`() = authorizeTest(decision = "Permit", statusCode = 500) {
-        val response = client.post("/authorize") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","customerOrganizationNumber":"923609016","action":"read"}""",
-            )
-        }
-
-        assertEquals(HttpStatusCode.BadGateway, response.status)
-    }
-
-    @Test
-    fun `authorize maps a PDP rejection of the request to 400, not 502`() =
-        authorizeTest(decision = "Permit", statusCode = 400) {
-            val response = client.post("/authorize") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","customerOrganizationNumber":"923609016","action":"read"}""",
-                )
+                assertEquals(HttpStatusCode.OK, response.status, "for $decision")
+                assertEquals(expectedResponse, response.authorizeResponse(), "for $decision")
             }
-
-            assertEquals(HttpStatusCode.BadRequest, response.status)
         }
+    }
 
     @Test
     fun `authorize passes the minimum authentication levels through to the caller`() =
-        authorizeTest(decision = "Permit", obligations = true) {
-            val response = client.post("/authorize") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","customerOrganizationNumber":"923609016","action":"read"}""",
-                )
-            }
+        authorizeTest(obligations = true) {
+            val response = postAuthorize()
 
             assertEquals(HttpStatusCode.OK, response.status)
             assertEquals(
@@ -315,125 +77,140 @@ class ServerTest {
                     minimumAuthenticationLevel = 3,
                     minimumAuthenticationLevelOrg = 3,
                 ),
-                Json.decodeFromString(AuthorizeResponse.serializer(), response.bodyAsText()),
+                response.authorizeResponse(),
             )
         }
 
     @Test
-    fun `the added fields are omitted when Altinn sends nothing for them`() = authorizeTest(decision = "Permit") {
-        val response = client.post("/authorize") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource","customerOrganizationNumber":"923609016","action":"read"}""",
-            )
-        }
+    fun `the added fields are omitted when Altinn sends nothing for them`() = authorizeTest {
+        val body = postAuthorize().bodyAsText()
 
-        val body = response.bodyAsText()
         assertFalse(body.contains("minimumAuthenticationLevel"), "expected no level fields in: $body")
     }
 
     @Test
-    fun `every validation error is reported in one response`() = authorizeTest(decision = "Permit") {
-        val response = client.post("/authorize") {
-            contentType(ContentType.Application.Json)
-            setBody("""{"systemuserId":"nope","resourceId":"ab","customerOrganizationNumber":"12345"}""")
-        }
+    fun `authorize reports every field it is missing, in one response`() {
+        val cases = listOf(
+            ValidationCase(
+                why = "a blank field",
+                body = authorizeBody(systemuserId = ""),
+                errors = listOf(FieldError("systemuserId", "MISSING", "systemuserId is required")),
+            ),
+            ValidationCase(
+                why = "one absent field",
+                body = authorizeBody(systemuserId = null),
+                errors = listOf(FieldError("systemuserId", "MISSING", "systemuserId is required")),
+            ),
+            ValidationCase(
+                why = "several absent fields",
+                body = authorizeBody(systemuserId = null, resourceId = null),
+                errors = listOf(
+                    FieldError("systemuserId", "MISSING", "systemuserId is required"),
+                    FieldError("resourceId", "MISSING", "resourceId is required"),
+                ),
+            ),
+            // An explicit null is a missing field, not malformed JSON.
+            ValidationCase(
+                why = "an explicit null",
+                body = """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
+                    """"customerOrganizationNumber":null,"action":"read"}""",
+                errors = listOf(
+                    FieldError("customerOrganizationNumber", "MISSING", "customerOrganizationNumber is required"),
+                ),
+            ),
+        )
+
+        assertRejected(cases)
+    }
+
+    @Test
+    fun `authorize reports every field whose value it rejects, in one response`() {
+        val cases = listOf(
+            ValidationCase(
+                why = "an organization number that isn't 9 digits",
+                body = authorizeBody(customerOrganizationNumber = "12345"),
+                errors = listOf(
+                    FieldError(
+                        "customerOrganizationNumber",
+                        "INVALID_FORMAT",
+                        "customerOrganizationNumber must be exactly 9 digits",
+                    ),
+                ),
+            ),
+            // Rejected on the check digit alone, before Altinn is ever called.
+            ValidationCase(
+                why = "an organization number with a bad check digit",
+                body = authorizeBody(customerOrganizationNumber = "123456789"),
+                errors = listOf(
+                    FieldError(
+                        "customerOrganizationNumber",
+                        "INVALID_FORMAT",
+                        "customerOrganizationNumber must have a valid MOD11 check digit",
+                    ),
+                ),
+            ),
+            ValidationCase(
+                why = "every field at once",
+                body = """{"systemuserId":"nope","resourceId":"ab","customerOrganizationNumber":"12345"}""",
+                errors = listOf(
+                    FieldError("systemuserId", "INVALID_FORMAT", "systemuserId must be a UUID"),
+                    FieldError(
+                        "resourceId",
+                        "INVALID_FORMAT",
+                        "resourceId must be at least 4 characters of lowercase letters, digits, underscore or hyphen",
+                    ),
+                    FieldError(
+                        "customerOrganizationNumber",
+                        "INVALID_FORMAT",
+                        "customerOrganizationNumber must be exactly 9 digits",
+                    ),
+                    FieldError("action", "MISSING", "action is required"),
+                ),
+            ),
+        )
+
+        assertRejected(cases)
+    }
+
+    @Test
+    fun `authorize without a Content-Type header returns 400, not 500`() = authorizeTest {
+        assertEquals(HttpStatusCode.BadRequest, postAuthorize(json = false).status)
+    }
+
+    @Test
+    fun `a malformed body never echoes the request or kotlinx's own advice back`() = authorizeTest {
+        val response = postAuthorize(
+            """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
+                """"customerOrganizationNumber":923609016,"action":"read"}""",
+        )
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
-        val body = Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText())
-        assertEquals("VALIDATION_ERROR", body.code)
-        val errors = body.errors!!
-        assertEquals(listOf("systemuserId", "resourceId", "customerOrganizationNumber", "action"), errors.map { it.field })
-        assertEquals(listOf("INVALID_FORMAT", "INVALID_FORMAT", "INVALID_FORMAT", "MISSING"), errors.map { it.code })
+        val text = response.bodyAsText()
+        assertEquals(
+            ErrorResponse("Malformed request body", "MALFORMED_BODY"),
+            Json.decodeFromString(ErrorResponse.serializer(), text),
+        )
+        assertFalse(text.contains("coerceInputValues"), "leaks kotlinx advice: $text")
+        assertFalse(text.contains("JSON input"), "echoes the caller's body: $text")
+        assertFalse(text.contains("923609016"), "echoes the caller's values: $text")
     }
 
     @Test
-    fun `a customerOrganizationNumber with a bad check digit is rejected before Altinn is called`() =
-        authorizeTest(decision = "Permit") {
-            val response = client.post("/authorize") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource",""" +
-                        """"customerOrganizationNumber":"123456789","action":"read"}""",
-                )
-            }
+    fun `the upstream status decides whether the caller or Altinn is to blame`() {
+        val cases = listOf(
+            UpstreamCase(400, HttpStatusCode.BadRequest, "UPSTREAM_REJECTED", "only Altinn's own 400 is the caller's fault"),
+            UpstreamCase(401, HttpStatusCode.BadGateway, "UPSTREAM_ERROR", "our own credentials are not the caller's fault"),
+            UpstreamCase(403, HttpStatusCode.BadGateway, "UPSTREAM_ERROR", "our own credentials are not the caller's fault"),
+            UpstreamCase(429, HttpStatusCode.BadGateway, "UPSTREAM_ERROR", "our own quota is not the caller's fault"),
+            UpstreamCase(500, HttpStatusCode.BadGateway, "UPSTREAM_ERROR", "a PDP server failure is not the caller's fault"),
+        )
 
-            assertEquals(HttpStatusCode.BadRequest, response.status)
-            val body = Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText())
-            assertEquals("MOD11", body.errors!!.single().message.substringAfterLast("valid ").substringBefore(" "))
-        }
+        for (case in cases) {
+            authorizeTest(statusCode = case.upstream) {
+                val response = postAuthorize()
 
-    @Test
-    fun `a malformed body never echoes the request or kotlinx's own advice back`() =
-        authorizeTest(decision = "Permit") {
-            val response = client.post("/authorize") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource",""" +
-                        """"customerOrganizationNumber":923609016,"action":"read"}""",
-                )
-            }
-
-            assertEquals(HttpStatusCode.BadRequest, response.status)
-            val text = response.bodyAsText()
-            assertEquals(
-                ErrorResponse("Malformed request body", "MALFORMED_BODY"),
-                Json.decodeFromString(ErrorResponse.serializer(), text),
-            )
-            assertFalse(text.contains("coerceInputValues"), "leaks kotlinx advice: $text")
-            assertFalse(text.contains("JSON input"), "echoes the caller's body: $text")
-            assertFalse(text.contains("923609016"), "echoes the caller's values: $text")
-        }
-
-    @Test
-    fun `an explicit null is reported as a missing field, not as malformed JSON`() =
-        authorizeTest(decision = "Permit") {
-            val response = client.post("/authorize") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource",""" +
-                        """"customerOrganizationNumber":null,"action":"read"}""",
-                )
-            }
-
-            assertEquals(HttpStatusCode.BadRequest, response.status)
-            val body = Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText())
-            assertEquals("VALIDATION_ERROR", body.code)
-            assertEquals(FieldError("customerOrganizationNumber", "MISSING", "customerOrganizationNumber is required"), body.errors!!.single())
-        }
-
-    @Test
-    fun `only Altinn's own 400 is the caller's fault`() {
-        for ((upstream, expected) in mapOf(400 to HttpStatusCode.BadRequest, 401 to HttpStatusCode.BadGateway)) {
-            authorizeTest(decision = "Permit", statusCode = upstream) {
-                val response = client.post("/authorize") {
-                    contentType(ContentType.Application.Json)
-                    setBody(
-                        """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource",""" +
-                            """"customerOrganizationNumber":"923609016","action":"read"}""",
-                    )
-                }
-                assertEquals(expected, response.status, "for upstream $upstream")
-            }
-        }
-    }
-
-    @Test
-    fun `our own credential and quota failures are not blamed on the caller`() {
-        for (upstream in listOf(401, 403, 429)) {
-            authorizeTest(decision = "Permit", statusCode = upstream) {
-                val response = client.post("/authorize") {
-                    contentType(ContentType.Application.Json)
-                    setBody(
-                        """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource",""" +
-                            """"customerOrganizationNumber":"923609016","action":"read"}""",
-                    )
-                }
-                assertEquals(HttpStatusCode.BadGateway, response.status, "for upstream $upstream")
-                assertEquals(
-                    "UPSTREAM_ERROR",
-                    Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()).code,
-                )
+                assertEquals(case.expected, response.status, case.describe())
+                assertEquals(case.expectedCode, response.errorResponse().code, case.describe())
             }
         }
     }
@@ -444,28 +221,40 @@ class ServerTest {
             MaskinportenException("Maskinporten responded 400", statusCode = 400, responseBody = """{"error":"invalid_grant"}"""),
             AltinnException("Altinn responded 400 to the token exchange", statusCode = 400),
         )
+
         for (failure in failures) {
-            val failingTokenProvider = object : AltinnTokenProvider {
-                override suspend fun getAltinnToken(): AccessToken = throw failure
-            }
-            authorizeTest(decision = "Permit", tokenProvider = failingTokenProvider) {
-                val response = client.post("/authorize") {
-                    contentType(ContentType.Application.Json)
-                    setBody(
-                        """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource",""" +
-                            """"customerOrganizationNumber":"923609016","action":"read"}""",
-                    )
-                }
+            authorizeTest(tokenProvider = failingTokenProvider(failure)) {
+                val response = postAuthorize()
+
                 assertEquals(HttpStatusCode.BadGateway, response.status, "for ${failure::class.simpleName}")
-                assertEquals(
-                    "UPSTREAM_ERROR",
-                    Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()).code,
-                )
+                assertEquals("UPSTREAM_ERROR", response.errorResponse().code, "for ${failure::class.simpleName}")
             }
         }
     }
 
-    companion object {
-        private const val OK_STATUS = "urn:oasis:names:tc:xacml:1.0:status:ok"
+    private data class ValidationCase(val why: String, val body: String, val errors: List<FieldError>)
+
+    private data class UpstreamCase(
+        val upstream: Int,
+        val expected: HttpStatusCode,
+        val expectedCode: String,
+        val why: String,
+    ) {
+        fun describe() = "upstream $upstream: $why"
+    }
+
+    private fun assertRejected(cases: List<ValidationCase>) {
+        for (case in cases) {
+            authorizeTest {
+                val response = postAuthorize(case.body)
+
+                assertEquals(HttpStatusCode.BadRequest, response.status, "for ${case.why}")
+                assertEquals(
+                    ErrorResponse(error = "Validation failed", code = "VALIDATION_ERROR", errors = case.errors),
+                    response.errorResponse(),
+                    "for ${case.why}",
+                )
+            }
+        }
     }
 }

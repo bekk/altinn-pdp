@@ -1,13 +1,14 @@
 package no.kartverket.altinnpdp.client
 
 import kotlinx.coroutines.runBlocking
-import no.kartverket.altinnpdp.client.auth.AccessToken
-import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.exception.PdpException
+import no.kartverket.altinnpdp.client.support.FakeTokenProvider
+import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.client.support.TestHttpServer
 import no.kartverket.altinnpdp.client.support.TestResponse
-import no.kartverket.altinnpdp.client.support.testHttpClient
-import java.time.Instant
+import no.kartverket.altinnpdp.client.support.authorizeSample
+import no.kartverket.altinnpdp.client.support.pdpDecisionResponse
+import no.kartverket.altinnpdp.client.support.testPdpClient
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -31,37 +32,15 @@ class PdpClientTest {
 
     private val path = PdpClient.AUTHORIZE_PATH
 
-    private class FakeTokenProvider(private val token: String = "altinn-token") : AltinnTokenProvider {
-        var calls = 0
-            private set
-
-        override suspend fun getAltinnToken(): AccessToken {
-            calls++
-            return AccessToken(token, Instant.MAX)
-        }
+    private fun serverAnswers(decision: String = "Permit") {
+        server.on(path) { TestResponse(body = pdpDecisionResponse(decision)) }
     }
-
-    private fun client(
-        baseUrl: String,
-        tokenProvider: AltinnTokenProvider = FakeTokenProvider(),
-        subscriptionKey: String = "subscription-key",
-    ) = PdpClient(
-        platformBaseUrl = baseUrl,
-        tokenProvider = tokenProvider,
-        subscriptionKey = subscriptionKey,
-        httpClient = testHttpClient,
-    )
-
-    private fun decision(value: String) = """{"Response":[{"Decision":"$value"}]}"""
-
-    private suspend fun PdpClient.authorizeSample() =
-        authorize("1725580f-70f4-4ace-a748-4f912497a0d7", "test-resource", "923609016", "read")
 
     @Test
     fun `sends the bearer token and the subscription key the gateway requires`() = runBlocking {
-        server.on(path) { TestResponse(body = decision("Permit")) }
+        serverAnswers()
 
-        client(server.baseUrl).authorizeSample()
+        testPdpClient(server.baseUrl).authorizeSample()
 
         val request = server.lastRequest(path)
         assertEquals("POST", request.method)
@@ -72,30 +51,30 @@ class PdpClientTest {
 
     @Test
     fun `sends the XACML request body`() = runBlocking {
-        server.on(path) { TestResponse(body = decision("Permit")) }
+        serverAnswers()
 
-        client(server.baseUrl).authorizeSample()
+        testPdpClient(server.baseUrl).authorizeSample()
 
         val body = server.lastRequest(path).body
-        assertContains(body, """"attributeId":"urn:altinn:systemuser:uuid","value":"1725580f-70f4-4ace-a748-4f912497a0d7"""")
+        assertContains(body, """"attributeId":"urn:altinn:systemuser:uuid","value":"$SAMPLE_SYSTEMUSER_ID"""")
         assertContains(body, """"attributeId":"urn:altinn:resource","value":"test-resource"""")
         assertContains(body, """"attributeId":"urn:altinn:organization:identifier-no","value":"923609016"""")
     }
 
     @Test
     fun `appends the authorize path to a base URL that ends in a slash`() = runBlocking {
-        server.on(path) { TestResponse(body = decision("Permit")) }
+        serverAnswers()
 
-        client(server.baseUrl + "/").authorizeSample()
+        testPdpClient(server.baseUrl + "/").authorizeSample()
 
         assertEquals(1, server.requestCount(path))
     }
 
     @Test
     fun `asks the token provider on every call, leaving caching to the provider`() = runBlocking {
-        server.on(path) { TestResponse(body = decision("Permit")) }
+        serverAnswers()
         val provider = FakeTokenProvider()
-        val client = client(server.baseUrl, tokenProvider = provider)
+        val client = testPdpClient(server.baseUrl, tokenProvider = provider)
 
         client.authorizeSample()
         client.authorizeSample()
@@ -112,9 +91,9 @@ class PdpClientTest {
             "Indeterminate" to PdpDecision.INDETERMINATE,
         )
         for ((value, expectedDecision) in expected) {
-            server.on(path) { TestResponse(body = decision(value)) }
+            serverAnswers(value)
 
-            assertEquals(expectedDecision, client(server.baseUrl).authorizeSample().decision, "for $value")
+            assertEquals(expectedDecision, testPdpClient(server.baseUrl).authorizeSample().decision, "for $value")
         }
     }
 
@@ -122,59 +101,56 @@ class PdpClientTest {
     fun `reads the decision from a camelCase response too`() = runBlocking {
         server.on(path) { TestResponse(body = """{"response":[{"decision":"Deny"}]}""") }
 
-        assertEquals(PdpDecision.DENY, client(server.baseUrl).authorizeSample().decision)
+        assertEquals(PdpDecision.DENY, testPdpClient(server.baseUrl).authorizeSample().decision)
     }
 
     @Test
     fun `surfaces a non-200 with the status and body on the exception`() = runBlocking {
         server.on(path) { TestResponse(status = 403, body = "forbidden") }
 
-        val e = assertFailsWith<PdpException> { client(server.baseUrl).authorizeSample() }
+        val e = assertFailsWith<PdpException> { testPdpClient(server.baseUrl).authorizeSample() }
 
         assertEquals(403, e.statusCode)
         assertEquals("forbidden", e.responseBody)
     }
 
     @Test
-    fun `fails on a response that is not JSON`() = runBlocking {
-        server.on(path) { TestResponse(body = "<html>gateway error</html>") }
+    fun `fails loudly on an answer it cannot use, rather than treating it as a deny`() = runBlocking {
+        val cases = mapOf(
+            "a body that is not JSON" to ("<html>gateway error</html>" to "parse"),
+            "no decision at all" to ("""{"Response":[]}""" to "no Response entries"),
+            "a decision it does not recognise" to (pdpDecisionResponse("Maybe") to "Maybe"),
+            "more decisions than were asked for" to
+                ("""{"response":[{"decision":"Permit"},{"decision":"Deny"}]}""" to "2 Response entries"),
+        )
+        for ((why, case) in cases) {
+            val (body, expectedInMessage) = case
+            server.on(path) { TestResponse(body = body) }
 
-        assertContains(assertFailsWith<PdpException> { client(server.baseUrl).authorizeSample() }.message!!, "parse")
-    }
+            val e = assertFailsWith<PdpException>(why) { testPdpClient(server.baseUrl).authorizeSample() }
 
-    @Test
-    fun `fails when the response carries no decision`() = runBlocking {
-        server.on(path) { TestResponse(body = """{"Response":[]}""") }
-
-        val e = assertFailsWith<PdpException> { client(server.baseUrl).authorizeSample() }
-        assertContains(e.message!!, "no Response entries")
-    }
-
-    @Test
-    fun `fails loudly on a decision it does not recognise rather than treating it as a deny`() = runBlocking {
-        server.on(path) { TestResponse(body = decision("Maybe")) }
-
-        val e = assertFailsWith<PdpException> { client(server.baseUrl).authorizeSample() }
-
-        assertContains(e.message!!, "Maybe")
+            assertContains(e.message!!, expectedInMessage, message = "for $why")
+        }
     }
 
     @Test
     fun `wraps a connection failure rather than leaking an IOException`() = runBlocking {
         assertContains(
-            assertFailsWith<PdpException> { client("http://127.0.0.1:1").authorizeSample() }.message!!,
+            assertFailsWith<PdpException> { testPdpClient("http://127.0.0.1:1").authorizeSample() }.message!!,
             "Altinn PDP",
         )
     }
 
     @Test
     fun `rejects blank arguments before making a call`() = runBlocking {
-        val client = client("http://127.0.0.1:1")
+        val client = testPdpClient("http://127.0.0.1:1")
 
         assertFailsWith<IllegalArgumentException> { client.authorize(" ", "test-resource", "923609016", "read") }
-        assertFailsWith<IllegalArgumentException> { client.authorize("1725580f-70f4-4ace-a748-4f912497a0d7", "", "923609016", "read") }
-        assertFailsWith<IllegalArgumentException> { client.authorize("1725580f-70f4-4ace-a748-4f912497a0d7", "test-resource", "", "read") }
-        assertFailsWith<IllegalArgumentException> { client.authorize("1725580f-70f4-4ace-a748-4f912497a0d7", "test-resource", "923609016", " ") }
+        assertFailsWith<IllegalArgumentException> { client.authorize(SAMPLE_SYSTEMUSER_ID, "", "923609016", "read") }
+        assertFailsWith<IllegalArgumentException> { client.authorize(SAMPLE_SYSTEMUSER_ID, "test-resource", "", "read") }
+        assertFailsWith<IllegalArgumentException> {
+            client.authorize(SAMPLE_SYSTEMUSER_ID, "test-resource", "923609016", " ")
+        }
         Unit
     }
 
@@ -191,7 +167,7 @@ class PdpClientTest {
         """.trimIndent().replace("\n", "")
         server.on(path) { TestResponse(body = body) }
 
-        val authorization = client(server.baseUrl).authorizeSample()
+        val authorization = testPdpClient(server.baseUrl).authorizeSample()
 
         assertEquals(PdpDecision.PERMIT, authorization.decision)
         assertEquals("urn:oasis:names:tc:xacml:1.0:status:ok", authorization.statusCode)
@@ -208,7 +184,7 @@ class PdpClientTest {
         """.trimIndent().replace("\n", "")
         server.on(path) { TestResponse(body = body) }
 
-        val authorization = client(server.baseUrl).authorizeSample()
+        val authorization = testPdpClient(server.baseUrl).authorizeSample()
 
         assertEquals(PdpDecision.INDETERMINATE, authorization.decision)
         assertEquals("urn:oasis:names:tc:xacml:1.0:status:processing-error", authorization.statusCode)
@@ -217,20 +193,11 @@ class PdpClientTest {
 
     @Test
     fun `a decision with no obligations reports no authentication level`() = runBlocking {
-        server.on(path) { TestResponse(body = decision("Permit")) }
+        serverAnswers()
 
-        val authorization = client(server.baseUrl).authorizeSample()
+        val authorization = testPdpClient(server.baseUrl).authorizeSample()
 
         assertNull(authorization.minimumAuthenticationLevel)
         assertNull(authorization.statusCode)
-    }
-
-    @Test
-    fun `refuses a response carrying more decisions than were asked for`() = runBlocking {
-        server.on(path) { TestResponse(body = """{"response":[{"decision":"Permit"},{"decision":"Deny"}]}""") }
-
-        val e = assertFailsWith<PdpException> { client(server.baseUrl).authorizeSample() }
-
-        assertContains(e.message!!, "2 Response entries")
     }
 }
