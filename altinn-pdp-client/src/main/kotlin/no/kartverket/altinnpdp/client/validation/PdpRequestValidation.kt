@@ -1,8 +1,5 @@
 package no.kartverket.altinnpdp.client.validation
 
-import kotlinx.serialization.Serializable
-
-@Serializable
 enum class PdpValidationCode {
     MISSING,
     INVALID_FORMAT,

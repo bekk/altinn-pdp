@@ -1,8 +1,5 @@
 package no.kartverket.altinnpdp.client
 
-import kotlinx.serialization.Serializable
-
-@Serializable
 enum class PdpDecision {
     PERMIT,
     DENY,
