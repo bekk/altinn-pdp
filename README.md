@@ -136,74 +136,23 @@ The answer is a `PdpAuthorization`:
 
 ### Timeouts
 
-The library sets no timeouts of its own, because it cannot know what call chain it has been
-dropped into. They all belong to the HTTP client you pass to `httpClient(...)`, which is required.
-
-It takes a `PdpHttpClient`: one method that sends a request and returns the response. Implement it
-on whatever HTTP client you already use, with its timeouts, proxy and logging. For
-`java.net.http`, `JavaPdpHttpClient` is ready-made. It takes the request timeout itself, since
-`java.net.http` can only set that per request:
+Timeouts are set on the HTTP client you pass to `httpClient(...)`. It takes a `PdpHttpClient`, so
+you can implement it on the HTTP client you already use, or use `JavaPdpHttpClient`:
 
 ```kotlin
-val http = JavaPdpHttpClient(
+JavaPdpHttpClient(
     HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build(),
     requestTimeout = Duration.ofSeconds(3),
 )
-
-val client = PdpClient.builder()
-    // ...
-    .httpClient(http)
-    .build()
 ```
 
 > [!IMPORTANT]
-> Your `PdpHttpClient` must not follow redirects, and must throw an `IOException` when a call fails
-> or times out. These calls carry a client assertion and a bearer token, and a followed redirect
-> would hand them to whatever host the redirect names. `JavaPdpHttpClient` refuses a client that
-> follows them.
+> A `PdpHttpClient` must not follow redirects, since the calls carry tokens, and must throw an
+> `IOException` when a call fails.
 
-The library always passes a full URL, taken from `AltinnEnvironment`, so your client decides how a
-call travels but never where it goes. A base URL on the client could not work anyway: the calls go
-to two hosts, Maskinporten and Altinn.
-
-A lookup on cold caches fetches a Maskinporten token, exchanges it and then calls the PDP, so it
-can take up to three request timeouts back to back. To bound the whole lookup, wrap it in your
-own `withTimeout`:
-
-```kotlin
-val authorization = withTimeout(8.seconds) { client.authorize(...) }
-```
-
-#### Choosing values
-
-The rule: **a timeout must be shorter than the one it sits inside**, and the deeper into the call
-chain you go, the shorter it gets. Connecting < the request timeout, and three request timeouts <
-whatever your own caller allows you.
-
-Getting this backwards is not merely untidy - it breaks four things at once:
-
-- **Wasted work.** Your caller gives up first, but your call to Altinn keeps running, holding a
-  connection and a thread to produce a result nobody will read.
-- **No room to recover.** If the inner call may spend the entire budget, the layer above has
-  nothing left for a retry, a fallback or even a tidy error.
-- **Useless errors.** Time out first and you can answer `502` with a message saying which
-  dependency stalled. Time out second and your caller sees an opaque client-side timeout while
-  your own logs show a call that looked fine.
-- **Cascading failure.** A slow dependency otherwise pins threads and connections at *every*
-  layer simultaneously, turning one struggling service into a system-wide outage.
-
-The general form of this is deadline propagation, as in [gRPC deadlines](https://grpc.io/docs/guides/deadlines/):
-a deadline is an absolute point in time set by the original caller, and each hop passes on what is
-*left* of it rather than a fresh budget. Fixed, decreasing timeouts are the poor-man's version of
-the same idea - and what this client offers today, since it takes no deadline from its caller.
-
-#### What the server picks
-
-`altinn-pdp-rest-server` is a consumer like any other: its `JavaPdpHttpClient` connects within 2 s
-and waits at most 3 s per call, both overridable per deployment (see [Environment variables](#-environment-variables)).
-Three calls back to back is 9 s, which leaves roughly **10 s** as the response budget callers of
-`POST /authorize` should allow, so that a stalled Altinn comes back to them as a `502` with a
-message rather than as a timeout of their own.
+The server connects within 2 s and waits at most 3 s per call (see
+[Environment variables](#-environment-variables)). A lookup makes at most three calls, so callers
+of `POST /authorize` should allow 10 s.
 
 ### Running the server
 
