@@ -1,5 +1,7 @@
 package no.kartverket.altinnpdp.client.validation
 
+import kotlin.uuid.Uuid
+
 enum class PdpValidationCode {
     MISSING,
     INVALID_FORMAT,
@@ -13,8 +15,6 @@ data class PdpValidationError(
 
 /** The formats are Altinn's own, not ours: they reject all of these upstream already. */
 object PdpRequestValidation {
-
-    val UUID_FORMAT = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
     val RESOURCE_ID_FORMAT = Regex("^[a-z0-9_-]{4,}$")
 
@@ -35,25 +35,28 @@ object PdpRequestValidation {
     )
 
     internal fun systemuserIdError(value: String?): PdpValidationError? =
-        check(value, "systemuserId") { it.matches(UUID_FORMAT) to "must be a UUID" }
+        fieldError(value, "systemuserId") { if (Uuid.parseHexDashOrNull(it) == null) "must be a UUID" else null }
 
     internal fun resourceIdError(value: String?): PdpValidationError? =
-        check(value, "resourceId") {
-            it.matches(RESOURCE_ID_FORMAT) to
+        fieldError(value, "resourceId") {
+            if (it.matches(RESOURCE_ID_FORMAT)) {
+                null
+            } else {
                 "must be at least 4 characters of lowercase letters, digits, underscore or hyphen"
+            }
         }
 
     internal fun organizationNumberError(value: String?): PdpValidationError? =
-        check(value, "customerOrganizationNumber") {
+        fieldError(value, "customerOrganizationNumber") {
             when {
-                !it.matches(ORGANIZATION_NUMBER_FORMAT) -> false to "must be exactly 9 digits"
-                !hasValidMod11(it) -> false to "must have a valid MOD11 check digit"
-                else -> true to ""
+                !it.matches(ORGANIZATION_NUMBER_FORMAT) -> "must be exactly 9 digits"
+                !hasValidMod11(it) -> "must have a valid MOD11 check digit"
+                else -> null
             }
         }
 
     internal fun actionError(value: String?): PdpValidationError? =
-        check(value, "action") { true to "" }
+        fieldError(value, "action") { null }
 
     fun hasValidMod11(customerOrganizationNumber: String): Boolean {
         if (!customerOrganizationNumber.matches(ORGANIZATION_NUMBER_FORMAT)) return false
@@ -63,15 +66,14 @@ object PdpRequestValidation {
         return control != 10 && control == customerOrganizationNumber[8] - '0'
     }
 
-    private inline fun check(
+    private inline fun fieldError(
         value: String?,
         field: String,
-        rule: (String) -> Pair<Boolean, String>,
+        problem: (String) -> String?,
     ): PdpValidationError? {
         if (value.isNullOrBlank()) {
             return PdpValidationError(field, PdpValidationCode.MISSING, "$field is required")
         }
-        val (ok, message) = rule(value)
-        return if (ok) null else PdpValidationError(field, PdpValidationCode.INVALID_FORMAT, "$field $message")
+        return problem(value)?.let { PdpValidationError(field, PdpValidationCode.INVALID_FORMAT, "$field $it") }
     }
 }
