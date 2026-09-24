@@ -104,12 +104,18 @@ built yourself, which is handy in tests or to share one provider across several 
 
 ```kotlin
 val authorization = client.authorize(
-    systemuserId = "<systembruker uuid>",
-    resourceId = "<resource id>",
-    customerOrganizationNumber = "923609016",
-    action = "read",
+    systemuserId = SystemUserId("<systembruker uuid>"),
+    resourceId = ResourceId("<resource id>"),
+    customerOrganizationNumber = OrganizationNumber("923609016"),
+    action = ActionId("read"),
 )
 ```
+
+Each argument is a value class that checks its own format on construction, so a malformed one
+throws a `PdpValidationException` - an `IllegalArgumentException` carrying one
+`PdpValidationError` per bad field - before any call leaves your process. The rules are the ones
+in the [`POST /authorize` table](#post-authorize). Build the value once and the wrapper costs
+nothing at runtime; it is inlined away.
 
 The answer is a `PdpAuthorization`:
 
