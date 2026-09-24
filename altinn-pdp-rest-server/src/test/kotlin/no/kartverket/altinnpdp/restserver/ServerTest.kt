@@ -16,6 +16,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.auth.AccessToken
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
+import no.kartverket.altinnpdp.client.exception.AltinnException
+import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
@@ -66,10 +68,10 @@ class ServerTest {
             .trimIndent().replace("\n", "")
     }
 
-    private fun pdpClientAgainst(server: HttpServer): PdpClient =
+    private fun pdpClientAgainst(server: HttpServer, tokenProvider: AltinnTokenProvider): PdpClient =
         PdpClient(
             "http://localhost:${server.address.port}",
-            fakeTokenProvider,
+            tokenProvider,
             "test-subscription-key",
             timeoutsFromConfig(),
         )
@@ -78,6 +80,7 @@ class ServerTest {
         decision: String,
         statusCode: Int = 200,
         obligations: Boolean = false,
+        tokenProvider: AltinnTokenProvider = fakeTokenProvider,
         block: suspend ApplicationTestBuilder.() -> Unit,
     ) = testApplication {
         val server = stubPdpServer(decision, statusCode, obligations)
@@ -85,7 +88,7 @@ class ServerTest {
             application {
                 configureSerialization()
                 configureErrorHandling()
-                configurePdp(pdpClientAgainst(server))
+                configurePdp(pdpClientAgainst(server, tokenProvider))
                 configureRouting()
             }
             block()
@@ -425,6 +428,33 @@ class ServerTest {
                     )
                 }
                 assertEquals(HttpStatusCode.BadGateway, response.status, "for upstream $upstream")
+                assertEquals(
+                    "UPSTREAM_ERROR",
+                    Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()).code,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `a 400 while fetching our own token is not blamed on the caller`() {
+        val failures = listOf(
+            MaskinportenException("Maskinporten responded 400", statusCode = 400, responseBody = """{"error":"invalid_grant"}"""),
+            AltinnException("Altinn responded 400 to the token exchange", statusCode = 400),
+        )
+        for (failure in failures) {
+            val failingTokenProvider = object : AltinnTokenProvider {
+                override suspend fun getAltinnToken(): AccessToken = throw failure
+            }
+            authorizeTest(decision = "Permit", tokenProvider = failingTokenProvider) {
+                val response = client.post("/authorize") {
+                    contentType(ContentType.Application.Json)
+                    setBody(
+                        """{"systemuserId":"1725580f-70f4-4ace-a748-4f912497a0d7","resourceId":"test-resource",""" +
+                            """"customerOrganizationNumber":"923609016","action":"read"}""",
+                    )
+                }
+                assertEquals(HttpStatusCode.BadGateway, response.status, "for ${failure::class.simpleName}")
                 assertEquals(
                     "UPSTREAM_ERROR",
                     Json.decodeFromString(ErrorResponse.serializer(), response.bodyAsText()).code,

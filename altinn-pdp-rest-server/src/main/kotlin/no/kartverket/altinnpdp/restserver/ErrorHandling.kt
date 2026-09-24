@@ -38,19 +38,9 @@ fun Application.configureErrorHandling() {
         exception<JsonConvertException> { call, cause -> call.respondMalformedBody(cause) }
         exception<ContentTransformationException> { call, cause -> call.respondMalformedBody(cause) }
         exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
-        exception<PdpException> { call, cause ->
-            call.application.log.error(
-                "PDP call failed: statusCode=${cause.statusCode}, responseBody=${cause.responseBody}",
-                cause,
-            )
-            call.respondUpstream(cause.statusCode)
-        }
         exception<AltinnPdpException> { call, cause ->
-            call.application.log.error(
-                "Maskinporten/Altinn call failed: statusCode=${cause.statusCode}, responseBody=${cause.responseBody}",
-                cause,
-            )
-            call.respondUpstream(cause.statusCode)
+            call.application.log.error("Call to Maskinporten or Altinn failed: statusCode=${cause.statusCode}", cause)
+            call.respondUpstream(cause)
         }
         exception<Throwable> { call, cause ->
             call.application.log.error("Unhandled exception", cause)
@@ -67,9 +57,8 @@ private suspend fun io.ktor.server.application.ApplicationCall.respondMalformedB
     respond(HttpStatusCode.BadRequest, ErrorResponse("Malformed request body", ErrorCode.MALFORMED_BODY))
 }
 
-// Only Altinn's own 400 is the caller's fault. 401, 403 and 429 are our credentials and quota.
-private suspend fun io.ktor.server.application.ApplicationCall.respondUpstream(statusCode: Int?) {
-    if (statusCode == 400) {
+private suspend fun io.ktor.server.application.ApplicationCall.respondUpstream(cause: AltinnPdpException) {
+    if (cause is PdpException && cause.statusCode == 400) {
         respond(HttpStatusCode.BadRequest, ErrorResponse("Altinn rejected the request", ErrorCode.UPSTREAM_REJECTED))
     } else {
         respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Altinn failed", ErrorCode.UPSTREAM_ERROR))
