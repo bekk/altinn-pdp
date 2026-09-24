@@ -28,14 +28,13 @@ class AltinnTokenExchangerTest {
 
     private val path = AltinnTokenExchanger.EXCHANGE_PATH
 
-    private fun exchanger(server: TestHttpServer, baseUrl: String = server.baseUrl) =
-        AltinnTokenExchanger(baseUrl, Timeouts.DEFAULT)
+    private fun exchanger(baseUrl: String = server.baseUrl) = AltinnTokenExchanger(baseUrl, Timeouts.DEFAULT)
 
     @Test
     fun `sends the Maskinporten token as a bearer token on a GET`() = runBlocking {
         server.on(path) { TestResponse(body = signedJwt(NOW.plusSeconds(300))) }
 
-        exchanger(server).exchange("maskinporten-token")
+        exchanger().exchange("maskinporten-token")
 
         val request = server.lastRequest(path)
         assertEquals("GET", request.method)
@@ -47,7 +46,7 @@ class AltinnTokenExchangerTest {
         val expiresAt = NOW.plusSeconds(300)
         server.on(path) { TestResponse(body = signedJwt(expiresAt)) }
 
-        val token = exchanger(server).exchange("maskinporten-token")
+        val token = exchanger().exchange("maskinporten-token")
 
         assertEquals(expiresAt.epochSecond, token.expiresAt.epochSecond)
     }
@@ -57,24 +56,14 @@ class AltinnTokenExchangerTest {
         val jwt = signedJwt(NOW.plusSeconds(300))
         server.on(path) { TestResponse(body = "  $jwt\n") }
 
-        assertEquals(jwt, exchanger(server).exchange("maskinporten-token").value)
-    }
-
-    @Test
-    fun `fails when the token has no exp claim`() = runBlocking {
-        server.on(path) { TestResponse(body = signedJwt(expiresAt = null)) }
-
-        assertContains(
-            assertFailsWith<AltinnException> { exchanger(server).exchange("maskinporten-token") }.message!!,
-            "exp",
-        )
+        assertEquals(jwt, exchanger().exchange("maskinporten-token").value)
     }
 
     @Test
     fun `appends the exchange path to a base URL that ends in a slash`() = runBlocking {
         server.on(path) { TestResponse(body = signedJwt(NOW.plusSeconds(300))) }
 
-        exchanger(server, baseUrl = server.baseUrl + "/").exchange("maskinporten-token")
+        exchanger(baseUrl = server.baseUrl + "/").exchange("maskinporten-token")
 
         assertEquals(1, server.requestCount(path), "a doubled slash would not have matched the context")
     }
@@ -83,24 +72,27 @@ class AltinnTokenExchangerTest {
     fun `surfaces a non-200 with the status and body on the exception`() = runBlocking {
         server.on(path) { TestResponse(status = 401, body = "token rejected") }
 
-        val e = assertFailsWith<AltinnException> { exchanger(server).exchange("maskinporten-token") }
+        val e = assertFailsWith<AltinnException> { exchanger().exchange("maskinporten-token") }
 
         assertEquals(401, e.statusCode)
         assertEquals("token rejected", e.responseBody)
     }
 
     @Test
-    fun `fails when Altinn answers with an empty body`() = runBlocking {
-        server.on(path) { TestResponse(body = "") }
+    fun `fails on an answer that is not a token it can use`() = runBlocking {
+        val cases = mapOf(
+            "no exp claim" to (signedJwt(expiresAt = null) to "exp"),
+            "an empty body" to ("" to "empty"),
+            "a body that is not a JWT at all" to ("<html>gateway error</html>" to "JWT"),
+        )
+        for ((why, case) in cases) {
+            val (body, expectedInMessage) = case
+            server.on(path) { TestResponse(body = body) }
 
-        assertContains(assertFailsWith<AltinnException> { exchanger(server).exchange("mp") }.message!!, "empty")
-    }
+            val e = assertFailsWith<AltinnException>(why) { exchanger().exchange("maskinporten-token") }
 
-    @Test
-    fun `fails when the body is not a JWT at all`() = runBlocking {
-        server.on(path) { TestResponse(body = "<html>gateway error</html>") }
-
-        assertContains(assertFailsWith<AltinnException> { exchanger(server).exchange("mp") }.message!!, "JWT")
+            assertContains(e.message!!, expectedInMessage, message = "for $why")
+        }
     }
 
     @Test

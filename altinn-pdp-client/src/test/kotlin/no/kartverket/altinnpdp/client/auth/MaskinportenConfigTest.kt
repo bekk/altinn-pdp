@@ -1,6 +1,6 @@
 package no.kartverket.altinnpdp.client.auth
 
-import no.kartverket.altinnpdp.client.support.TestKeys
+import no.kartverket.altinnpdp.client.support.maskinportenConfig
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,38 +8,23 @@ import kotlin.test.assertFailsWith
 
 class MaskinportenConfigTest {
 
-    private fun config(
-        tokenUrl: String = "https://test.maskinporten.no/token",
-        clientId: String = "my-client-id",
-        jwk: String = TestKeys.rsa.toJSONString(),
-        scopes: List<String> = listOf(AltinnScopes.AUTHORIZE),
-        assertionLifetime: Duration = Duration.ofSeconds(60),
-    ) = MaskinportenConfig(
-        tokenUrl = tokenUrl,
-        clientId = clientId,
-        jwk = jwk,
-        scopes = scopes,
-        assertionLifetime = assertionLifetime,
-    )
-
     @Test
     fun `derives the audience as the issuer, with the trailing slash Maskinporten requires`() {
-        assertEquals("https://test.maskinporten.no/", config().audience)
-        assertEquals("https://maskinporten.no/", config(tokenUrl = "https://maskinporten.no/token").audience)
-    }
-
-    @Test
-    fun `keeps the port when deriving the audience`() {
-        assertEquals("http://localhost:8080/", config(tokenUrl = "http://localhost:8080/token").audience)
+        val expected = mapOf(
+            "https://test.maskinporten.no/token" to "https://test.maskinporten.no/",
+            "https://maskinporten.no/token" to "https://maskinporten.no/",
+            // The port is part of the issuer, so it has to survive.
+            "http://localhost:8080/token" to "http://localhost:8080/",
+        )
+        for ((tokenUrl, audience) in expected) {
+            assertEquals(audience, maskinportenConfig(tokenUrl = tokenUrl).audience, "for $tokenUrl")
+        }
     }
 
     @Test
     fun `an explicitly supplied audience wins over the derived one`() {
-        val config = MaskinportenConfig(
+        val config = maskinportenConfig(
             tokenUrl = "https://test.maskinporten.no/token",
-            clientId = "my-client-id",
-            jwk = TestKeys.rsa.toJSONString(),
-            scopes = listOf(AltinnScopes.AUTHORIZE),
             audience = "https://something.else/",
         )
 
@@ -48,25 +33,25 @@ class MaskinportenConfigTest {
 
     @Test
     fun `joins the scopes with spaces, as the scope claim requires`() {
-        val config = config(scopes = listOf("scope-a", "scope-b"))
+        val config = maskinportenConfig(scopes = listOf("scope-a", "scope-b"))
 
         assertEquals("scope-a scope-b", config.scopeString)
     }
 
     @Test
     fun `rejects missing configuration rather than failing on the first call`() {
-        assertFailsWith<IllegalArgumentException> { config(tokenUrl = " ") }
-        assertFailsWith<IllegalArgumentException> { config(clientId = "") }
-        assertFailsWith<IllegalArgumentException> { config(jwk = "") }
-        assertFailsWith<IllegalArgumentException> { config(scopes = emptyList()) }
+        assertFailsWith<IllegalArgumentException> { maskinportenConfig(tokenUrl = " ") }
+        assertFailsWith<IllegalArgumentException> { maskinportenConfig(clientId = "") }
+        assertFailsWith<IllegalArgumentException> { maskinportenConfig(jwk = "") }
+        assertFailsWith<IllegalArgumentException> { maskinportenConfig(scopes = emptyList()) }
     }
 
     @Test
     fun `rejects an assertion lifetime outside what Maskinporten allows`() {
-        assertFailsWith<IllegalArgumentException> { config(assertionLifetime = Duration.ZERO) }
-        assertFailsWith<IllegalArgumentException> { config(assertionLifetime = Duration.ofSeconds(-1)) }
+        assertFailsWith<IllegalArgumentException> { maskinportenConfig(assertionLifetime = Duration.ZERO) }
+        assertFailsWith<IllegalArgumentException> { maskinportenConfig(assertionLifetime = Duration.ofSeconds(-1)) }
         assertFailsWith<IllegalArgumentException> {
-            config(assertionLifetime = MaskinportenConfig.MAX_ASSERTION_LIFETIME.plusSeconds(1))
+            maskinportenConfig(assertionLifetime = MaskinportenConfig.MAX_ASSERTION_LIFETIME.plusSeconds(1))
         }
     }
 
@@ -74,7 +59,7 @@ class MaskinportenConfigTest {
     fun `allows an assertion lifetime exactly at the maximum`() {
         assertEquals(
             MaskinportenConfig.MAX_ASSERTION_LIFETIME,
-            config(assertionLifetime = MaskinportenConfig.MAX_ASSERTION_LIFETIME).assertionLifetime,
+            maskinportenConfig(assertionLifetime = MaskinportenConfig.MAX_ASSERTION_LIFETIME).assertionLifetime,
         )
     }
 }

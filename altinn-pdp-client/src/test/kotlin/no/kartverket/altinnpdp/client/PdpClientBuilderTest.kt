@@ -1,15 +1,13 @@
 package no.kartverket.altinnpdp.client
 
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import no.kartverket.altinnpdp.client.auth.AccessToken
-import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.http.Timeouts
+import no.kartverket.altinnpdp.client.support.FakeTokenProvider
+import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.client.support.TestKeys
 import java.time.Duration
-import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFailsWith
@@ -24,23 +22,12 @@ class PdpClientBuilderTest {
         .subscriptionKey("subscription-key")
         .timeouts(Timeouts.DEFAULT)
 
-    private object FakeTokenProvider : AltinnTokenProvider {
-        override suspend fun getAltinnToken() = AccessToken("altinn-token", Instant.MAX)
-    }
-
-    private object SlowTokenProvider : AltinnTokenProvider {
-        override suspend fun getAltinnToken(): AccessToken {
-            delay(500)
-            return AccessToken("altinn-token", Instant.MAX)
-        }
-    }
-
     @Test
     fun `rejects a missing environment`() {
         val e = assertFailsWith<IllegalArgumentException> {
             PdpClient.builder()
                 .subscriptionKey("subscription-key")
-                .tokenProvider(FakeTokenProvider)
+                .tokenProvider(FakeTokenProvider())
                 .build()
         }
 
@@ -52,7 +39,7 @@ class PdpClientBuilderTest {
         val e = assertFailsWith<IllegalArgumentException> {
             PdpClient.builder()
                 .environment(AltinnEnvironment.TT02)
-                .tokenProvider(FakeTokenProvider)
+                .tokenProvider(FakeTokenProvider())
                 .build()
         }
 
@@ -65,7 +52,7 @@ class PdpClientBuilderTest {
             PdpClient.builder()
                 .environment(AltinnEnvironment.TT02)
                 .subscriptionKey("subscription-key")
-                .tokenProvider(FakeTokenProvider)
+                .tokenProvider(FakeTokenProvider())
                 .build()
         }
 
@@ -117,7 +104,7 @@ class PdpClientBuilderTest {
             .environment(AltinnEnvironment.TT02)
             .subscriptionKey("subscription-key")
             .timeouts(Timeouts.DEFAULT)
-            .tokenProvider(FakeTokenProvider)
+            .tokenProvider(FakeTokenProvider())
             .build()
 
         assertNotNull(client)
@@ -126,12 +113,12 @@ class PdpClientBuilderTest {
     @Test
     fun `passes the timeouts on to the client rather than dropping them`() = runBlocking {
         val client = builder()
-            .tokenProvider(SlowTokenProvider)
+            .tokenProvider(FakeTokenProvider(takes = Duration.ofMillis(500)))
             .timeouts(Timeouts(total = Duration.ofMillis(50)))
             .build()
 
         val e = assertFailsWith<PdpException> {
-            client.authorize("1725580f-70f4-4ace-a748-4f912497a0d7", "test-resource", "923609016", "read")
+            client.authorize(SAMPLE_SYSTEMUSER_ID, "test-resource", "923609016", "read")
         }
 
         assertContains(e.message!!, "50 ms")
@@ -144,7 +131,7 @@ class PdpClientBuilderTest {
             // The JWK is deliberately invalid: building anyway is what proves the Maskinporten
             // setters are ignored rather than merely optional.
             .maskinportenJwk("not a jwk")
-            .tokenProvider(FakeTokenProvider)
+            .tokenProvider(FakeTokenProvider())
             .build()
 
         assertNotNull(client)
