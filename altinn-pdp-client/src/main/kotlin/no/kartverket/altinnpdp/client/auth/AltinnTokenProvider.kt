@@ -15,17 +15,9 @@ sealed interface AccessToken {
 }
 
 data class AltinnToken(override val value: String, override val expiresAt: Instant) : AccessToken {
-    init {
-        require(value.isNotBlank()) { "Altinn token is required" }
-    }
-
     override fun toString(): String = "AltinnToken[value=***, expiresAt=$expiresAt]"
 }
 
 data class MaskinportenToken(override val value: String, override val expiresAt: Instant) : AccessToken {
-    init {
-        require(value.isNotBlank()) { "Maskinporten token is required" }
-    }
-
     override fun toString(): String = "MaskinportenToken[value=***, expiresAt=$expiresAt]"
 }
