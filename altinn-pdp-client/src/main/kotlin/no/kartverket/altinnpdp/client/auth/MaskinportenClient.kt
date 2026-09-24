@@ -4,8 +4,6 @@ import com.nimbusds.jose.JOSEException
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.RSASSASigner
-import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import kotlinx.serialization.SerialName
@@ -18,33 +16,31 @@ import no.kartverket.altinnpdp.client.http.PdpHttpRequest
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.text.ParseException
 import java.time.Clock
 import java.time.Duration
 import java.util.Date
 import java.util.UUID
 
-class MaskinportenClient(
+internal class MaskinportenClient(
     private val config: MaskinportenConfig,
     private val httpClient: PdpHttpClient,
     private val clock: Clock = Clock.systemUTC(),
     refreshLeeway: Duration = TokenCache.DEFAULT_REFRESH_LEEWAY,
 ) {
     private val cache = TokenCache<MaskinportenToken>(clock, refreshLeeway)
-    private val signingKey: RSAKey = parseSigningKey(config.jwk)
+    private val signingKey = config.key.rsaKey
 
     suspend fun getToken(): MaskinportenToken = cache.get { fetchToken() }
 
-    /** Exposed for troubleshooting - call [getToken] for normal use. */
     fun createClientAssertion(): String {
         val now = clock.instant()
         val claims = JWTClaimsSet.Builder()
             .issuer(config.clientId)
             .audience(config.audience)
-            .claim("scope", config.scopeString)
+            .claim("scope", AltinnScopes.AUTHORIZE)
             .jwtID(UUID.randomUUID().toString())
             .issueTime(Date.from(now))
-            .expirationTime(Date.from(now.plus(config.assertionLifetime)))
+            .expirationTime(Date.from(now.plus(ASSERTION_LIFETIME)))
 
         val header = JWSHeader.Builder(JWSAlgorithm.RS256)
             .keyID(signingKey.keyID)
@@ -93,24 +89,9 @@ class MaskinportenClient(
     companion object {
         private const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 
-        private fun urlEncode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
+        private val ASSERTION_LIFETIME: Duration = Duration.ofSeconds(60)
 
-        private fun parseSigningKey(jwk: String): RSAKey {
-            val parsed = try {
-                JWK.parse(jwk)
-            } catch (e: ParseException) {
-                throw MaskinportenException("Failed to parse the JWK: ${e.message}", cause = e)
-            }
-            if (parsed !is RSAKey) {
-                throw MaskinportenException(
-                    "Maskinporten requires an RSA key, but the JWK is of type ${parsed.keyType}",
-                )
-            }
-            if (!parsed.isPrivate) {
-                throw MaskinportenException("The JWK has no private key material and cannot sign")
-            }
-            return parsed
-        }
+        private fun urlEncode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
     }
 }
 

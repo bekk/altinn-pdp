@@ -85,20 +85,17 @@ Builds and tests every module. This is also what CI runs.
 ### Building the client
 
 ```kotlin
-val client = PdpClient.builder()
-    .environment(AltinnEnvironment.TT02)
-    .subscriptionKey("<subscription key>")
-    .maskinportenClientId("<client id>")
-    .maskinportenJwk(jwkJson)
-    .httpClient(JavaPdpHttpClient(HttpClient.newHttpClient(), requestTimeout = Duration.ofSeconds(3)))
-    .build()
+val client = PdpClient(
+    environment = AltinnEnvironment.TT02,
+    subscriptionKey = "<subscription key>",
+    maskinportenClientId = "<client id>",
+    maskinportenKey = MaskinportenKey.parse(jwkJson),
+    httpClient = JavaPdpHttpClient(HttpClient.newHttpClient(), requestTimeout = Duration.ofSeconds(3)),
+)
 ```
 
 Build one client and reuse it. Both the Maskinporten token and the Altinn token are cached and
 fetched again shortly before they expire, and it is safe to call from several coroutines at once.
-
-`tokenProvider(...)` replaces the two Maskinporten setters with an `AltinnTokenProvider` you
-built yourself, which is handy in tests or to share one provider across several clients.
 
 ### Asking the PDP
 
@@ -136,8 +133,8 @@ The answer is a `PdpAuthorization`:
 
 ### HTTP client
 
-`httpClient(...)` takes a `PdpHttpClient`, and timeouts, proxy and so on are set on it. Implement
-it on the HTTP client you already use, or use `JavaPdpHttpClient`:
+`httpClient` takes a `PdpHttpClient`, and timeouts, proxy and so on are set on it. Implement it
+on the HTTP client you already use, or use `JavaPdpHttpClient`:
 
 ```kotlin
 JavaPdpHttpClient(
@@ -324,8 +321,6 @@ environment: the Altinn platform base URL and the Maskinporten token endpoint.
 | :---------- | :-------------------------------- | :----------------------------------- |
 | `TT02`      | `https://platform.tt02.altinn.no` | `https://test.maskinporten.no/token` |
 | `PROD`      | `https://platform.altinn.no`      | `https://maskinporten.no/token`      |
-
-The client also has raw base-URL constructors for pointing at a local test server.
 
 ---
 

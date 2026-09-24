@@ -1,6 +1,6 @@
 package no.kartverket.altinnpdp.restserver
 
-import com.sun.net.httpserver.HttpServer
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -10,27 +10,22 @@ import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
+import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
-import no.kartverket.altinnpdp.client.auth.AltinnToken
-import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
-import no.kartverket.altinnpdp.client.http.JavaPdpHttpClient
+import no.kartverket.altinnpdp.client.auth.MaskinportenKey
+import no.kartverket.altinnpdp.client.http.PdpHttpClient
+import no.kartverket.altinnpdp.client.http.PdpHttpResponse
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
-import java.net.InetSocketAddress
-import java.net.http.HttpClient
 import java.time.Instant
+import java.util.Base64
 
 internal const val OK_STATUS = "urn:oasis:names:tc:xacml:1.0:status:ok"
 
 internal const val SAMPLE_SYSTEMUSER_ID = "1725580f-70f4-4ace-a748-4f912497a0d7"
 
-internal val fakeTokenProvider = object : AltinnTokenProvider {
-    override suspend fun getAltinnToken() = AltinnToken("fake-token", Instant.now().plusSeconds(60))
-}
-
-internal fun failingTokenProvider(failure: Throwable) = object : AltinnTokenProvider {
-    override suspend fun getAltinnToken(): AltinnToken = throw failure
-}
+private val testKey: MaskinportenKey =
+    MaskinportenKey.parse(RSAKeyGenerator(2048).keyID("test-key").generate().toJSONString())
 
 /** The body every test starts from; a `null` leaves the field out of the JSON entirely. */
 internal fun authorizeBody(
@@ -60,37 +55,46 @@ internal suspend fun HttpResponse.authorizeResponse(): AuthorizeResponse =
 internal suspend fun HttpResponse.errorResponse(): ErrorResponse =
     Json.decodeFromString(ErrorResponse.serializer(), bodyAsText())
 
-/** Runs [block] against the routes, with a stubbed Altinn PDP behind them. */
+/** Runs [block] against the routes, with Maskinporten, the token exchange and the PDP faked behind them. */
 internal fun authorizeTest(
     decision: String = "Permit",
     statusCode: Int = 200,
     obligations: Boolean = false,
-    tokenProvider: AltinnTokenProvider = fakeTokenProvider,
+    maskinportenStatus: Int = 200,
+    exchangeStatus: Int = 200,
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = testApplication {
-    val server = stubPdpServer(decision, statusCode, obligations)
-    try {
-        application {
-            configureSerialization()
-            configureErrorHandling()
-            configurePdp(pdpClientAgainst(server, tokenProvider))
-            configureRouting()
+    val altinn = PdpHttpClient { request ->
+        when (request.url.path) {
+            "/token" -> PdpHttpResponse(maskinportenStatus, """{"access_token":"mp-token","expires_in":3600}""")
+            "/authentication/api/v1/exchange/maskinporten" -> PdpHttpResponse(exchangeStatus, altinnToken())
+            PdpClient.AUTHORIZE_PATH -> PdpHttpResponse(statusCode, pdpBody(decision, obligations))
+            else -> error("unexpected call to ${request.url}")
         }
-        block()
-    } finally {
-        server.stop(0)
     }
+    application {
+        configureSerialization()
+        configureErrorHandling()
+        configurePdp(
+            PdpClient(
+                environment = AltinnEnvironment.TT02,
+                subscriptionKey = "test-subscription-key",
+                maskinportenClientId = "test-client",
+                maskinportenKey = testKey,
+                httpClient = altinn,
+            ),
+        )
+        configureRouting()
+    }
+    block()
 }
 
-private fun stubPdpServer(decision: String, statusCode: Int, obligations: Boolean): HttpServer {
-    val server = HttpServer.create(InetSocketAddress("localhost", 0), 0)
-    server.createContext(PdpClient.AUTHORIZE_PATH) { exchange ->
-        val body = pdpBody(decision, obligations).toByteArray()
-        exchange.sendResponseHeaders(statusCode, body.size.toLong())
-        exchange.responseBody.use { it.write(body) }
-    }
-    server.start()
-    return server
+/** An unsigned JWT with only an expiry, which is all the client reads from the exchanged token. */
+private fun altinnToken(): String {
+    val encoder = Base64.getUrlEncoder().withoutPadding()
+    val header = encoder.encodeToString("""{"alg":"none"}""".toByteArray())
+    val claims = encoder.encodeToString("""{"exp":${Instant.now().plusSeconds(300).epochSecond}}""".toByteArray())
+    return "$header.$claims."
 }
 
 // Copied from a real TT02 answer.
@@ -111,11 +115,3 @@ private fun pdpBody(decision: String, obligations: Boolean): String {
         "associateAdvice":null,"category":null,"policyIdentifierList":null}]}"""
         .trimIndent().replace("\n", "")
 }
-
-private fun pdpClientAgainst(server: HttpServer, tokenProvider: AltinnTokenProvider): PdpClient =
-    PdpClient(
-        "http://localhost:${server.address.port}",
-        tokenProvider,
-        "test-subscription-key",
-        JavaPdpHttpClient(HttpClient.newHttpClient(), REQUEST_TIMEOUT),
-    )

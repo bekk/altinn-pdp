@@ -5,7 +5,7 @@ import no.kartverket.altinnpdp.client.http.PdpHttpClient
 import java.time.Clock
 import java.time.Duration
 
-class MaskinportenAltinnTokenProvider(
+internal class MaskinportenAltinnTokenProvider(
     private val maskinportenClient: MaskinportenClient,
     private val exchanger: AltinnTokenExchanger,
     clock: Clock = Clock.systemUTC(),

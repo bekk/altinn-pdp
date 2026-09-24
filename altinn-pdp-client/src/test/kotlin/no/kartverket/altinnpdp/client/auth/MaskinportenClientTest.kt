@@ -1,8 +1,6 @@
 package no.kartverket.altinnpdp.client.auth
 
 import com.nimbusds.jose.crypto.RSASSAVerifier
-import com.nimbusds.jose.jwk.Curve
-import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
@@ -65,13 +63,13 @@ class MaskinportenClientTest {
 
     @Test
     fun `puts the claims Maskinporten's JWT grant requires on the assertion`() {
-        val config = maskinportenConfig(scopes = listOf("altinn:a", "altinn:b"))
+        val config = maskinportenConfig()
 
         val claims = SignedJWT.parse(offlineClient(config).createClientAssertion()).jwtClaimsSet
 
         assertEquals("my-client-id", claims.issuer)
         assertEquals(listOf("https://test.maskinporten.no/"), claims.audience)
-        assertEquals("altinn:a altinn:b", claims.getStringClaim("scope"))
+        assertEquals(AltinnScopes.AUTHORIZE, claims.getStringClaim("scope"))
         assertNotNull(claims.jwtid, "a jti is required so Maskinporten can reject replays")
         assertEquals(NOW.epochSecond, claims.issueTime.toInstant().epochSecond)
         assertEquals(NOW.plusSeconds(60).epochSecond, claims.expirationTime.toInstant().epochSecond)
@@ -85,25 +83,6 @@ class MaskinportenClientTest {
         val second = SignedJWT.parse(client.createClientAssertion()).jwtClaimsSet.jwtid
 
         assertTrue(first != second, "a reused jti would be rejected as a replay")
-    }
-
-    @Test
-    fun `refuses a JWK it cannot sign with, at construction rather than on the first call`() {
-        val cases = mapOf(
-            "a key that is not RSA" to (ECKeyGenerator(Curve.P_256).keyID("ec-key").generate().toJSONString() to "RSA"),
-            "a key with no private material" to (TestKeys.rsa.toPublicJWK().toJSONString() to "private key"),
-            // Nothing specific to say about a string that is not a JWK at all, beyond refusing it.
-            "a string that is not a JWK" to ("not-a-jwk" to ""),
-        )
-        for ((why, case) in cases) {
-            val (jwk, expectedInMessage) = case
-
-            val e = assertFailsWith<MaskinportenException>(why) {
-                offlineClient(maskinportenConfig(jwk = jwk))
-            }
-
-            assertContains(e.message!!, expectedInMessage, message = "for $why")
-        }
     }
 
     @Test

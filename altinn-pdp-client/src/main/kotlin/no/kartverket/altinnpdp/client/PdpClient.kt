@@ -1,10 +1,10 @@
 package no.kartverket.altinnpdp.client
 
 import kotlinx.serialization.SerializationException
-import no.kartverket.altinnpdp.client.auth.AltinnScopes
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
+import no.kartverket.altinnpdp.client.auth.MaskinportenKey
 import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.PdpHttpClient
@@ -14,7 +14,7 @@ import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
 import java.net.URI
 
-class PdpClient(
+class PdpClient internal constructor(
     platformBaseUrl: String,
     private val tokenProvider: AltinnTokenProvider,
     private val subscriptionKey: String,
@@ -22,10 +22,20 @@ class PdpClient(
 ) {
     constructor(
         environment: AltinnEnvironment,
-        tokenProvider: AltinnTokenProvider,
         subscriptionKey: String,
+        maskinportenClientId: String,
+        maskinportenKey: MaskinportenKey,
         httpClient: PdpHttpClient,
-    ) : this(environment.platformBaseUrl, tokenProvider, subscriptionKey, httpClient)
+    ) : this(
+        platformBaseUrl = environment.platformBaseUrl,
+        tokenProvider = MaskinportenAltinnTokenProvider(
+            MaskinportenConfig(environment.maskinportenTokenUrl, maskinportenClientId, maskinportenKey),
+            environment,
+            httpClient,
+        ),
+        subscriptionKey = subscriptionKey,
+        httpClient = httpClient,
+    )
 
     private val authorizeUrl: URI = Http.url(platformBaseUrl, AUTHORIZE_PATH)
 
@@ -99,60 +109,9 @@ class PdpClient(
             }
         }
 
-    class Builder {
-        private var environment: AltinnEnvironment? = null
-        private var subscriptionKey: String? = null
-        private var httpClient: PdpHttpClient? = null
-        private var tokenProvider: AltinnTokenProvider? = null
-
-        private var maskinportenClientId: String? = null
-        private var maskinportenJwk: String? = null
-
-        fun environment(environment: AltinnEnvironment): Builder = apply { this.environment = environment }
-
-        fun subscriptionKey(subscriptionKey: String): Builder = apply { this.subscriptionKey = subscriptionKey }
-
-        fun httpClient(httpClient: PdpHttpClient): Builder = apply { this.httpClient = httpClient }
-
-        fun tokenProvider(tokenProvider: AltinnTokenProvider): Builder = apply { this.tokenProvider = tokenProvider }
-
-        fun maskinportenClientId(clientId: String): Builder = apply { this.maskinportenClientId = clientId }
-
-        fun maskinportenJwk(jwk: String): Builder = apply { this.maskinportenJwk = jwk }
-
-        fun build(): PdpClient {
-            val env = requireNotNull(environment) { "environment is required" }
-            val key = requireNotNull(subscriptionKey) { "subscriptionKey is required" }
-            val client = requireNotNull(httpClient) {
-                "httpClient is required - JavaPdpHttpClient wraps a java.net.http.HttpClient with the timeouts you need"
-            }
-
-            val provider = tokenProvider ?: MaskinportenAltinnTokenProvider(
-                maskinportenConfig = MaskinportenConfig(
-                    tokenUrl = env.maskinportenTokenUrl,
-                    clientId = requireNotNull(maskinportenClientId) {
-                        "maskinportenClientId is required (or call tokenProvider(...) directly)"
-                    },
-                    jwk = requireNotNull(maskinportenJwk) {
-                        "maskinportenJwk is required (or call tokenProvider(...) directly)"
-                    },
-                    // Not a builder setting: this client only ever calls /authorize, and that is
-                    // the one scope the endpoint needs.
-                    scopes = listOf(AltinnScopes.AUTHORIZE),
-                ),
-                environment = env,
-                httpClient = client,
-            )
-
-            return PdpClient(env, provider, key, client)
-        }
-    }
-
     companion object {
         const val AUTHORIZE_PATH = "/authorization/api/v1/authorize"
 
         const val SUBSCRIPTION_KEY_HEADER = "Ocp-Apim-Subscription-Key"
-
-        fun builder(): Builder = Builder()
     }
 }

@@ -1,5 +1,5 @@
 package no.kartverket.altinnpdp.client.auth
 
-object AltinnScopes {
+internal object AltinnScopes {
     const val AUTHORIZE = "altinn:authorization/authorize"
 }

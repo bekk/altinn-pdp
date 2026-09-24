@@ -1,28 +1,21 @@
 package no.kartverket.altinnpdp.client.support
 
-import no.kartverket.altinnpdp.client.auth.AltinnScopes
 import no.kartverket.altinnpdp.client.auth.AltinnTokenExchanger
 import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenClient
 import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
+import no.kartverket.altinnpdp.client.auth.MaskinportenKey
 import java.time.Clock
 import java.time.Duration
 
 internal const val TOKEN_PATH = "/token"
 
+internal val testMaskinportenKey: MaskinportenKey = MaskinportenKey.parse(TestKeys.rsa.toJSONString())
+
 internal fun maskinportenConfig(
     tokenUrl: String = "https://test.maskinporten.no/token",
     clientId: String = "my-client-id",
-    jwk: String = TestKeys.rsa.toJSONString(),
-    scopes: List<String> = listOf(AltinnScopes.AUTHORIZE),
-    assertionLifetime: Duration = Duration.ofSeconds(60),
-    audience: String? = null,
-): MaskinportenConfig = if (audience == null) {
-    // Left out rather than passed through, so the derived audience is what is under test.
-    MaskinportenConfig(tokenUrl, clientId, jwk, scopes, assertionLifetime)
-} else {
-    MaskinportenConfig(tokenUrl, clientId, jwk, scopes, assertionLifetime, audience)
-}
+) = MaskinportenConfig(tokenUrl, clientId, testMaskinportenKey)
 
 internal fun maskinportenTokenResponse(accessToken: String = "mp-token", expiresIn: Long? = 3600): String =
     if (expiresIn == null) {
