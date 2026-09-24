@@ -2,7 +2,11 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
-import io.ktor.server.netty.EngineMain
+import io.ktor.server.config.yaml.YamlConfig
+import io.ktor.server.engine.applicationEnvironment
+import io.ktor.server.engine.connector
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -13,7 +17,16 @@ import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 
-fun main(args: Array<String>) = EngineMain.main(args)
+fun main() {
+    embeddedServer(
+        Netty,
+        environment = applicationEnvironment {
+            config = YamlConfig("application.yaml") ?: error("application.yaml is not on the classpath")
+        },
+        configure = { connector { port = 8080 } },
+        module = Application::module,
+    ).start(wait = true)
+}
 
 fun Application.module() {
     configureAccessLogging()
