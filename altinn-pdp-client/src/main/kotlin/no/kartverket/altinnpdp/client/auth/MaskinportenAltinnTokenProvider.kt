@@ -1,12 +1,12 @@
 package no.kartverket.altinnpdp.client.auth
 
-import java.net.http.HttpClient
-import java.time.Clock
-import java.time.Duration
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.Timeouts
+import java.net.http.HttpClient
+import java.time.Clock
+import java.time.Duration
 
 class MaskinportenAltinnTokenProvider(
     private val maskinportenClient: MaskinportenClient,

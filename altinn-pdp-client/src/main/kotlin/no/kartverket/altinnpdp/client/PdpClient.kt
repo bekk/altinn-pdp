@@ -1,9 +1,5 @@
 package no.kartverket.altinnpdp.client
 
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.AltinnEnvironment
@@ -18,6 +14,10 @@ import no.kartverket.altinnpdp.client.http.Timeouts
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
 import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 
 class PdpClient(
     platformBaseUrl: String,

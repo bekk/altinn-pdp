@@ -1,13 +1,13 @@
 package no.kartverket.altinnpdp.restserver
 
 import io.ktor.server.config.MapApplicationConfig
+import no.kartverket.altinnpdp.client.http.Timeouts
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
-import no.kartverket.altinnpdp.client.http.Timeouts
 
 class PdpTimeoutsTest {
 

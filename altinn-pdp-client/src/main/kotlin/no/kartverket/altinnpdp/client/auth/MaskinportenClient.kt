@@ -8,6 +8,13 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import no.kartverket.altinnpdp.client.exception.MaskinportenException
+import no.kartverket.altinnpdp.client.http.Http
+import no.kartverket.altinnpdp.client.http.Timeouts
 import java.net.URI
 import java.net.URLEncoder
 import java.net.http.HttpClient
@@ -18,13 +25,6 @@ import java.time.Clock
 import java.time.Duration
 import java.util.Date
 import java.util.UUID
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
-import no.kartverket.altinnpdp.client.exception.MaskinportenException
-import no.kartverket.altinnpdp.client.http.Http
-import no.kartverket.altinnpdp.client.http.Timeouts
 
 class MaskinportenClient(
     private val config: MaskinportenConfig,

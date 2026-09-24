@@ -1,15 +1,5 @@
 package no.kartverket.altinnpdp.client
 
-import java.net.http.HttpTimeoutException
-import java.time.Duration
-import java.time.Instant
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertContains
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertIs
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -27,6 +17,16 @@ import no.kartverket.altinnpdp.client.support.TestHttpServer
 import no.kartverket.altinnpdp.client.support.TestKeys
 import no.kartverket.altinnpdp.client.support.TestResponse
 import no.kartverket.altinnpdp.client.support.signedJwt
+import java.net.http.HttpTimeoutException
+import java.time.Duration
+import java.time.Instant
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 
 /** Only timeouts are asserted on: a sleep is a floor, so a slow machine cannot pass these by luck. */
 class PdpClientTimeoutTest {

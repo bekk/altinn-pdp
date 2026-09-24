@@ -1,9 +1,5 @@
 package no.kartverket.altinnpdp.client.auth
 
-import java.time.Duration
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -12,6 +8,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.support.MutableClock
 import no.kartverket.altinnpdp.client.support.NOW
+import java.time.Duration
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class TokenCacheTest {
 

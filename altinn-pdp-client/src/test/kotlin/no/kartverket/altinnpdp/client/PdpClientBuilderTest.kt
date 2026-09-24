@@ -1,11 +1,5 @@
 package no.kartverket.altinnpdp.client
 
-import java.time.Duration
-import java.time.Instant
-import kotlin.test.Test
-import kotlin.test.assertContains
-import kotlin.test.assertFailsWith
-import kotlin.test.assertNotNull
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.auth.AccessToken
@@ -14,6 +8,12 @@ import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.http.Timeouts
 import no.kartverket.altinnpdp.client.support.TestKeys
+import java.time.Duration
+import java.time.Instant
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 
 class PdpClientBuilderTest {
 

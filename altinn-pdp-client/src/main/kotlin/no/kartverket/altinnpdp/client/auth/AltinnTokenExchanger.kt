@@ -1,15 +1,15 @@
 package no.kartverket.altinnpdp.client.auth
 
 import com.nimbusds.jwt.JWTParser
+import no.kartverket.altinnpdp.client.AltinnEnvironment
+import no.kartverket.altinnpdp.client.exception.AltinnException
+import no.kartverket.altinnpdp.client.http.Http
+import no.kartverket.altinnpdp.client.http.Timeouts
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.text.ParseException
 import java.time.Instant
-import no.kartverket.altinnpdp.client.AltinnEnvironment
-import no.kartverket.altinnpdp.client.exception.AltinnException
-import no.kartverket.altinnpdp.client.http.Http
-import no.kartverket.altinnpdp.client.http.Timeouts
 
 /**  Altinn's APIs do not accept Maskinporten tokens, so one has to be traded for an Altinn token. */
 class AltinnTokenExchanger(

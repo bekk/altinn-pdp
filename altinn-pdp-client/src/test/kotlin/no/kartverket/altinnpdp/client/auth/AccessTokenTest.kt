@@ -1,10 +1,10 @@
 package no.kartverket.altinnpdp.client.auth
 
+import no.kartverket.altinnpdp.client.support.NOW
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import no.kartverket.altinnpdp.client.support.NOW
 
 class AccessTokenTest {
 

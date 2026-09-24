@@ -6,6 +6,7 @@ import ch.qos.logback.core.read.ListAppender
 import io.ktor.client.request.get
 import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.testApplication
+import org.slf4j.LoggerFactory
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -13,7 +14,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import org.slf4j.LoggerFactory
 
 class AccessLoggingTest {
 

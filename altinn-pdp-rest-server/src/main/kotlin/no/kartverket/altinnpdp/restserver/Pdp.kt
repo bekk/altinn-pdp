@@ -6,10 +6,10 @@ import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
-import java.time.Duration
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.http.Timeouts
+import java.time.Duration
 
 fun Application.configurePdp(client: PdpClient = pdpClientFromConfig()) {
     install(DI)
