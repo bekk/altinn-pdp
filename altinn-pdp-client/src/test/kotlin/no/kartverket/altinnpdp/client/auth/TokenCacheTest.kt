@@ -19,10 +19,10 @@ class TokenCacheTest {
 
     @Test
     fun `serves the cached token while it is fresh`() = runBlocking {
-        val cache = TokenCache(MutableClock(), leeway)
+        val cache = TokenCache<AltinnToken>(MutableClock(), leeway)
         val loads = AtomicInteger()
 
-        repeat(3) { cache.get { loads.incrementAndGet(); AccessToken("t", NOW.plusSeconds(300)) } }
+        repeat(3) { cache.get { loads.incrementAndGet(); AltinnToken("t", NOW.plusSeconds(300)) } }
 
         assertEquals(1, loads.get())
     }
@@ -30,10 +30,10 @@ class TokenCacheTest {
     @Test
     fun `reloads once the cached token enters the refresh window`() = runBlocking {
         val clock = MutableClock()
-        val cache = TokenCache(clock, leeway)
+        val cache = TokenCache<AltinnToken>(clock, leeway)
         val loads = AtomicInteger()
-        val load: suspend () -> AccessToken = {
-            AccessToken("token-${loads.incrementAndGet()}", clock.instant().plusSeconds(120))
+        val load: suspend () -> AltinnToken = {
+            AltinnToken("token-${loads.incrementAndGet()}", clock.instant().plusSeconds(120))
         }
 
         assertEquals("token-1", cache.get(load).value)
@@ -46,7 +46,7 @@ class TokenCacheTest {
 
     @Test
     fun `concurrent callers on a cold cache trigger exactly one load`() = runBlocking {
-        val cache = TokenCache(MutableClock(), leeway)
+        val cache = TokenCache<AltinnToken>(MutableClock(), leeway)
         val loads = AtomicInteger()
 
         coroutineScope {
@@ -55,7 +55,7 @@ class TokenCacheTest {
                     cache.get {
                         loads.incrementAndGet()
                         delay(20) // hold the lock long enough for the race to be real
-                        AccessToken("t", NOW.plusSeconds(300))
+                        AltinnToken("t", NOW.plusSeconds(300))
                     }
                 }
             }.awaitAll()

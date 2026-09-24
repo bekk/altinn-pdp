@@ -5,6 +5,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ErrorResponse(
     val error: String,
-    val code: String = ErrorCode.INTERNAL_ERROR,
+    val code: ErrorCode = ErrorCode.INTERNAL_ERROR,
     val errors: List<FieldError>? = null,
 )

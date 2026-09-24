@@ -1,6 +1,10 @@
 package no.kartverket.altinnpdp.client.support
 
+import no.kartverket.altinnpdp.client.ActionId
+import no.kartverket.altinnpdp.client.OrganizationNumber
 import no.kartverket.altinnpdp.client.PdpClient
+import no.kartverket.altinnpdp.client.ResourceId
+import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.http.PdpHttpClient
 
@@ -20,7 +24,12 @@ internal fun testPdpClient(
 
 /** The one request every PDP test makes, so no test has to spell out four valid arguments. */
 internal suspend fun PdpClient.authorizeSample() =
-    authorize(SAMPLE_SYSTEMUSER_ID, "test-resource", "923609016", "read")
+    authorize(
+        SystemUserId(SAMPLE_SYSTEMUSER_ID),
+        ResourceId("test-resource"),
+        OrganizationNumber("923609016"),
+        ActionId("read"),
+    )
 
 internal fun pdpDecisionResponse(decision: String = "Permit") = """{"Response":[{"Decision":"$decision"}]}"""
 

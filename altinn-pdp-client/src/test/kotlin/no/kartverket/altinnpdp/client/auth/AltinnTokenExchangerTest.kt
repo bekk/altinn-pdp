@@ -30,11 +30,13 @@ class AltinnTokenExchangerTest {
 
     private fun exchanger(baseUrl: String = server.baseUrl) = AltinnTokenExchanger(baseUrl, testHttpClient)
 
+    private val maskinportenToken = MaskinportenToken("maskinporten-token", NOW.plusSeconds(300))
+
     @Test
     fun `sends the Maskinporten token as a bearer token on a GET`() = runBlocking {
         server.on(path) { TestResponse(body = signedJwt(NOW.plusSeconds(300))) }
 
-        exchanger().exchange("maskinporten-token")
+        exchanger().exchange(maskinportenToken)
 
         val request = server.lastRequest(path)
         assertEquals("GET", request.method)
@@ -46,7 +48,7 @@ class AltinnTokenExchangerTest {
         val expiresAt = NOW.plusSeconds(300)
         server.on(path) { TestResponse(body = signedJwt(expiresAt)) }
 
-        val token = exchanger().exchange("maskinporten-token")
+        val token = exchanger().exchange(maskinportenToken)
 
         assertEquals(expiresAt.epochSecond, token.expiresAt.epochSecond)
     }
@@ -56,14 +58,14 @@ class AltinnTokenExchangerTest {
         val jwt = signedJwt(NOW.plusSeconds(300))
         server.on(path) { TestResponse(body = "  $jwt\n") }
 
-        assertEquals(jwt, exchanger().exchange("maskinporten-token").value)
+        assertEquals(jwt, exchanger().exchange(maskinportenToken).value)
     }
 
     @Test
     fun `appends the exchange path to a base URL that ends in a slash`() = runBlocking {
         server.on(path) { TestResponse(body = signedJwt(NOW.plusSeconds(300))) }
 
-        exchanger(baseUrl = server.baseUrl + "/").exchange("maskinporten-token")
+        exchanger(baseUrl = server.baseUrl + "/").exchange(maskinportenToken)
 
         assertEquals(1, server.requestCount(path), "a doubled slash would not have matched the context")
     }
@@ -72,7 +74,7 @@ class AltinnTokenExchangerTest {
     fun `surfaces a non-200 with the status and body on the exception`() = runBlocking {
         server.on(path) { TestResponse(status = 401, body = "token rejected") }
 
-        val e = assertFailsWith<AltinnException> { exchanger().exchange("maskinporten-token") }
+        val e = assertFailsWith<AltinnException> { exchanger().exchange(maskinportenToken) }
 
         assertEquals(401, e.statusCode)
         assertEquals("token rejected", e.responseBody)
@@ -89,7 +91,7 @@ class AltinnTokenExchangerTest {
             val (body, expectedInMessage) = case
             server.on(path) { TestResponse(body = body) }
 
-            val e = assertFailsWith<AltinnException>(why) { exchanger().exchange("maskinporten-token") }
+            val e = assertFailsWith<AltinnException>(why) { exchanger().exchange(maskinportenToken) }
 
             assertContains(e.message!!, expectedInMessage, message = "for $why")
         }
@@ -99,6 +101,6 @@ class AltinnTokenExchangerTest {
     fun `wraps a connection failure rather than leaking an IOException`() = runBlocking {
         val exchanger = AltinnTokenExchanger("http://127.0.0.1:1", testHttpClient)
 
-        assertContains(assertFailsWith<AltinnException> { exchanger.exchange("mp") }.message!!, "Altinn token exchange")
+        assertContains(assertFailsWith<AltinnException> { exchanger.exchange(maskinportenToken) }.message!!, "Altinn token exchange")
     }
 }

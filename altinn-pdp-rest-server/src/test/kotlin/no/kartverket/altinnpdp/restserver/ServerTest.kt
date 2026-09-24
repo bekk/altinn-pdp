@@ -9,9 +9,12 @@ import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
+import no.kartverket.altinnpdp.client.validation.PdpValidationCode
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
+import no.kartverket.altinnpdp.restserver.models.ErrorCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
 import kotlin.test.Test
@@ -48,10 +51,10 @@ class ServerTest {
     @Test
     fun `authorize returns every decision Altinn can answer with`() {
         val expected = mapOf(
-            "Permit" to AuthorizeResponse(permit = true, decision = "PERMIT", status = OK_STATUS),
-            "Deny" to AuthorizeResponse(permit = false, decision = "DENY", status = OK_STATUS),
-            "NotApplicable" to AuthorizeResponse(permit = false, decision = "NOT_APPLICABLE", status = OK_STATUS),
-            "Indeterminate" to AuthorizeResponse(permit = false, decision = "INDETERMINATE", status = OK_STATUS),
+            "Permit" to AuthorizeResponse(permit = true, decision = PdpDecision.PERMIT, status = OK_STATUS),
+            "Deny" to AuthorizeResponse(permit = false, decision = PdpDecision.DENY, status = OK_STATUS),
+            "NotApplicable" to AuthorizeResponse(permit = false, decision = PdpDecision.NOT_APPLICABLE, status = OK_STATUS),
+            "Indeterminate" to AuthorizeResponse(permit = false, decision = PdpDecision.INDETERMINATE, status = OK_STATUS),
         )
         for ((decision, expectedResponse) in expected) {
             authorizeTest(decision = decision) {
@@ -72,7 +75,7 @@ class ServerTest {
             assertEquals(
                 AuthorizeResponse(
                     permit = true,
-                    decision = "PERMIT",
+                    decision = PdpDecision.PERMIT,
                     status = OK_STATUS,
                     minimumAuthenticationLevel = 3,
                     minimumAuthenticationLevelOrg = 3,
@@ -94,19 +97,19 @@ class ServerTest {
             ValidationCase(
                 why = "a blank field",
                 body = authorizeBody(systemuserId = ""),
-                errors = listOf(FieldError("systemuserId", "MISSING", "systemuserId is required")),
+                errors = listOf(FieldError("systemuserId", PdpValidationCode.MISSING, "systemuserId is required")),
             ),
             ValidationCase(
                 why = "one absent field",
                 body = authorizeBody(systemuserId = null),
-                errors = listOf(FieldError("systemuserId", "MISSING", "systemuserId is required")),
+                errors = listOf(FieldError("systemuserId", PdpValidationCode.MISSING, "systemuserId is required")),
             ),
             ValidationCase(
                 why = "several absent fields",
                 body = authorizeBody(systemuserId = null, resourceId = null),
                 errors = listOf(
-                    FieldError("systemuserId", "MISSING", "systemuserId is required"),
-                    FieldError("resourceId", "MISSING", "resourceId is required"),
+                    FieldError("systemuserId", PdpValidationCode.MISSING, "systemuserId is required"),
+                    FieldError("resourceId", PdpValidationCode.MISSING, "resourceId is required"),
                 ),
             ),
             // An explicit null is a missing field, not malformed JSON.
@@ -115,7 +118,7 @@ class ServerTest {
                 body = """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
                     """"customerOrganizationNumber":null,"action":"read"}""",
                 errors = listOf(
-                    FieldError("customerOrganizationNumber", "MISSING", "customerOrganizationNumber is required"),
+                    FieldError("customerOrganizationNumber", PdpValidationCode.MISSING, "customerOrganizationNumber is required"),
                 ),
             ),
         )
@@ -132,7 +135,7 @@ class ServerTest {
                 errors = listOf(
                     FieldError(
                         "customerOrganizationNumber",
-                        "INVALID_FORMAT",
+                        PdpValidationCode.INVALID_FORMAT,
                         "customerOrganizationNumber must be exactly 9 digits",
                     ),
                 ),
@@ -144,7 +147,7 @@ class ServerTest {
                 errors = listOf(
                     FieldError(
                         "customerOrganizationNumber",
-                        "INVALID_FORMAT",
+                        PdpValidationCode.INVALID_FORMAT,
                         "customerOrganizationNumber must have a valid MOD11 check digit",
                     ),
                 ),
@@ -153,18 +156,18 @@ class ServerTest {
                 why = "every field at once",
                 body = """{"systemuserId":"nope","resourceId":"ab","customerOrganizationNumber":"12345"}""",
                 errors = listOf(
-                    FieldError("systemuserId", "INVALID_FORMAT", "systemuserId must be a UUID"),
+                    FieldError("systemuserId", PdpValidationCode.INVALID_FORMAT, "systemuserId must be a UUID"),
                     FieldError(
                         "resourceId",
-                        "INVALID_FORMAT",
+                        PdpValidationCode.INVALID_FORMAT,
                         "resourceId must be at least 4 characters of lowercase letters, digits, underscore or hyphen",
                     ),
                     FieldError(
                         "customerOrganizationNumber",
-                        "INVALID_FORMAT",
+                        PdpValidationCode.INVALID_FORMAT,
                         "customerOrganizationNumber must be exactly 9 digits",
                     ),
-                    FieldError("action", "MISSING", "action is required"),
+                    FieldError("action", PdpValidationCode.MISSING, "action is required"),
                 ),
             ),
         )
@@ -187,7 +190,7 @@ class ServerTest {
         assertEquals(HttpStatusCode.BadRequest, response.status)
         val text = response.bodyAsText()
         assertEquals(
-            ErrorResponse("Malformed request body", "MALFORMED_BODY"),
+            ErrorResponse("Malformed request body", ErrorCode.MALFORMED_BODY),
             Json.decodeFromString(ErrorResponse.serializer(), text),
         )
         assertFalse(text.contains("coerceInputValues"), "leaks kotlinx advice: $text")
@@ -198,11 +201,11 @@ class ServerTest {
     @Test
     fun `the upstream status decides whether the caller or Altinn is to blame`() {
         val cases = listOf(
-            UpstreamCase(400, HttpStatusCode.BadRequest, "UPSTREAM_REJECTED", "only Altinn's own 400 is the caller's fault"),
-            UpstreamCase(401, HttpStatusCode.BadGateway, "UPSTREAM_ERROR", "our own credentials are not the caller's fault"),
-            UpstreamCase(403, HttpStatusCode.BadGateway, "UPSTREAM_ERROR", "our own credentials are not the caller's fault"),
-            UpstreamCase(429, HttpStatusCode.BadGateway, "UPSTREAM_ERROR", "our own quota is not the caller's fault"),
-            UpstreamCase(500, HttpStatusCode.BadGateway, "UPSTREAM_ERROR", "a PDP server failure is not the caller's fault"),
+            UpstreamCase(400, HttpStatusCode.BadRequest, ErrorCode.UPSTREAM_REJECTED, "only Altinn's own 400 is the caller's fault"),
+            UpstreamCase(401, HttpStatusCode.BadGateway, ErrorCode.UPSTREAM_ERROR, "our own credentials are not the caller's fault"),
+            UpstreamCase(403, HttpStatusCode.BadGateway, ErrorCode.UPSTREAM_ERROR, "our own credentials are not the caller's fault"),
+            UpstreamCase(429, HttpStatusCode.BadGateway, ErrorCode.UPSTREAM_ERROR, "our own quota is not the caller's fault"),
+            UpstreamCase(500, HttpStatusCode.BadGateway, ErrorCode.UPSTREAM_ERROR, "a PDP server failure is not the caller's fault"),
         )
 
         for (case in cases) {
@@ -227,7 +230,7 @@ class ServerTest {
                 val response = postAuthorize()
 
                 assertEquals(HttpStatusCode.BadGateway, response.status, "for ${failure::class.simpleName}")
-                assertEquals("UPSTREAM_ERROR", response.errorResponse().code, "for ${failure::class.simpleName}")
+                assertEquals(ErrorCode.UPSTREAM_ERROR, response.errorResponse().code, "for ${failure::class.simpleName}")
             }
         }
     }
@@ -237,7 +240,7 @@ class ServerTest {
     private data class UpstreamCase(
         val upstream: Int,
         val expected: HttpStatusCode,
-        val expectedCode: String,
+        val expectedCode: ErrorCode,
         val why: String,
     ) {
         fun describe() = "upstream $upstream: $why"
@@ -250,7 +253,7 @@ class ServerTest {
 
                 assertEquals(HttpStatusCode.BadRequest, response.status, "for ${case.why}")
                 assertEquals(
-                    ErrorResponse(error = "Validation failed", code = "VALIDATION_ERROR", errors = case.errors),
+                    ErrorResponse(error = "Validation failed", code = ErrorCode.VALIDATION_ERROR, errors = case.errors),
                     response.errorResponse(),
                     "for ${case.why}",
                 )

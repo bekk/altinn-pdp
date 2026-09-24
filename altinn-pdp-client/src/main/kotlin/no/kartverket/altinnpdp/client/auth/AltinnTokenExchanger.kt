@@ -22,8 +22,8 @@ class AltinnTokenExchanger(
 
     private val exchangeUrl: URI = Http.url(platformBaseUrl, EXCHANGE_PATH)
 
-    suspend fun exchange(maskinportenToken: String): AccessToken {
-        val request = PdpHttpRequest("GET", exchangeUrl, mapOf("Authorization" to "Bearer $maskinportenToken"))
+    suspend fun exchange(maskinportenToken: MaskinportenToken): AltinnToken {
+        val request = PdpHttpRequest("GET", exchangeUrl, mapOf("Authorization" to "Bearer ${maskinportenToken.value}"))
 
         val response = Http.sendExpectingOk(httpClient, request, "Altinn token exchange", ::AltinnException)
         val token = response.body.trim()
@@ -34,7 +34,7 @@ class AltinnTokenExchanger(
                 responseBody = response.body,
             )
         }
-        return AccessToken(token, expiresAt(token))
+        return AltinnToken(token, expiresAt(token))
     }
 
     private fun expiresAt(token: String): Instant = try {

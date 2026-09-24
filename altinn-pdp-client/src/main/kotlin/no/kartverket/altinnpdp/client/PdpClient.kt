@@ -6,14 +6,12 @@ import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
 import no.kartverket.altinnpdp.client.exception.PdpException
-import no.kartverket.altinnpdp.client.exception.PdpValidationException
 import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.PdpHttpClient
 import no.kartverket.altinnpdp.client.http.PdpHttpRequest
 import no.kartverket.altinnpdp.client.http.PdpHttpResponse
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
-import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 import java.net.URI
 
 class PdpClient(
@@ -32,22 +30,17 @@ class PdpClient(
     private val authorizeUrl: URI = Http.url(platformBaseUrl, AUTHORIZE_PATH)
 
     suspend fun authorize(
-        systemuserId: String,
-        resourceId: String,
-        customerOrganizationNumber: String,
-        action: String,
-    ): PdpAuthorization {
-        val errors = PdpRequestValidation.validate(systemuserId, resourceId, customerOrganizationNumber, action)
-        if (errors.isNotEmpty()) throw PdpValidationException(errors)
-
-        return fetchAuthorization(systemuserId, resourceId, customerOrganizationNumber, action)
-    }
+        systemuserId: SystemUserId,
+        resourceId: ResourceId,
+        customerOrganizationNumber: OrganizationNumber,
+        action: ActionId,
+    ): PdpAuthorization = fetchAuthorization(systemuserId, resourceId, customerOrganizationNumber, action)
 
     private suspend fun fetchAuthorization(
-        subject: String,
-        resource: String,
-        org: String,
-        actionId: String,
+        subject: SystemUserId,
+        resource: ResourceId,
+        org: OrganizationNumber,
+        actionId: ActionId,
     ): PdpAuthorization {
         val token = tokenProvider.getAltinnToken()
         val body = Http.json.encodeToString(

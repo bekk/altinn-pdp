@@ -1,6 +1,10 @@
 package no.kartverket.altinnpdp.client.model
 
 import kotlinx.serialization.json.Json
+import no.kartverket.altinnpdp.client.ActionId
+import no.kartverket.altinnpdp.client.OrganizationNumber
+import no.kartverket.altinnpdp.client.ResourceId
+import no.kartverket.altinnpdp.client.SystemUserId
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -9,10 +13,10 @@ class XacmlAuthorizationRequestTest {
     private val json = Json { ignoreUnknownKeys = true }
 
     private fun request() = XacmlAuthorizationRequest.forSystemUser(
-        systemuserId = "5f2c1a8e-0000-4000-8000-2b3c4d5e6f70",
-        resourceId = "kartverket-eiendom",
-        customerOrganizationNumber = "923609016",
-        action = "read",
+        systemuserId = SystemUserId("5f2c1a8e-0000-4000-8000-2b3c4d5e6f70"),
+        resourceId = ResourceId("kartverket-eiendom"),
+        customerOrganizationNumber = OrganizationNumber("923609016"),
+        action = ActionId("read"),
     )
 
     @Test

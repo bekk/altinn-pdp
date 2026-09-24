@@ -25,8 +25,8 @@ class MaskinportenAltinnTokenProvider(
         refreshLeeway,
     )
 
-    private val cache = TokenCache(clock, refreshLeeway)
+    private val cache = TokenCache<AltinnToken>(clock, refreshLeeway)
 
-    override suspend fun getAltinnToken(): AccessToken =
-        cache.get { exchanger.exchange(maskinportenClient.getToken().value) }
+    override suspend fun getAltinnToken(): AltinnToken =
+        cache.get { exchanger.exchange(maskinportenClient.getToken()) }
 }

@@ -5,14 +5,14 @@ import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.time.Duration
 
-internal class TokenCache(
+internal class TokenCache<T : AccessToken>(
     private val clock: Clock,
     private val refreshLeeway: Duration,
 ) {
     private val mutex = Mutex()
-    private var token: AccessToken? = null
+    private var token: T? = null
 
-    suspend fun get(loader: suspend () -> AccessToken): AccessToken = mutex.withLock {
+    suspend fun get(loader: suspend () -> T): T = mutex.withLock {
         val current = token
         if (current == null || current.isExpired(clock.instant(), refreshLeeway)) {
             loader().also { token = it }

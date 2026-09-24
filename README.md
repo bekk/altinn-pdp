@@ -54,10 +54,10 @@ this project is for.
 
 ## 🧩 Modules
 
-| Module | What it is | Published as |
-| :--- | :--- | :--- |
-| [`altinn-pdp-client`](altinn-pdp-client) | Kotlin library that talks to Maskinporten and the Altinn PDP directly | a package, for other services to depend on |
-| [`altinn-pdp-rest-server`](altinn-pdp-rest-server) | Ktor server exposing a simplified REST/JSON API over the client | a Docker image, built with [Jib](https://github.com/GoogleContainerTools/jib) |
+| Module                                             | What it is                                                            | Published as                                                                  |
+| :------------------------------------------------- | :-------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| [`altinn-pdp-client`](altinn-pdp-client)           | Kotlin library that talks to Maskinporten and the Altinn PDP directly | a package, for other services to depend on                                    |
+| [`altinn-pdp-rest-server`](altinn-pdp-rest-server) | Ktor server exposing a simplified REST/JSON API over the client       | a Docker image, built with [Jib](https://github.com/GoogleContainerTools/jib) |
 
 `altinn-pdp-rest-server` is the intended consumer of `altinn-pdp-client`, so other systems can ask
 "is this allowed?" over plain JSON without speaking Maskinporten and XACML themselves.
@@ -104,23 +104,23 @@ built yourself, which is handy in tests or to share one provider across several 
 
 ```kotlin
 val authorization = client.authorize(
-    systemuserId = "<systembruker uuid>",
-    resourceId = "<resource id>",
-    customerOrganizationNumber = "923609016",
-    action = "read",
+    systemuserId = SystemUserId("<systembruker uuid>"),
+    resourceId = ResourceId("<resource id>"),
+    customerOrganizationNumber = OrganizationNumber("923609016"),
+    action = ActionId("read"),
 )
 ```
 
 The answer is a `PdpAuthorization`:
 
-| Member | What it is |
-| :--- | :--- |
-| `decision` | `PdpDecision`: `PERMIT`, `DENY`, `NOT_APPLICABLE` (no matching policy, not in itself an error) or `INDETERMINATE` (the PDP could not evaluate the request) |
-| `isPermit` | Shorthand for `decision == PERMIT` |
-| `obligations` | Every obligation Altinn attached, unfiltered, including ones this library does not model |
-| `minimumAuthenticationLevel` | The `urn:altinn:minimum-authenticationlevel` obligation as an `Int`, or null |
-| `minimumAuthenticationLevelOrg` | The same for `urn:altinn:minimum-authenticationlevel-org` |
-| `statusCode` | Altinn's XACML status URN, or null |
+| Member                          | What it is                                                                                                                                                 |
+| :------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `decision`                      | `PdpDecision`: `PERMIT`, `DENY`, `NOT_APPLICABLE` (no matching policy, not in itself an error) or `INDETERMINATE` (the PDP could not evaluate the request) |
+| `isPermit`                      | Shorthand for `decision == PERMIT`                                                                                                                         |
+| `obligations`                   | Every obligation Altinn attached, unfiltered, including ones this library does not model                                                                   |
+| `minimumAuthenticationLevel`    | The `urn:altinn:minimum-authenticationlevel` obligation as an `Int`, or null                                                                               |
+| `minimumAuthenticationLevelOrg` | The same for `urn:altinn:minimum-authenticationlevel-org`                                                                                                  |
+| `statusCode`                    | Altinn's XACML status URN, or null                                                                                                                         |
 
 > [!WARNING]
 > A `PERMIT` that carries a `minimumAuthenticationLevel` is **conditional**. XACML expects
@@ -186,12 +186,12 @@ Request body:
 
 All four fields are required strings, and are validated before Altinn is called:
 
-| Felt | Regel |
-| :--- | :--- |
-| `systemuserId` | UUID |
-| `resourceId` | `^[a-z0-9_-]{4,}$`, the Resource Registry's own rule |
-| `customerOrganizationNumber` | 9 digits with a valid MOD11 check digit |
-| `action` | Non-empty, no format constraint |
+| Felt                         | Regel                                                |
+| :--------------------------- | :--------------------------------------------------- |
+| `systemuserId`               | UUID                                                 |
+| `resourceId`                 | `^[a-z0-9_-]{4,}$`, the Resource Registry's own rule |
+| `customerOrganizationNumber` | 9 digits with a valid MOD11 check digit              |
+| `action`                     | Non-empty, no format constraint                      |
 
 The Altinn subscription key and Maskinporten credentials are configured
 server-side (see [Environment variables](#-environment-variables)) - callers never supply them.
@@ -218,12 +218,12 @@ Altinn sends nothing for them, so a response may still be just `permit` and `dec
 
 `decision` is one of:
 
-| Value | Meaning |
-| :--- | :--- |
-| `PERMIT` | The systembruker is allowed to perform `action` on the resource for that org |
-| `DENY` | Explicitly denied |
-| `NOT_APPLICABLE` | No matching policy - not necessarily an error |
-| `INDETERMINATE` | The PDP couldn't evaluate the request |
+| Value            | Meaning                                                                      |
+| :--------------- | :--------------------------------------------------------------------------- |
+| `PERMIT`         | The systembruker is allowed to perform `action` on the resource for that org |
+| `DENY`           | Explicitly denied                                                            |
+| `NOT_APPLICABLE` | No matching policy - not necessarily an error                                |
+| `INDETERMINATE`  | The PDP couldn't evaluate the request                                        |
 
 #### Authentication level obligations
 
@@ -261,28 +261,31 @@ just the first:
   "error": "Validation failed",
   "code": "VALIDATION_ERROR",
   "errors": [
-    { "field": "customerOrganizationNumber", "code": "INVALID_FORMAT",
-      "message": "customerOrganizationNumber must have a valid MOD11 check digit" },
+    {
+      "field": "customerOrganizationNumber",
+      "code": "INVALID_FORMAT",
+      "message": "customerOrganizationNumber must have a valid MOD11 check digit"
+    },
     { "field": "action", "code": "MISSING", "message": "action is required" }
   ]
 }
 ```
 
-| `code` | Status | Meaning |
-| :--- | :--- | :--- |
-| `VALIDATION_ERROR` | 400 | One or more fields failed validation. See `errors` |
-| `MALFORMED_BODY` | 400 | Not valid JSON, or a field of the wrong type |
-| `UPSTREAM_REJECTED` | 400 | Altinn itself answered 400 to the request we built |
-| `UPSTREAM_ERROR` | 502 | Calling Maskinporten or Altinn failed, including our own auth and quota problems |
-| `INTERNAL_ERROR` | 500 | Anything unanticipated |
+| `code`              | Status | Meaning                                                                          |
+| :------------------ | :----- | :------------------------------------------------------------------------------- |
+| `VALIDATION_ERROR`  | 400    | One or more fields failed validation. See `errors`                               |
+| `MALFORMED_BODY`    | 400    | Not valid JSON, or a field of the wrong type                                     |
+| `UPSTREAM_REJECTED` | 400    | Altinn itself answered 400 to the request we built                               |
+| `UPSTREAM_ERROR`    | 502    | Calling Maskinporten or Altinn failed, including our own auth and quota problems |
+| `INTERNAL_ERROR`    | 500    | Anything unanticipated                                                           |
 
 Per-field `code` is `MISSING` (absent, null or blank) or `INVALID_FORMAT` (present but wrong shape).
 
-| Status | Cause |
-| :--- | :--- |
-| `400 Bad Request` | A field failed validation, the body was malformed, or Altinn itself answered 400. An unknown `resourceId` is *not* a 400: Altinn answers `200` with `INDETERMINATE` and a processing-error `status` |
-| `502 Bad Gateway` | Calling Maskinporten or Altinn failed. This includes Altinn answering 401, 403 or 429, which are this service's credentials and quota, not the caller's problem |
-| `500 Internal Server Error` | Anything unanticipated |
+| Status                      | Cause                                                                                                                                                                                               |
+| :-------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `400 Bad Request`           | A field failed validation, the body was malformed, or Altinn itself answered 400. An unknown `resourceId` is _not_ a 400: Altinn answers `200` with `INDETERMINATE` and a processing-error `status` |
+| `502 Bad Gateway`           | Calling Maskinporten or Altinn failed. This includes Altinn answering 401, 403 or 429, which are this service's credentials and quota, not the caller's problem                                     |
+| `500 Internal Server Error` | Anything unanticipated                                                                                                                                                                              |
 
 ### `GET /health/live`
 
@@ -293,13 +296,13 @@ API.
 
 ## 🔑 Environment variables
 
-| Variable | Required | Default |
-| :--- | :--- | :--- |
-| `MASKINPORTEN_CLIENT_ID` | yes | - |
-| `MASKINPORTEN_CLIENT_JWK` | yes | - |
-| `ALTINN_SUBSCRIPTION_KEY` | yes | - |
-| `ALTINN_ENVIRONMENT` | no | `TT02` |
-| `ACCESS_LOG_ENABLED` | no | `true` |
+| Variable                  | Required | Default |
+| :------------------------ | :------- | :------ |
+| `MASKINPORTEN_CLIENT_ID`  | yes      | -       |
+| `MASKINPORTEN_CLIENT_JWK` | yes      | -       |
+| `ALTINN_SUBSCRIPTION_KEY` | yes      | -       |
+| `ALTINN_ENVIRONMENT`      | no       | `TT02`  |
+| `ACCESS_LOG_ENABLED`      | no       | `true`  |
 
 See `.env.example` for what each variable is and where to get it.
 
@@ -317,10 +320,10 @@ Never commit `.env`, and never print secrets in logs.
 `AltinnEnvironment` fixes, from one choice, every value that has to stay consistent across an
 environment: the Altinn platform base URL and the Maskinporten token endpoint.
 
-| Environment | Altinn platform | Maskinporten |
-| :--- | :--- | :--- |
-| `TT02` | `https://platform.tt02.altinn.no` | `https://test.maskinporten.no/token` |
-| `PROD` | `https://platform.altinn.no` | `https://maskinporten.no/token` |
+| Environment | Altinn platform                   | Maskinporten                         |
+| :---------- | :-------------------------------- | :----------------------------------- |
+| `TT02`      | `https://platform.tt02.altinn.no` | `https://test.maskinporten.no/token` |
+| `PROD`      | `https://platform.altinn.no`      | `https://maskinporten.no/token`      |
 
 The client also has raw base-URL constructors for pointing at a local test server.
 
@@ -338,14 +341,14 @@ The client also has raw base-URL constructors for pointing at a local test serve
 
 ## 🔗 Useful links
 
-| Resource | Link |
-| :--- | :--- |
-| Authorising a systembruker | https://docs.altinn.studio/nb/authorization/guides/resource-owner/system-user/ |
-| Altinn Studio documentation | https://docs.altinn.studio |
-| Altinn-delegering i Maskinporten | https://skip.kartverket.no/docs/tilgangsstyring/valg-av-identitetstilbyder/delegering |
-| Systembruker | https://skip.kartverket.no/docs/tilgangsstyring/valg-av-identitetstilbyder/systembruker |
-| Maskinporten | https://docs.digdir.no/docs/Maskinporten |
-| Altinn TT02 (test) | https://tt02.altinn.no |
+| Resource                         | Link                                                                                    |
+| :------------------------------- | :-------------------------------------------------------------------------------------- |
+| Authorising a systembruker       | https://docs.altinn.studio/nb/authorization/guides/resource-owner/system-user/          |
+| Altinn Studio documentation      | https://docs.altinn.studio                                                              |
+| Altinn-delegering i Maskinporten | https://skip.kartverket.no/docs/tilgangsstyring/valg-av-identitetstilbyder/delegering   |
+| Systembruker                     | https://skip.kartverket.no/docs/tilgangsstyring/valg-av-identitetstilbyder/systembruker |
+| Maskinporten                     | https://docs.digdir.no/docs/Maskinporten                                                |
+| Altinn TT02 (test)               | https://tt02.altinn.no                                                                  |
 
 ---
 

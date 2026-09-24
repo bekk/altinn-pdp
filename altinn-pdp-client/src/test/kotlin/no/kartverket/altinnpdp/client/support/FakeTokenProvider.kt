@@ -1,6 +1,6 @@
 package no.kartverket.altinnpdp.client.support
 
-import no.kartverket.altinnpdp.client.auth.AccessToken
+import no.kartverket.altinnpdp.client.auth.AltinnToken
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import java.time.Instant
 
@@ -15,8 +15,8 @@ internal class FakeTokenProvider(
     var calls = 0
         private set
 
-    override suspend fun getAltinnToken(): AccessToken {
+    override suspend fun getAltinnToken(): AltinnToken {
         calls++
-        return AccessToken(token, Instant.MAX)
+        return AltinnToken(token, Instant.MAX)
     }
 }
