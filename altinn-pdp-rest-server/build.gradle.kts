@@ -27,6 +27,7 @@ dependencies {
     implementation(libs.logback.classic)
 
     testImplementation(ktorLibs.server.testHost)
+    testImplementation(libs.nimbus.jose.jwt)
 }
 
 // Local-first Jib config: `./gradlew jibDockerBuild` needs no registry.

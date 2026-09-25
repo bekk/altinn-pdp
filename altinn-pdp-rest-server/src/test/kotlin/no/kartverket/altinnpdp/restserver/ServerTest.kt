@@ -10,8 +10,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.kartverket.altinnpdp.client.PdpDecision
-import no.kartverket.altinnpdp.client.exception.AltinnException
-import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.validation.PdpValidationCode
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorCode
@@ -220,24 +218,22 @@ class ServerTest {
 
     @Test
     fun `a 400 while fetching our own token is not blamed on the caller`() {
-        val failures = listOf(
-            MaskinportenException("Maskinporten responded 400", statusCode = 400, responseBody = """{"error":"invalid_grant"}"""),
-            AltinnException("Altinn responded 400 to the token exchange", statusCode = 400),
-        )
-
-        for (failure in failures) {
-            authorizeTest(tokenProvider = failingTokenProvider(failure)) {
+        for (where in listOf("Maskinporten", "the token exchange")) {
+            authorizeTest(
+                maskinportenStatus = if (where == "Maskinporten") 400 else 200,
+                exchangeStatus = if (where == "the token exchange") 400 else 200,
+            ) {
                 val response = postAuthorize()
 
-                assertEquals(HttpStatusCode.BadGateway, response.status, "for ${failure::class.simpleName}")
-                assertEquals(ErrorCode.UPSTREAM_ERROR, response.errorResponse().code, "for ${failure::class.simpleName}")
+                assertEquals(HttpStatusCode.BadGateway, response.status, "for $where")
+                assertEquals(ErrorCode.UPSTREAM_ERROR, response.errorResponse().code, "for $where")
             }
         }
     }
 
     @Test
     fun `an unexpected IllegalArgumentException is our fault, not the caller's`() =
-        authorizeTest(tokenProvider = failingTokenProvider(IllegalArgumentException("internal detail"))) {
+        authorizeTest(failure = IllegalArgumentException("internal detail")) {
             val response = postAuthorize()
 
             assertEquals(HttpStatusCode.InternalServerError, response.status)

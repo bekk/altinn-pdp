@@ -85,20 +85,17 @@ Builds and tests every module. This is also what CI runs.
 ### Building the client
 
 ```kotlin
-val client = PdpClient.builder()
-    .environment(AltinnEnvironment.TT02)
-    .subscriptionKey("<subscription key>")
-    .maskinportenClientId("<client id>")
-    .maskinportenJwk(jwkJson)
-    .httpClient(JavaPdpHttpClient(HttpClient.newHttpClient(), requestTimeout = Duration.ofSeconds(3)))
-    .build()
+val client = PdpClient(
+    environment = AltinnEnvironment.TT02,
+    subscriptionKey = "<subscription key>",
+    maskinportenClientId = "<client id>",
+    maskinportenKey = MaskinportenKey.parse(jwkJson),
+    httpClient = JavaPdpHttpClient(HttpClient.newHttpClient(), requestTimeout = Duration.ofSeconds(3)),
+)
 ```
 
 Build one client and reuse it. Both the Maskinporten token and the Altinn token are cached and
 fetched again shortly before they expire, and it is safe to call from several coroutines at once.
-
-`tokenProvider(...)` replaces the two Maskinporten setters with an `AltinnTokenProvider` you
-built yourself, which is handy in tests or to share one provider across several clients.
 
 ### Asking the PDP
 
@@ -123,10 +120,8 @@ The answer is a `PdpAuthorization`:
 | `statusCode`                    | Altinn's XACML status URN, or null                                                                                                                         |
 
 > [!WARNING]
-> A `PERMIT` that carries a `minimumAuthenticationLevel` is **conditional**. XACML expects
-> whoever enforces the decision to honour the obligation, and this library cannot: it never sees
-> your end user's token. Check the level yourself before acting on the permit, or pass it on to
-> something that can.
+> A `PERMIT` that carries a `minimumAuthenticationLevel` is **conditional**. See
+> [Authentication level obligations](#authentication-level-obligations).
 
 > [!IMPORTANT]
 > This is the org number of the customer the systembruker acts **on behalf of**, not your own.
@@ -136,8 +131,8 @@ The answer is a `PdpAuthorization`:
 
 ### HTTP client
 
-`httpClient(...)` takes a `PdpHttpClient`, and timeouts, proxy and so on are set on it. Implement
-it on the HTTP client you already use, or use `JavaPdpHttpClient`:
+`httpClient` takes a `PdpHttpClient`, and timeouts, proxy and so on are set on it. Implement it
+on the HTTP client you already use, or use `JavaPdpHttpClient`:
 
 ```kotlin
 JavaPdpHttpClient(
@@ -281,12 +276,6 @@ just the first:
 
 Per-field `code` is `MISSING` (absent, null or blank) or `INVALID_FORMAT` (present but wrong shape).
 
-| Status                      | Cause                                                                                                                                                                                               |
-| :-------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `400 Bad Request`           | A field failed validation, the body was malformed, or Altinn itself answered 400. An unknown `resourceId` is _not_ a 400: Altinn answers `200` with `INDETERMINATE` and a processing-error `status` |
-| `502 Bad Gateway`           | Calling Maskinporten or Altinn failed. This includes Altinn answering 401, 403 or 429, which are this service's credentials and quota, not the caller's problem                                     |
-| `500 Internal Server Error` | Anything unanticipated                                                                                                                                                                              |
-
 ### `GET /health/live`
 
 Liveness probe. Returns `200 OK` with an empty body if the server is up - not part of the stable
@@ -317,15 +306,12 @@ Never commit `.env`, and never print secrets in logs.
 
 ## 🌍 Environments
 
-`AltinnEnvironment` fixes, from one choice, every value that has to stay consistent across an
-environment: the Altinn platform base URL and the Maskinporten token endpoint.
+`environment` decides which Altinn and Maskinporten the client talks to:
 
 | Environment | Altinn platform                   | Maskinporten                         |
 | :---------- | :-------------------------------- | :----------------------------------- |
 | `TT02`      | `https://platform.tt02.altinn.no` | `https://test.maskinporten.no/token` |
 | `PROD`      | `https://platform.altinn.no`      | `https://maskinporten.no/token`      |
-
-The client also has raw base-URL constructors for pointing at a local test server.
 
 ---
 

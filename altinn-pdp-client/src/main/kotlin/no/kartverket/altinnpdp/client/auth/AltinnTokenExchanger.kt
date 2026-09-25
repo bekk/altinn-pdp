@@ -11,7 +11,7 @@ import java.text.ParseException
 import java.time.Instant
 
 /**  Altinn's APIs do not accept Maskinporten tokens, so one has to be traded for an Altinn token. */
-class AltinnTokenExchanger(
+internal class AltinnTokenExchanger(
     platformBaseUrl: String,
     private val httpClient: PdpHttpClient,
 ) {
