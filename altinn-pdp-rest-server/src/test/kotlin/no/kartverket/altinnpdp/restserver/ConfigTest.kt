@@ -33,4 +33,15 @@ class ConfigTest {
 
         assertContains(e.message!!, "Missing required configuration key")
     }
+
+    @Test
+    fun `a port must be a number from 1 to 65535`() {
+        for (raw in listOf("http", "0", "65536")) {
+            val e = assertFailsWith<IllegalStateException>(raw) {
+                MapApplicationConfig("server.port" to raw).port("server.port")
+            }
+
+            assertContains(e.message!!, "server.port", message = raw)
+        }
+    }
 }

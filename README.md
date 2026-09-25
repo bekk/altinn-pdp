@@ -158,9 +158,10 @@ cp .env.example .env
 ./scripts/dev.sh
 ```
 
-The server runs on <http://localhost:8080>. `dev.sh` is what turns `.env` into real environment
-variables - the server itself only ever reads the environment, so starting it any other way (an
-IDE run configuration, `./gradlew :altinn-pdp-rest-server:run`) means setting them yourself.
+The server runs on <http://localhost:8080>, or on the port in `PORT`. `dev.sh` is what turns
+`.env` into real environment variables - the server itself only ever reads the environment, so
+starting it any other way (an IDE run configuration, `./gradlew :altinn-pdp-rest-server:run`)
+means setting them yourself.
 
 ---
 
@@ -292,6 +293,7 @@ API.
 | `ALTINN_SUBSCRIPTION_KEY` | yes      | -       |
 | `ALTINN_ENVIRONMENT`      | no       | `TT02`  |
 | `ACCESS_LOG_ENABLED`      | no       | `true`  |
+| `PORT`                    | no       | `8080`  |
 
 See `.env.example` for what each variable is and where to get it.
 

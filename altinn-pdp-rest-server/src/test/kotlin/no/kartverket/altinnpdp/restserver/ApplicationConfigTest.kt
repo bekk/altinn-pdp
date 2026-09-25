@@ -18,6 +18,11 @@ class ApplicationConfigTest {
         )
     }
 
+    @Test
+    fun `the port default is a port number`() {
+        loadConfig().port("server.port")
+    }
+
     private fun loadConfig(): ApplicationConfig {
         val required = listOf("ALTINN_SUBSCRIPTION_KEY", "MASKINPORTEN_CLIENT_ID", "MASKINPORTEN_CLIENT_JWK")
         required.forEach { System.setProperty(it, "placeholder") }

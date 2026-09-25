@@ -1,3 +1,6 @@
+server:
+  port: "$PORT:8080"
+
 altinn:
   environment: "$ALTINN_ENVIRONMENT:TT02"
   subscriptionKey: "$ALTINN_SUBSCRIPTION_KEY"
