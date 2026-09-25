@@ -5,9 +5,9 @@ import com.nimbusds.jose.jwk.RSAKey
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import java.text.ParseException
 
-class MaskinportenKey private constructor(internal val rsaKey: RSAKey) {
-    companion object {
-        fun parse(jwk: String): MaskinportenKey {
+public class MaskinportenKey private constructor(internal val rsaKey: RSAKey) {
+    public companion object {
+        public fun parse(jwk: String): MaskinportenKey {
             val parsed = try {
                 JWK.parse(jwk)
             } catch (e: ParseException) {
@@ -22,7 +22,7 @@ class MaskinportenKey private constructor(internal val rsaKey: RSAKey) {
             return MaskinportenKey(parsed)
         }
 
-        fun parseOrNull(jwk: String): MaskinportenKey? = try {
+        public fun parseOrNull(jwk: String): MaskinportenKey? = try {
             parse(jwk)
         } catch (e: MaskinportenException) {
             null

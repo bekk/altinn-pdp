@@ -1,6 +1,6 @@
 package no.kartverket.altinnpdp.client
 
-enum class AltinnEnvironment(
+public enum class AltinnEnvironment(
     internal val platformBaseUrl: String,
     internal val maskinportenTokenUrl: String,
 ) {

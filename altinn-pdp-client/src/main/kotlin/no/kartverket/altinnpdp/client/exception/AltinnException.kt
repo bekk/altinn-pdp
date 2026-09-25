@@ -1,6 +1,6 @@
 package no.kartverket.altinnpdp.client.exception
 
-class AltinnException(
+public class AltinnException internal constructor(
     message: String,
     statusCode: Int? = null,
     responseBody: String? = null,

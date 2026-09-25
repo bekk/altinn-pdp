@@ -14,13 +14,13 @@ import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
 import java.net.URI
 
-class PdpClient internal constructor(
+public class PdpClient internal constructor(
     platformBaseUrl: String,
     private val tokenProvider: AltinnTokenProvider,
     private val subscriptionKey: String,
     private val httpClient: PdpHttpClient,
 ) {
-    constructor(
+    public constructor(
         environment: AltinnEnvironment,
         subscriptionKey: String,
         maskinportenClientId: String,
@@ -39,7 +39,7 @@ class PdpClient internal constructor(
 
     private val authorizeUrl: URI = Http.url(platformBaseUrl, AUTHORIZE_PATH)
 
-    suspend fun authorize(
+    public suspend fun authorize(
         systemuserId: SystemUserId,
         resourceId: ResourceId,
         customerOrganizationNumber: OrganizationNumber,
@@ -109,7 +109,7 @@ class PdpClient internal constructor(
             }
         }
 
-    companion object {
+    internal companion object {
         const val AUTHORIZE_PATH = "/authorization/api/v1/authorize"
 
         const val SUBSCRIPTION_KEY_HEADER = "Ocp-Apim-Subscription-Key"

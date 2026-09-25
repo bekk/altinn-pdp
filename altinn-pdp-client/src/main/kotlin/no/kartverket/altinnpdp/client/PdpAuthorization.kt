@@ -1,13 +1,13 @@
 package no.kartverket.altinnpdp.client
 
 /** We never see the caller's token, so obligations are passed out rather than enforced here. */
-data class PdpObligation(
+public data class PdpObligation(
     val id: String?,
     val category: String,
     val value: String,
 )
 
-data class PdpAuthorization(
+public data class PdpAuthorization(
     val decision: PdpDecision,
     val statusCode: String? = null,
     val obligations: List<PdpObligation> = emptyList(),
@@ -21,7 +21,7 @@ data class PdpAuthorization(
     private fun levelFor(category: String): Int? =
         obligations.firstOrNull { it.category == category }?.value?.toIntOrNull()
 
-    companion object {
+    internal companion object {
         const val CATEGORY_MINIMUM_AUTHENTICATION_LEVEL = "urn:altinn:minimum-authenticationlevel"
 
         const val CATEGORY_MINIMUM_AUTHENTICATION_LEVEL_ORG = "urn:altinn:minimum-authenticationlevel-org"

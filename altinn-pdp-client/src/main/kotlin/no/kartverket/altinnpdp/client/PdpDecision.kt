@@ -1,15 +1,15 @@
 package no.kartverket.altinnpdp.client
 
-enum class PdpDecision {
+public enum class PdpDecision {
     PERMIT,
     DENY,
     NOT_APPLICABLE,
     INDETERMINATE,
     ;
 
-    val isPermit: Boolean get() = this == PERMIT
+    public val isPermit: Boolean get() = this == PERMIT
 
-    companion object {
+    internal companion object {
         fun fromXacmlValue(value: String): PdpDecision = when (value) {
             "Permit" -> PERMIT
             "Deny" -> DENY
