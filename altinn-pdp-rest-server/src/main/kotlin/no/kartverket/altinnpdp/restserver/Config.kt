@@ -20,3 +20,9 @@ internal inline fun <reified T : Enum<T>> ApplicationConfig.enum(path: String): 
     return enumValues<T>().find { it.name == raw }
         ?: error("$path must be one of ${enumValues<T>().joinToString()}, but was \"$raw\" (see .env.example)")
 }
+
+internal fun ApplicationConfig.port(path: String): Int {
+    val raw = required(path)
+    return raw.toIntOrNull()?.takeIf { it in 1..65535 }
+        ?: error("$path must be a port number, but was \"$raw\" (see .env.example)")
+}

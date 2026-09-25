@@ -20,12 +20,11 @@ import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 
 fun main() {
+    val config = YamlConfig("application.yaml") ?: error("application.yaml is not on the classpath")
     embeddedServer(
         Netty,
-        environment = applicationEnvironment {
-            config = YamlConfig("application.yaml") ?: error("application.yaml is not on the classpath")
-        },
-        configure = { connector { port = 8080 } },
+        environment = applicationEnvironment { this.config = config },
+        configure = { connector { port = config.port("server.port") } },
         module = Application::module,
     ).start(wait = true)
 }
