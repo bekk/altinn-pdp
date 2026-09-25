@@ -27,7 +27,6 @@ class ServerTest {
     @Test
     fun `test health liveness endpoint`() = testApplication {
         application {
-            configureOpenApi()
             configureRouting()
         }
         assertEquals(HttpStatusCode.OK, client.get("/health/live").status)
@@ -36,7 +35,6 @@ class ServerTest {
     @Test
     fun `openapi endpoint serves the spec as json from the classpath`() = testApplication {
         application {
-            configureOpenApi()
             configureRouting()
         }
         val response = client.get("/openapi")
@@ -46,6 +44,7 @@ class ServerTest {
         val spec = Json.parseToJsonElement(response.bodyAsText()).jsonObject
         assertEquals("3.0.3", spec.getValue("openapi").jsonPrimitive.content)
         assertTrue(spec.getValue("paths").jsonObject.containsKey("/authorize"))
+        assertFalse(spec.containsKey("servers"), "the host differs per environment, so the spec names none")
     }
 
     @Test
