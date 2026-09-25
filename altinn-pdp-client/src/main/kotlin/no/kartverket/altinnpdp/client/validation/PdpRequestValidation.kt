@@ -2,27 +2,27 @@ package no.kartverket.altinnpdp.client.validation
 
 import kotlin.uuid.Uuid
 
-enum class PdpValidationCode {
+public enum class PdpValidationCode {
     MISSING,
     INVALID_FORMAT,
 }
 
-data class PdpValidationError(
+public data class PdpValidationError(
     val field: String,
     val code: PdpValidationCode,
     val message: String,
 )
 
 /** The formats are Altinn's own, not ours: they reject all of these upstream already. */
-object PdpRequestValidation {
+public object PdpRequestValidation {
 
-    val RESOURCE_ID_FORMAT = Regex("^[a-z0-9_-]{4,}$")
+    public val RESOURCE_ID_FORMAT: Regex = Regex("^[a-z0-9_-]{4,}$")
 
-    val ORGANIZATION_NUMBER_FORMAT = Regex("^[0-9]{9}$")
+    public val ORGANIZATION_NUMBER_FORMAT: Regex = Regex("^[0-9]{9}$")
 
     private val MOD11_WEIGHTS = intArrayOf(3, 2, 7, 6, 5, 4, 3, 2)
 
-    fun validate(
+    public fun validate(
         systemuserId: String?,
         resourceId: String?,
         customerOrganizationNumber: String?,
@@ -58,7 +58,7 @@ object PdpRequestValidation {
     internal fun actionError(value: String?): PdpValidationError? =
         fieldError(value, "action") { null }
 
-    fun hasValidMod11(customerOrganizationNumber: String): Boolean {
+    internal fun hasValidMod11(customerOrganizationNumber: String): Boolean {
         if (!customerOrganizationNumber.matches(ORGANIZATION_NUMBER_FORMAT)) return false
         val sum = MOD11_WEIGHTS.indices.sumOf { (customerOrganizationNumber[it] - '0') * MOD11_WEIGHTS[it] }
         val remainder = sum % 11

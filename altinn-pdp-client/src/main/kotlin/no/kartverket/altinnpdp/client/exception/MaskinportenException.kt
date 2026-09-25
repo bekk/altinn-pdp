@@ -1,6 +1,6 @@
 package no.kartverket.altinnpdp.client.exception
 
-class MaskinportenException(
+public class MaskinportenException internal constructor(
     message: String,
     statusCode: Int? = null,
     responseBody: String? = null,

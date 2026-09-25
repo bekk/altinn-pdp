@@ -1,13 +1,13 @@
 package no.kartverket.altinnpdp.client.exception
 
-sealed class AltinnPdpException(
+public sealed class AltinnPdpException(
     message: String,
-    val statusCode: Int? = null,
-    val responseBody: String? = null,
+    public val statusCode: Int? = null,
+    public val responseBody: String? = null,
     cause: Throwable? = null,
 ) : RuntimeException(messageWithBody(message, responseBody), cause) {
 
-    companion object {
+    private companion object {
         /** Keeps large error pages out of the logs. */
         private const val MAX_BODY_LENGTH = 500
 

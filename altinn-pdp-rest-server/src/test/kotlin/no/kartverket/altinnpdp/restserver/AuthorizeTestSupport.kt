@@ -70,7 +70,7 @@ internal fun authorizeTest(
         when (request.url.path) {
             "/token" -> PdpHttpResponse(maskinportenStatus, """{"access_token":"mp-token","expires_in":3600}""")
             "/authentication/api/v1/exchange/maskinporten" -> PdpHttpResponse(exchangeStatus, altinnToken())
-            PdpClient.AUTHORIZE_PATH -> PdpHttpResponse(statusCode, pdpBody(decision, obligations))
+            "/authorization/api/v1/authorize" -> PdpHttpResponse(statusCode, pdpBody(decision, obligations))
             else -> error("unexpected call to ${request.url}")
         }
     }
