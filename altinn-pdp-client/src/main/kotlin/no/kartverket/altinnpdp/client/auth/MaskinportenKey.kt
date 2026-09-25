@@ -21,11 +21,5 @@ public class MaskinportenKey private constructor(internal val rsaKey: RSAKey) {
             }
             return MaskinportenKey(parsed)
         }
-
-        public fun parseOrNull(jwk: String): MaskinportenKey? = try {
-            parse(jwk)
-        } catch (e: MaskinportenException) {
-            null
-        }
     }
 }

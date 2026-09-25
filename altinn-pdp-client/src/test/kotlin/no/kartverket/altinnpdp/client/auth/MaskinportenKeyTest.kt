@@ -8,7 +8,6 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 
 class MaskinportenKeyTest {
 
@@ -31,14 +30,6 @@ class MaskinportenKeyTest {
             val e = assertFailsWith<MaskinportenException>(why) { MaskinportenKey.parse(jwk) }
 
             assertContains(e.message!!, expectedInMessage, message = "for $why")
-        }
-    }
-
-    @Test
-    fun `parseOrNull returns null instead of throwing`() {
-        assertNotNull(MaskinportenKey.parseOrNull(TestKeys.rsa.toJSONString()))
-        for ((why, case) in unusable) {
-            assertNull(MaskinportenKey.parseOrNull(case.first), "for $why")
         }
     }
 }
