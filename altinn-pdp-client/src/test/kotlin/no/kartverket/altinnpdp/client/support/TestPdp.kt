@@ -25,10 +25,10 @@ internal fun testPdpClient(
 /** The one request every PDP test makes, so no test has to spell out four valid arguments. */
 internal suspend fun PdpClient.authorizeSample() =
     authorize(
-        SystemUserId(SAMPLE_SYSTEMUSER_ID),
-        ResourceId("test-resource"),
-        OrganizationNumber("923609016"),
-        ActionId("read"),
+        SystemUserId.parse(SAMPLE_SYSTEMUSER_ID),
+        ResourceId.parse("test-resource"),
+        OrganizationNumber.parse("923609016"),
+        ActionId.parse("read"),
     )
 
 internal fun pdpDecisionResponse(decision: String = "Permit") = """{"Response":[{"Decision":"$decision"}]}"""

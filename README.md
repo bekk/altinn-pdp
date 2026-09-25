@@ -101,10 +101,10 @@ fetched again shortly before they expire, and it is safe to call from several co
 
 ```kotlin
 val authorization = client.authorize(
-    systemuserId = SystemUserId("<systembruker uuid>"),
-    resourceId = ResourceId("<resource id>"),
-    customerOrganizationNumber = OrganizationNumber("923609016"),
-    action = ActionId("read"),
+    systemuserId = SystemUserId.parse("<systembruker uuid>"),
+    resourceId = ResourceId.parse("<resource id>"),
+    customerOrganizationNumber = OrganizationNumber.parse("923609016"),
+    action = ActionId.parse("read"),
 )
 ```
 

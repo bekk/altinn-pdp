@@ -62,9 +62,11 @@ internal fun authorizeTest(
     obligations: Boolean = false,
     maskinportenStatus: Int = 200,
     exchangeStatus: Int = 200,
+    failure: Exception? = null,
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = testApplication {
     val altinn = PdpHttpClient { request ->
+        if (failure != null) throw failure
         when (request.url.path) {
             "/token" -> PdpHttpResponse(maskinportenStatus, """{"access_token":"mp-token","expires_in":3600}""")
             "/authentication/api/v1/exchange/maskinporten" -> PdpHttpResponse(exchangeStatus, altinnToken())
