@@ -20,10 +20,10 @@ data class AuthorizeRequest(
         val errors = PdpRequestValidation.validate(systemuserId, resourceId, customerOrganizationNumber, action)
         if (errors.isNotEmpty()) throw PdpValidationException(errors)
         return Validated(
-            SystemUserId(systemuserId!!),
-            ResourceId(resourceId!!),
-            OrganizationNumber(customerOrganizationNumber!!),
-            ActionId(action!!),
+            SystemUserId.parse(systemuserId!!),
+            ResourceId.parse(resourceId!!),
+            OrganizationNumber.parse(customerOrganizationNumber!!),
+            ActionId.parse(action!!),
         )
     }
 

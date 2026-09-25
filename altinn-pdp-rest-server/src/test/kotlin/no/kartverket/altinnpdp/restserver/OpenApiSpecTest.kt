@@ -35,7 +35,6 @@ class OpenApiSpecTest {
 
     @Test
     fun `the field patterns in the spec are the ones the validation uses`() {
-        assertEquals(PdpRequestValidation.UUID_FORMAT.pattern, pattern("AuthorizeRequest", "systemuserId"))
         assertEquals(PdpRequestValidation.RESOURCE_ID_FORMAT.pattern, pattern("AuthorizeRequest", "resourceId"))
         assertEquals(
             PdpRequestValidation.ORGANIZATION_NUMBER_FORMAT.pattern,

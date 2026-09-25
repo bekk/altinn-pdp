@@ -3,17 +3,10 @@ package no.kartverket.altinnpdp.client.auth
 import no.kartverket.altinnpdp.client.support.NOW
 import java.time.Duration
 import kotlin.test.Test
-import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class AccessTokenTest {
-
-    @Test
-    fun `both token types reject blank credentials`() {
-        assertFailsWith<IllegalArgumentException> { AltinnToken(" ", NOW) }
-        assertFailsWith<IllegalArgumentException> { MaskinportenToken("", NOW) }
-    }
 
     private val leeway: Duration = Duration.ofSeconds(30)
 

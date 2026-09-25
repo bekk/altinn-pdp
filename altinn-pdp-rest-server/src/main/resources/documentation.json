@@ -191,7 +191,6 @@
           "systemuserId": {
             "type": "string",
             "format": "uuid",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
             "description": "The systembruker id from the token's authorization_details. Always a UUID."
           },
           "resourceId": {

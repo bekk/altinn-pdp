@@ -28,12 +28,6 @@ fun Application.configureErrorHandling() {
                 ),
             )
         }
-        exception<IllegalArgumentException> { call, cause ->
-            call.respond(
-                HttpStatusCode.BadRequest,
-                ErrorResponse(cause.message ?: "Invalid request", ErrorCode.VALIDATION_ERROR),
-            )
-        }
         // kotlinx's text quotes the caller's body back at them, so it is logged, never returned.
         exception<JsonConvertException> { call, cause -> call.respondMalformedBody(cause) }
         exception<ContentTransformationException> { call, cause -> call.respondMalformedBody(cause) }

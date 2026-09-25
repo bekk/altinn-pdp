@@ -13,10 +13,10 @@ class XacmlAuthorizationRequestTest {
     private val json = Json { ignoreUnknownKeys = true }
 
     private fun request() = XacmlAuthorizationRequest.forSystemUser(
-        systemuserId = SystemUserId("5f2c1a8e-0000-4000-8000-2b3c4d5e6f70"),
-        resourceId = ResourceId("kartverket-eiendom"),
-        customerOrganizationNumber = OrganizationNumber("923609016"),
-        action = ActionId("read"),
+        systemuserId = SystemUserId.parse("5f2c1a8e-0000-4000-8000-2b3c4d5e6f70"),
+        resourceId = ResourceId.parse("kartverket-eiendom"),
+        customerOrganizationNumber = OrganizationNumber.parse("923609016"),
+        action = ActionId.parse("read"),
     )
 
     @Test

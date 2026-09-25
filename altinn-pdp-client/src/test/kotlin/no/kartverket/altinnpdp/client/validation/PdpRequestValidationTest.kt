@@ -49,6 +49,7 @@ class PdpRequestValidationTest {
     fun `systemuserId must be a uuid`() {
         assertTrue(validate(systemuserId = "not-a-uuid").isNotEmpty())
         assertTrue(validate(systemuserId = "1725580f70f44acea7484f912497a0d7").isNotEmpty())
+        assertTrue(validate(systemuserId = "1-1-1-1-1").isNotEmpty(), "java.util.UUID would accept this")
         assertTrue(validate(systemuserId = uuid.uppercase()).isEmpty())
     }
 

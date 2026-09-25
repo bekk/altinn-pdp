@@ -235,6 +235,15 @@ class ServerTest {
         }
     }
 
+    @Test
+    fun `an unexpected IllegalArgumentException is our fault, not the caller's`() =
+        authorizeTest(tokenProvider = failingTokenProvider(IllegalArgumentException("internal detail"))) {
+            val response = postAuthorize()
+
+            assertEquals(HttpStatusCode.InternalServerError, response.status)
+            assertEquals(ErrorResponse("Internal server error", ErrorCode.INTERNAL_ERROR), response.errorResponse())
+        }
+
     private data class ValidationCase(val why: String, val body: String, val errors: List<FieldError>)
 
     private data class UpstreamCase(
