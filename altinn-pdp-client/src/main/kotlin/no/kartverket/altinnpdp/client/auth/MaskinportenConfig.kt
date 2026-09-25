@@ -7,9 +7,6 @@ internal data class MaskinportenConfig(
     val clientId: String,
     val key: MaskinportenKey,
 ) {
-    /**
-     * Maskinporten requires `aud` to equal the issuer, that is the token URL without its
-     * path (`https://test.maskinporten.no/token` -> `https://test.maskinporten.no/`).
-     */
+    /** Maskinporten requires `aud` to be the token URL without its path. */
     val audience: String = URI.create(tokenUrl).let { "${it.scheme}://${it.authority}/" }
 }
