@@ -25,7 +25,7 @@
 - [🚀 Getting started](#-getting-started)
   - [Building the client](#building-the-client)
   - [Asking the PDP](#asking-the-pdp)
-  - [Timeouts](#timeouts)
+  - [HTTP client](#http-client)
   - [Running the server](#running-the-server)
 - [🔌 API](#-api)
 - [🔑 Environment variables](#-environment-variables)
@@ -90,7 +90,7 @@ val client = PdpClient.builder()
     .subscriptionKey("<subscription key>")
     .maskinportenClientId("<client id>")
     .maskinportenJwk(jwkJson)
-    .timeouts(Timeouts.DEFAULT)
+    .httpClient(JavaPdpHttpClient(HttpClient.newHttpClient(), requestTimeout = Duration.ofSeconds(3)))
     .build()
 ```
 
@@ -134,83 +134,25 @@ The answer is a `PdpAuthorization`:
 > `consumer` claim, which holds the vendor's org number. Strip the ISO6523 prefix: send
 > `311718371`, not `0192:311718371`.
 
-### Timeouts
+### HTTP client
 
-Two values bound a lookup, and `PdpClient.builder()` **requires you to choose them** -
-a library cannot know what call chain it has been dropped into, so it will not decide on your
-behalf. `Timeouts.DEFAULT` carries the reference values below for a caller with no opinion yet,
-but passing it is a deliberate act; `build()` fails if `timeouts(...)` was never called.
-
-| Timeout   | `Timeouts.DEFAULT` | Bounds                                   |
-| :-------- | :----------------- | :--------------------------------------- |
-| `request` | 10 s               | one call end to end, connecting included |
-| `total`   | 20 s               | a whole `authorize(...)` call            |
+`httpClient(...)` takes a `PdpHttpClient`, and timeouts, proxy and so on are set on it. Implement
+it on the HTTP client you already use, or use `JavaPdpHttpClient`:
 
 ```kotlin
-val client = PdpClient.builder()
-    // ...
-    .timeouts(Timeouts(request = ..., total = ...))
-    .build()
-```
-
-`total` is the one that matters most. A lookup on cold caches fetches a Maskinporten token,
-exchanges it and then calls the PDP, so without a budget across all three the worst case is three
-request timeouts back to back. Exceeding it fails the call with a `PdpException`.
-
-#### Choosing values
-
-The rule: **a timeout must be shorter than the one it sits inside**, and the deeper into the call
-chain you go, the shorter it gets. `request` < `total` < whatever your own caller allows you.
-
-Getting this backwards is not merely untidy - it breaks four things at once:
-
-- **Wasted work.** Your caller gives up first, but your call to Altinn keeps running, holding a
-  connection and a thread to produce a result nobody will read.
-- **No room to recover.** If the inner call may spend the entire budget, the layer above has
-  nothing left for a retry, a fallback or even a tidy error.
-- **Useless errors.** Time out first and you can answer `502` with a message saying which
-  dependency stalled. Time out second and your caller sees an opaque client-side timeout while
-  your own logs show a call that looked fine.
-- **Cascading failure.** A slow dependency otherwise pins threads and connections at _every_
-  layer simultaneously, turning one struggling service into a system-wide outage.
-
-The general form of this is deadline propagation, as in [gRPC deadlines](https://grpc.io/docs/guides/deadlines/):
-a deadline is an absolute point in time set by the original caller, and each hop passes on what is
-_left_ of it rather than a fresh budget. Fixed, decreasing timeouts are the poor-man's version of
-the same idea - and what this client offers today, since it takes no deadline from its caller.
-
-#### Connecting
-
-Connect timeouts belong to the `HttpClient`, which is the only place `java.net.http` keeps them
-and the only place they can still be set once a client exists. The client this library builds for
-you sets none, so connecting is bounded by `request`, which the JDK counts from before the
-connection is made. To keep connecting on a shorter leash, build the client yourself:
-
-```kotlin
-val http = HttpClient.newBuilder()
-    .connectTimeout(Duration.ofSeconds(2))
-    .followRedirects(HttpClient.Redirect.NEVER)
-    .build()
-
-PdpClient.builder()
-    // ...
-    .httpClient(http)
-    .timeouts(Timeouts(request = ..., total = ...))
-    .build()
+JavaPdpHttpClient(
+    HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build(),
+    requestTimeout = Duration.ofSeconds(3),
+)
 ```
 
 > [!IMPORTANT]
-> Set `followRedirects(NEVER)` on any client you pass to `httpClient(...)`. These calls carry a
-> client assertion and a bearer token, and a followed redirect would hand them to whatever host
-> the redirect names. The client this library builds sets it for you; yours is your own.
+> A `PdpHttpClient` must not follow redirects, since the calls carry tokens, and must throw an
+> `IOException` when a call fails. OkHttp and Ktor client follow redirects by default, so turn
+> that off if you build on one of them.
 
-#### What the server picks
-
-`altinn-pdp-rest-server` is a consumer like any other, so it chooses explicitly rather than
-inheriting the defaults above (`request` 4 s, `total` 8 s, both overridable per
-deployment - see [Environment variables](#-environment-variables)). That leaves roughly **10 s**
-as the response budget callers of `POST /authorize` should allow, so that a stalled Altinn comes
-back to them as a `502` with a message rather than as a timeout of their own.
+The server connects within 2 s and waits at most 3 s per call. A lookup makes at most three
+calls, so callers of `POST /authorize` should allow 10 s.
 
 ### Running the server
 
@@ -255,7 +197,7 @@ The Altinn subscription key and Maskinporten credentials are configured
 server-side (see [Environment variables](#-environment-variables)) - callers never supply them.
 
 Allow at least 10 seconds for a response, so a stalled Altinn reaches you as a `502` rather than
-as a timeout of your own - see [Timeouts](#timeouts).
+as a timeout of your own - see [HTTP client](#http-client).
 
 Response body (`200 OK`):
 
@@ -354,15 +296,13 @@ API.
 
 ## 🔑 Environment variables
 
-| Variable                    | Required | Default |
-| :-------------------------- | :------- | :------ |
-| `MASKINPORTEN_CLIENT_ID`    | yes      | -       |
-| `MASKINPORTEN_CLIENT_JWK`   | yes      | -       |
-| `ALTINN_SUBSCRIPTION_KEY`   | yes      | -       |
-| `ALTINN_ENVIRONMENT`        | no       | `TT02`  |
-| `ALTINN_REQUEST_TIMEOUT_MS` | no       | `4000`  |
-| `ALTINN_TOTAL_TIMEOUT_MS`   | no       | `8000`  |
-| `ACCESS_LOG_ENABLED`        | no       | `true`  |
+| Variable                  | Required | Default |
+| :------------------------ | :------- | :------ |
+| `MASKINPORTEN_CLIENT_ID`  | yes      | -       |
+| `MASKINPORTEN_CLIENT_JWK` | yes      | -       |
+| `ALTINN_SUBSCRIPTION_KEY` | yes      | -       |
+| `ALTINN_ENVIRONMENT`      | no       | `TT02`  |
+| `ACCESS_LOG_ENABLED`      | no       | `true`  |
 
 See `.env.example` for what each variable is and where to get it.
 

@@ -1,18 +1,15 @@
 package no.kartverket.altinnpdp.client.support
 
-import kotlinx.coroutines.delay
 import no.kartverket.altinnpdp.client.auth.AltinnToken
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
-import java.time.Duration
 import java.time.Instant
 
 /**
  * A token provider that never talks to anyone. It counts its calls, so a test can assert that the
- * client asks for a token as often as it should, and it can be told to take its time.
+ * client asks for a token as often as it should.
  */
 internal class FakeTokenProvider(
     private val token: String = "altinn-token",
-    private val takes: Duration = Duration.ZERO,
 ) : AltinnTokenProvider {
 
     var calls = 0
@@ -20,7 +17,6 @@ internal class FakeTokenProvider(
 
     override suspend fun getAltinnToken(): AltinnToken {
         calls++
-        if (!takes.isZero) delay(takes.toMillis())
         return AltinnToken(token, Instant.MAX)
     }
 }

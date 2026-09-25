@@ -8,8 +8,3 @@ maskinporten:
 
 accessLog:
   enabled: "$?ACCESS_LOG_ENABLED"
-
-# See "Timeouts" in the README.
-timeouts:
-  requestMs: "$?ALTINN_REQUEST_TIMEOUT_MS"
-  totalMs: "$?ALTINN_TOTAL_TIMEOUT_MS"

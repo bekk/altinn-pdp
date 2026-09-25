@@ -13,9 +13,11 @@ import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.auth.AltinnToken
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
+import no.kartverket.altinnpdp.client.http.JavaPdpHttpClient
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import java.net.InetSocketAddress
+import java.net.http.HttpClient
 import java.time.Instant
 
 internal const val OK_STATUS = "urn:oasis:names:tc:xacml:1.0:status:ok"
@@ -115,5 +117,5 @@ private fun pdpClientAgainst(server: HttpServer, tokenProvider: AltinnTokenProvi
         "http://localhost:${server.address.port}",
         tokenProvider,
         "test-subscription-key",
-        timeoutsFromConfig(),
+        JavaPdpHttpClient(HttpClient.newHttpClient(), REQUEST_TIMEOUT),
     )

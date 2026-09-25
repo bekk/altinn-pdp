@@ -2,14 +2,15 @@ package no.kartverket.altinnpdp.client
 
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
-import no.kartverket.altinnpdp.client.exception.PdpException
-import no.kartverket.altinnpdp.client.http.Timeouts
+import no.kartverket.altinnpdp.client.http.PdpHttpResponse
 import no.kartverket.altinnpdp.client.support.FakeTokenProvider
 import no.kartverket.altinnpdp.client.support.TestKeys
 import no.kartverket.altinnpdp.client.support.authorizeSample
-import java.time.Duration
+import no.kartverket.altinnpdp.client.support.pdpDecisionResponse
+import no.kartverket.altinnpdp.client.support.testHttpClient
 import kotlin.test.Test
 import kotlin.test.assertContains
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 
@@ -20,7 +21,7 @@ class PdpClientBuilderTest {
     private fun builder() = PdpClient.builder()
         .environment(AltinnEnvironment.TT02)
         .subscriptionKey("subscription-key")
-        .timeouts(Timeouts.DEFAULT)
+        .httpClient(testHttpClient)
 
     @Test
     fun `rejects a missing environment`() {
@@ -47,7 +48,7 @@ class PdpClientBuilderTest {
     }
 
     @Test
-    fun `refuses to choose the timeouts for the caller, and names the way out`() {
+    fun `refuses to build without an HttpClient`() {
         val e = assertFailsWith<IllegalArgumentException> {
             PdpClient.builder()
                 .environment(AltinnEnvironment.TT02)
@@ -56,8 +57,7 @@ class PdpClientBuilderTest {
                 .build()
         }
 
-        assertContains(e.message!!, "timeouts")
-        assertContains(e.message!!, "Timeouts.DEFAULT")
+        assertContains(e.message!!, "httpClient")
     }
 
     @Test
@@ -103,7 +103,7 @@ class PdpClientBuilderTest {
         val client = PdpClient.builder()
             .environment(AltinnEnvironment.TT02)
             .subscriptionKey("subscription-key")
-            .timeouts(Timeouts.DEFAULT)
+            .httpClient(testHttpClient)
             .tokenProvider(FakeTokenProvider())
             .build()
 
@@ -111,17 +111,19 @@ class PdpClientBuilderTest {
     }
 
     @Test
-    fun `passes the timeouts on to the client rather than dropping them`() = runBlocking {
+    fun `sends every call through the given http client, to the environment's URL`() = runBlocking {
+        val urls = mutableListOf<String>()
         val client = builder()
-            .tokenProvider(FakeTokenProvider(takes = Duration.ofMillis(500)))
-            .timeouts(Timeouts(total = Duration.ofMillis(50)))
+            .httpClient { request ->
+                urls += request.url.toString()
+                PdpHttpResponse(200, pdpDecisionResponse())
+            }
+            .tokenProvider(FakeTokenProvider())
             .build()
 
-        val e = assertFailsWith<PdpException> {
-            client.authorizeSample()
-        }
+        client.authorizeSample()
 
-        assertContains(e.message!!, "50 ms")
+        assertEquals(listOf(AltinnEnvironment.TT02.platformBaseUrl + PdpClient.AUTHORIZE_PATH), urls)
     }
 
     @Test

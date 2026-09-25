@@ -1,7 +1,6 @@
 package no.kartverket.altinnpdp.restserver
 
 import io.ktor.server.config.ApplicationConfig
-import java.time.Duration
 
 // Every value from .env and secrets is read through these, so all are trimmed and errors look the same.
 internal fun ApplicationConfig.optional(path: String): String? =
@@ -9,14 +8,6 @@ internal fun ApplicationConfig.optional(path: String): String? =
 
 internal fun ApplicationConfig.required(path: String): String =
     optional(path) ?: error("Missing required configuration $path (see .env.example)")
-
-internal fun ApplicationConfig.millis(path: String, default: Long): Duration {
-    val raw = optional(path) ?: return Duration.ofMillis(default)
-    val value = raw.toLongOrNull()
-        ?: error("$path must be a whole number of milliseconds, but was \"$raw\" (see .env.example)")
-    require(value > 0) { "$path must be positive, but was $value (see .env.example)" }
-    return Duration.ofMillis(value)
-}
 
 internal fun ApplicationConfig.boolean(path: String, default: Boolean): Boolean {
     val raw = optional(path) ?: return default

@@ -6,7 +6,6 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.SignedJWT
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
-import no.kartverket.altinnpdp.client.http.Timeouts
 import no.kartverket.altinnpdp.client.support.MutableClock
 import no.kartverket.altinnpdp.client.support.NOW
 import no.kartverket.altinnpdp.client.support.TOKEN_PATH
@@ -16,6 +15,7 @@ import no.kartverket.altinnpdp.client.support.TestResponse
 import no.kartverket.altinnpdp.client.support.fixedClock
 import no.kartverket.altinnpdp.client.support.maskinportenConfig
 import no.kartverket.altinnpdp.client.support.maskinportenTokenResponse
+import no.kartverket.altinnpdp.client.support.testHttpClient
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Clock
@@ -45,13 +45,13 @@ class MaskinportenClientTest {
     private fun client(clock: Clock = fixedClock(), refreshLeeway: Duration = Duration.ofSeconds(30)) =
         MaskinportenClient(
             maskinportenConfig(tokenUrl = server.baseUrl + TOKEN_PATH),
-            Timeouts.DEFAULT,
+            testHttpClient,
             clock = clock,
             refreshLeeway = refreshLeeway,
         )
 
     private fun offlineClient(config: MaskinportenConfig) =
-        MaskinportenClient(config, Timeouts.DEFAULT, clock = fixedClock())
+        MaskinportenClient(config, testHttpClient, clock = fixedClock())
 
     @Test
     fun `signs the client assertion with the configured key`() {
@@ -171,7 +171,7 @@ class MaskinportenClientTest {
     fun `wraps a connection failure rather than leaking an IOException`() = runBlocking {
         val client = MaskinportenClient(
             maskinportenConfig(tokenUrl = "http://127.0.0.1:1/token"),
-            Timeouts.DEFAULT,
+            testHttpClient,
             clock = fixedClock(),
         )
 

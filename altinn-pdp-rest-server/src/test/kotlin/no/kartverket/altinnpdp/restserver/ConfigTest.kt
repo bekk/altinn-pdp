@@ -2,7 +2,6 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.server.config.MapApplicationConfig
 import no.kartverket.altinnpdp.client.AltinnEnvironment
-import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -22,11 +21,10 @@ class ConfigTest {
 
     @Test
     fun `every value is trimmed the same way`() {
-        val config = MapApplicationConfig("key" to "  value  ", "flag" to " true ", "ms" to " 1500 ")
+        val config = MapApplicationConfig("key" to "  value  ", "flag" to " true ")
 
         assertEquals("value", config.required("key"))
         assertEquals(true, config.boolean("flag", default = false))
-        assertEquals(Duration.ofMillis(1500), config.millis("ms", default = 1))
     }
 
     @Test

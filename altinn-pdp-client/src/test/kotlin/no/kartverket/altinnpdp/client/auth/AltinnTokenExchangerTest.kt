@@ -2,11 +2,11 @@ package no.kartverket.altinnpdp.client.auth
 
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.exception.AltinnException
-import no.kartverket.altinnpdp.client.http.Timeouts
 import no.kartverket.altinnpdp.client.support.NOW
 import no.kartverket.altinnpdp.client.support.TestHttpServer
 import no.kartverket.altinnpdp.client.support.TestResponse
 import no.kartverket.altinnpdp.client.support.signedJwt
+import no.kartverket.altinnpdp.client.support.testHttpClient
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -28,7 +28,7 @@ class AltinnTokenExchangerTest {
 
     private val path = AltinnTokenExchanger.EXCHANGE_PATH
 
-    private fun exchanger(baseUrl: String = server.baseUrl) = AltinnTokenExchanger(baseUrl, Timeouts.DEFAULT)
+    private fun exchanger(baseUrl: String = server.baseUrl) = AltinnTokenExchanger(baseUrl, testHttpClient)
 
     private val maskinportenToken = MaskinportenToken("maskinporten-token", NOW.plusSeconds(300))
 
@@ -99,7 +99,7 @@ class AltinnTokenExchangerTest {
 
     @Test
     fun `wraps a connection failure rather than leaking an IOException`() = runBlocking {
-        val exchanger = AltinnTokenExchanger("http://127.0.0.1:1", Timeouts.DEFAULT)
+        val exchanger = AltinnTokenExchanger("http://127.0.0.1:1", testHttpClient)
 
         assertContains(assertFailsWith<AltinnException> { exchanger.exchange(maskinportenToken) }.message!!, "Altinn token exchange")
     }

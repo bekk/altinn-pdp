@@ -5,7 +5,6 @@ import no.kartverket.altinnpdp.client.auth.AltinnTokenExchanger
 import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenClient
 import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
-import no.kartverket.altinnpdp.client.http.Timeouts
 import java.time.Clock
 import java.time.Duration
 
@@ -40,15 +39,13 @@ internal fun TestHttpServer.serveBothTokens(altinnTokenLifetime: Duration = Dura
 
 internal fun maskinportenAltinnTokenProvider(
     server: TestHttpServer,
-    timeouts: Timeouts = Timeouts.DEFAULT,
     clock: Clock = MutableClock(),
 ) = MaskinportenAltinnTokenProvider(
     maskinportenClient = MaskinportenClient(
         maskinportenConfig(tokenUrl = server.baseUrl + TOKEN_PATH),
-        timeouts,
+        testHttpClient,
         clock = clock,
     ),
-    exchanger = AltinnTokenExchanger(server.baseUrl, timeouts),
-    timeouts = timeouts,
+    exchanger = AltinnTokenExchanger(server.baseUrl, testHttpClient),
     clock = clock,
 )

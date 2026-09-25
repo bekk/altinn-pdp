@@ -6,7 +6,7 @@ import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.ResourceId
 import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
-import no.kartverket.altinnpdp.client.http.Timeouts
+import no.kartverket.altinnpdp.client.http.PdpHttpClient
 
 internal const val SAMPLE_SYSTEMUSER_ID = "1725580f-70f4-4ace-a748-4f912497a0d7"
 
@@ -14,12 +14,12 @@ internal fun testPdpClient(
     baseUrl: String,
     tokenProvider: AltinnTokenProvider = FakeTokenProvider(),
     subscriptionKey: String = "subscription-key",
-    timeouts: Timeouts = Timeouts.DEFAULT,
+    httpClient: PdpHttpClient = testHttpClient,
 ) = PdpClient(
     platformBaseUrl = baseUrl,
     tokenProvider = tokenProvider,
     subscriptionKey = subscriptionKey,
-    timeouts = timeouts,
+    httpClient = httpClient,
 )
 
 /** The one request every PDP test makes, so no test has to spell out four valid arguments. */
