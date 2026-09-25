@@ -19,7 +19,7 @@ import kotlin.test.assertEquals
 
 class OpenApiSpecTest {
 
-    private val schemas: JsonObject = checkNotNull(javaClass.classLoader.getResourceAsStream("documentation.json"))
+    private val schemas: JsonObject = checkNotNull(javaClass.classLoader.getResourceAsStream("openapi.json"))
         .bufferedReader()
         .use { Json.parseToJsonElement(it.readText()) }
         .jsonObject.getValue("components").jsonObject.getValue("schemas").jsonObject

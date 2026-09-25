@@ -1,5 +1,6 @@
 package no.kartverket.altinnpdp.restserver
 
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.config.yaml.YamlConfig
@@ -10,6 +11,7 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
@@ -33,14 +35,19 @@ fun Application.module() {
     configureSerialization()
     configureErrorHandling()
     configurePdp()
-    configureOpenApi()
     configureRouting()
 }
 
 fun Application.configureRouting() {
+    val openApiSpec = readOpenApiSpec()
+
     routing {
         get("/health/live") {
             call.respond(HttpStatusCode.OK)
+        }
+
+        get("/openapi") {
+            call.respondText(openApiSpec, ContentType.Application.Json)
         }
 
         post("/authorize") {
@@ -65,3 +72,9 @@ fun Application.configureRouting() {
         }
     }
 }
+
+// Read from the classpath rather than through Ktor's openAPI plugin, which needs a writable working directory.
+private fun Application.readOpenApiSpec(): String =
+    checkNotNull(javaClass.classLoader.getResourceAsStream("openapi.json")) { "openapi.json is not on the classpath" }
+        .bufferedReader()
+        .use { it.readText() }

@@ -5,11 +5,6 @@
     "description": "Simplified JSON REST API for the Altinn PDP",
     "version": "0.1.0"
   },
-  "servers": [
-    {
-      "url": "http://localhost:8080"
-    }
-  ],
   "paths": {
     "/health/live": {
       "get": {
