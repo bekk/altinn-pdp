@@ -44,15 +44,14 @@ jobs:
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Determine Jib tags
+      - name: Determine additional Jib tags
         id: jib_tags
         shell: bash
         run: |
-          TAG="${{ steps.image_tag.outputs.tag }}"
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "tags=${TAG},latest" >> "$GITHUB_OUTPUT"
+            echo "tags=latest" >> "$GITHUB_OUTPUT"
           else
-            echo "tags=${TAG}" >> "$GITHUB_OUTPUT"
+            echo "tags=" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push with Jib
@@ -61,7 +60,7 @@ jobs:
           JIB_TO_AUTH_PASSWORD: ${{ github.token }}
         run: |
           ./gradlew :altinn-pdp-rest-server:build :altinn-pdp-rest-server:jib \
-            -PdockerImage=${{ env.registry }}/${{ env.image_name }} \
+            -PdockerImage=${{ env.registry }}/${{ env.image_name }}:${{ steps.image_tag.outputs.tag }} \
             -PdockerTags=${{ steps.jib_tags.outputs.tags }} \
             -Djib.to.auth.username="$JIB_TO_AUTH_USERNAME" \
             -Djib.to.auth.password="$JIB_TO_AUTH_PASSWORD"
