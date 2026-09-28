@@ -1,6 +1,7 @@
 plugins {
     alias(ktorLibs.plugins.ktor)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.jib)
 }
 
 application {
@@ -53,4 +54,17 @@ dependencies {
 
     testImplementation(ktorLibs.server.testHost)
     testImplementation(libs.nimbus.jose.jwt)
+}
+
+jib {
+    from {
+        image = "eclipse-temurin:21-jre"
+    }
+    to {
+        image = findProperty("dockerImage")?.toString() ?: "altinn-pdp-rest-server:local"
+    }
+    container {
+        ports = listOf("8080")
+        user = "1000:1000"
+    }
 }
