@@ -9,7 +9,7 @@ permissions:
 
 env:
   registry: ghcr.io
-  image_name: ${{ github.repository }}
+  image_name: ${{ github.repository }}-rest-server
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
