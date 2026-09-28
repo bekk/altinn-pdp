@@ -4,6 +4,14 @@ plugins {
     alias(libs.plugins.jib)
 }
 
+val dockerImage = providers.gradleProperty("dockerImage").orElse("altinn-pdp-rest-server:local")
+val dockerTags = providers.gradleProperty("dockerTags").orNull
+    ?.split(',')
+    ?.map(String::trim)
+    ?.filter(String::isNotEmpty)
+    ?.toSet()
+    ?: emptySet()
+
 application {
     mainClass = "no.kartverket.altinnpdp.restserver.MainKt"
 }
@@ -58,10 +66,12 @@ dependencies {
 
 jib {
     from {
-        image = "eclipse-temurin:21-jre"
+        // TODO: DHI
+        image = "eclipse-temurin:25-jre-alpine-3.24@sha256:3c0a9084927a221ccd1d007fcaf614465672c0af37aaa834c5184483afe56d61"
     }
     to {
-        image = findProperty("dockerImage")?.toString() ?: "altinn-pdp-rest-server:local"
+        image = dockerImage.get()
+        tags = dockerTags
     }
     container {
         ports = listOf("8080")
