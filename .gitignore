@@ -1,1 +1,21 @@
 .idea/*
+
+# Gradle
+.gradle/
+build/
+.kotlin/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.local.properties
+# IDE build output
+bin/
