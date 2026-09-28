@@ -1,0 +1,93 @@
+name: Build image
+
+on: [push]
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
+env:
+  registry: ghcr.io
+  image_name: ${{ github.repository }}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, push and Pharos scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout project sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Java
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Determine image tag
+        id: image_tag
+        shell: bash
+        run: |
+          REF="${{ github.ref }}"
+          if [[ "$REF" == refs/tags/* ]]; then
+            TAG="${REF#refs/tags/}"
+          else
+            TAG="${REF#refs/heads/}"
+            TAG="${TAG//\//-}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Determine Jib tags
+        id: jib_tags
+        shell: bash
+        run: |
+          TAG="${{ steps.image_tag.outputs.tag }}"
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tags=${TAG},latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=${TAG}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and push with Jib
+        env:
+          JIB_TO_AUTH_USERNAME: ${{ github.actor }}
+          JIB_TO_AUTH_PASSWORD: ${{ github.token }}
+        run: |
+          ./gradlew :altinn-pdp-rest-server:build :altinn-pdp-rest-server:jib \
+            -PdockerImage=${{ env.registry }}/${{ env.image_name }} \
+            -PdockerTags=${{ steps.jib_tags.outputs.tags }} \
+            -Djib.to.auth.username="$JIB_TO_AUTH_USERNAME" \
+            -Djib.to.auth.password="$JIB_TO_AUTH_PASSWORD"
+
+      - name: Set output with build values
+        id: set_output
+        run: |
+          echo "image_digest=$(cat altinn-pdp-rest-server/build/jib-image.digest)" >> "$GITHUB_OUTPUT"
+
+    outputs:
+      image_digest: ${{ steps.set_output.outputs.image_digest }}
+
+  pharos:
+    name: Run Pharos with Required Permissions
+    needs: build
+    permissions:
+      actions: read
+      packages: read
+      contents: read
+      security-events: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Pharos
+        uses: kartverket/pharos@446d11f033ffe30b4c91f885c3ad34ea3d8c6af7 # v0.7.0
+        with:
+          image_url: "${{ env.registry }}/${{ env.image_name }}@${{ needs.build.outputs.image_digest }}"
+          tfsec: false
+
+
