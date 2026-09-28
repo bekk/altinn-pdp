@@ -12,3 +12,4 @@ _To be done before it is marked ready for review._
 
 - [ ] README is updated where needed
 - [ ] Tests are added/updated where needed
+- [ ] Code in this PR was written using AI
