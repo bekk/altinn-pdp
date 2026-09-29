@@ -27,4 +27,15 @@ class AltinnPdpExceptionTest {
         assertTrue(e.message!!.endsWith("… (600 characters in total)"))
         assertEquals(body, e.responseBody, "the full body stays available for callers that want it")
     }
+
+    @Test
+    fun `masks anything shaped like a pid in the body, on the message and the exception alike`() {
+        val body = """{"error":"Invalid person-id 31827012311","party":"923609016","traceId":"318270123110"}"""
+        val masked = """{"error":"Invalid person-id ***********","party":"923609016","traceId":"318270123110"}"""
+
+        val e = PdpException("boom", responseBody = body)
+
+        assertEquals(masked, e.responseBody)
+        assertEquals("boom: $masked", e.message)
+    }
 }
