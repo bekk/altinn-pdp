@@ -39,7 +39,7 @@ internal data class XacmlAuthorizationRequest(val request: Request) {
         fun forSystemUser(
             systemuserId: SystemUserId,
             resourceId: ResourceId,
-            customerOrganizationNumber: OrganizationNumber,
+            organizationNumber: OrganizationNumber,
             action: ActionId,
         ): XacmlAuthorizationRequest = XacmlAuthorizationRequest(
             Request(
@@ -49,7 +49,7 @@ internal data class XacmlAuthorizationRequest(val request: Request) {
                 resource = listOf(
                     Category.of(
                         Attribute(ATTRIBUTE_RESOURCE, resourceId.value),
-                        Attribute(ATTRIBUTE_ORGANIZATION_NUMBER, customerOrganizationNumber.value),
+                        Attribute(ATTRIBUTE_ORGANIZATION_NUMBER, organizationNumber.value),
                     ),
                 ),
             ),

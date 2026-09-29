@@ -18,7 +18,7 @@ class AuthorizationTypesTest {
     private val cases = listOf(
         Case("systemuserId", { SystemUserId.parse(it).value }, "1725580F-70F4-4ACE-A748-4F912497A0D7", "1-1-1-1-1"),
         Case("resourceId", { ResourceId.parse(it).value }, "kartverket-eiendom", "ABC"),
-        Case("customerOrganizationNumber", { OrganizationNumber.parse(it).value }, "923609016", "923609017"),
+        Case("organizationNumber", { OrganizationNumber.parse(it).value }, "923609016", "923609017"),
         Case("action", { ActionId.parse(it).value }, "custom-action", " "),
     )
 

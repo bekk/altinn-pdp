@@ -95,14 +95,14 @@ class ServerTest {
             ValidationCase(
                 why = "an explicit null",
                 body = """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
-                    """"customerOrganizationNumber":null,"action":"read"}""",
+                    """"organizationNumber":null,"action":"read"}""",
                 errors = listOf(
-                    FieldError("customerOrganizationNumber", PdpValidationCode.MISSING, "customerOrganizationNumber is required"),
+                    FieldError("organizationNumber", PdpValidationCode.MISSING, "organizationNumber is required"),
                 ),
             ),
             ValidationCase(
                 why = "every field at once",
-                body = """{"systemuserId":"nope","resourceId":"ab","customerOrganizationNumber":"12345"}""",
+                body = """{"systemuserId":"nope","resourceId":"ab","organizationNumber":"12345"}""",
                 errors = listOf(
                     FieldError("systemuserId", PdpValidationCode.INVALID_FORMAT, "systemuserId must be a UUID"),
                     FieldError(
@@ -111,9 +111,9 @@ class ServerTest {
                         "resourceId must be at least 4 characters of lowercase letters, digits, underscore or hyphen",
                     ),
                     FieldError(
-                        "customerOrganizationNumber",
+                        "organizationNumber",
                         PdpValidationCode.INVALID_FORMAT,
-                        "customerOrganizationNumber must be exactly 9 digits",
+                        "organizationNumber must be exactly 9 digits",
                     ),
                     FieldError("action", PdpValidationCode.MISSING, "action is required"),
                 ),
@@ -132,7 +132,7 @@ class ServerTest {
     fun `a malformed body never echoes the request or kotlinx's own advice back`() = authorizeTest {
         val response = postAuthorize(
             """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
-                """"customerOrganizationNumber":923609016,"action":"read"}""",
+                """"organizationNumber":923609016,"action":"read"}""",
         )
 
         assertEquals(HttpStatusCode.BadRequest, response.status)

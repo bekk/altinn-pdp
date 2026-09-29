@@ -17,7 +17,7 @@ import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 data class AuthorizeRequest(
     val systemuserId: SystemUserId,
     val resourceId: ResourceId,
-    val customerOrganizationNumber: OrganizationNumber,
+    val organizationNumber: OrganizationNumber,
     val action: ActionId,
 ) {
     object Serializer : KSerializer<AuthorizeRequest> {
@@ -28,14 +28,14 @@ data class AuthorizeRequest(
             val errors = PdpRequestValidation.validate(
                 raw.systemuserId,
                 raw.resourceId,
-                raw.customerOrganizationNumber,
+                raw.organizationNumber,
                 raw.action,
             )
             if (errors.isNotEmpty()) throw PdpValidationException(errors)
             return AuthorizeRequest(
                 SystemUserId.parse(raw.systemuserId!!),
                 ResourceId.parse(raw.resourceId!!),
-                OrganizationNumber.parse(raw.customerOrganizationNumber!!),
+                OrganizationNumber.parse(raw.organizationNumber!!),
                 ActionId.parse(raw.action!!),
             )
         }
@@ -46,7 +46,7 @@ data class AuthorizeRequest(
                 Raw(
                     value.systemuserId.value,
                     value.resourceId.value,
-                    value.customerOrganizationNumber.value,
+                    value.organizationNumber.value,
                     value.action.value,
                 ),
             )
@@ -58,7 +58,7 @@ data class AuthorizeRequest(
     private data class Raw(
         val systemuserId: String? = null,
         val resourceId: String? = null,
-        val customerOrganizationNumber: String? = null,
+        val organizationNumber: String? = null,
         val action: String? = null,
     )
 }

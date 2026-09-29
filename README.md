@@ -104,7 +104,7 @@ fetched again shortly before they expire, and it is safe to call from several co
 val authorization = client.authorize(
     systemuserId = SystemUserId.parse("<system user uuid>"),
     resourceId = ResourceId.parse("<resource id>"),
-    customerOrganizationNumber = OrganizationNumber.parse("923609016"),
+    organizationNumber = OrganizationNumber.parse("923609016"),
     action = ActionId.parse("read"),
 )
 ```
@@ -176,19 +176,19 @@ Request body:
 {
   "systemuserId": "<system user id from the token's authorization_details>",
   "resourceId": "<resource identifier in the Altinn Resource Registry>",
-  "customerOrganizationNumber": "923609016",
+  "organizationNumber": "923609016",
   "action": "read"
 }
 ```
 
 All four fields are required strings, and are validated before Altinn is called:
 
-| Field                        | Rule                                                 |
-| :--------------------------- | :--------------------------------------------------- |
-| `systemuserId`               | UUID                                                 |
-| `resourceId`                 | `^[a-z0-9_-]{4,}$`, the Resource Registry's own rule |
-| `customerOrganizationNumber` | 9 digits with a valid MOD11 check digit              |
-| `action`                     | Non-empty, no format constraint                      |
+| Field                | Rule                                                 |
+| :------------------- | :--------------------------------------------------- |
+| `systemuserId`       | UUID                                                 |
+| `resourceId`         | `^[a-z0-9_-]{4,}$`, the Resource Registry's own rule |
+| `organizationNumber` | 9 digits with a valid MOD11 check digit              |
+| `action`             | Non-empty, no format constraint                      |
 
 The Altinn subscription key and Maskinporten credentials are configured
 server-side (see [Environment variables](#-environment-variables)) - callers never supply them.
@@ -259,9 +259,9 @@ just the first:
   "code": "VALIDATION_ERROR",
   "errors": [
     {
-      "field": "customerOrganizationNumber",
+      "field": "organizationNumber",
       "code": "INVALID_FORMAT",
-      "message": "customerOrganizationNumber must have a valid MOD11 check digit"
+      "message": "organizationNumber must have a valid MOD11 check digit"
     },
     { "field": "action", "code": "MISSING", "message": "action is required" }
   ]

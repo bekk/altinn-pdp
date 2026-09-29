@@ -42,9 +42,9 @@ public class PdpClient internal constructor(
     public suspend fun authorize(
         systemuserId: SystemUserId,
         resourceId: ResourceId,
-        customerOrganizationNumber: OrganizationNumber,
+        organizationNumber: OrganizationNumber,
         action: ActionId,
-    ): PdpAuthorization = fetchAuthorization(systemuserId, resourceId, customerOrganizationNumber, action)
+    ): PdpAuthorization = fetchAuthorization(systemuserId, resourceId, organizationNumber, action)
 
     private suspend fun fetchAuthorization(
         subject: SystemUserId,

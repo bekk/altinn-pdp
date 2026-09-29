@@ -30,12 +30,12 @@ private val testKey: MaskinportenKey =
 internal fun authorizeBody(
     systemuserId: String? = SAMPLE_SYSTEMUSER_ID,
     resourceId: String? = "test-resource",
-    customerOrganizationNumber: String? = "923609016",
+    organizationNumber: String? = "923609016",
     action: String? = "read",
 ): String = listOf(
     "systemuserId" to systemuserId,
     "resourceId" to resourceId,
-    "customerOrganizationNumber" to customerOrganizationNumber,
+    "organizationNumber" to organizationNumber,
     "action" to action,
 ).mapNotNull { (field, value) -> value?.let { """"$field":"$it"""" } }
     .joinToString(prefix = "{", postfix = "}")

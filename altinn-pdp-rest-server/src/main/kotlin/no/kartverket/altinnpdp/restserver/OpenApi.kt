@@ -97,7 +97,7 @@ private val authorizeRequestSchema = schemaInference.jsonSchema<AuthorizeRequest
                 "underscore and hyphen, at least 4 characters - the Resource Registry's own rule.",
         )
     },
-    "customerOrganizationNumber" to {
+    "organizationNumber" to {
         copy(
             type = JsonType.STRING,
             pattern = PdpRequestValidation.ORGANIZATION_NUMBER_FORMAT.pattern,
@@ -110,7 +110,7 @@ private val authorizeRequestSchema = schemaInference.jsonSchema<AuthorizeRequest
     "action" to {
         copy(type = JsonType.STRING, description = "e.g. \"read\" or \"write\".")
     },
-    required = listOf("systemuserId", "resourceId", "customerOrganizationNumber", "action"),
+    required = listOf("systemuserId", "resourceId", "organizationNumber", "action"),
 )
 
 private val authorizeResponseSchema = schemaInference.jsonSchema<AuthorizeResponse>().documented(
@@ -165,7 +165,7 @@ internal val healthLiveOperation: Operation.Builder.() -> Unit = {
 internal val authorizeOperation: Operation.Builder.() -> Unit = {
     summary = "Check whether a system user is authorized"
     description = "Asks the Altinn PDP whether the system user identified by [systemuserId] has been delegated " +
-        "[action] on [resourceId] for the customer identified by [customerOrganizationNumber]. The Altinn " +
+        "[action] on [resourceId] for the customer identified by [organizationNumber]. The Altinn " +
         "subscription key and Maskinporten token are configured server-side; the caller never supplies them."
 
     requestBody {
@@ -177,7 +177,7 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                 AuthorizeRequest(
                     systemuserId = SystemUserId.parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
                     resourceId = ResourceId.parse("altinn_access_management"),
-                    customerOrganizationNumber = OrganizationNumber.parse("923609016"),
+                    organizationNumber = OrganizationNumber.parse("923609016"),
                     action = ActionId.parse("read"),
                 ),
             )
@@ -231,15 +231,15 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                     ),
                 )
                 example(
-                    "InvalidCustomerOrganizationNumber",
+                    "InvalidOrganizationNumber",
                     ErrorResponse(
                         error = "Validation failed",
                         code = ErrorCode.VALIDATION_ERROR,
                         errors = listOf(
                             FieldError(
-                                field = "customerOrganizationNumber",
+                                field = "organizationNumber",
                                 code = PdpValidationCode.INVALID_FORMAT,
-                                message = "customerOrganizationNumber must have a valid MOD11 check digit",
+                                message = "organizationNumber must have a valid MOD11 check digit",
                             ),
                         ),
                     ),
