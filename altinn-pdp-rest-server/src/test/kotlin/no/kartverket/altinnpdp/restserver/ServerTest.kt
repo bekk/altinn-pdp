@@ -1,5 +1,8 @@
 package no.kartverket.altinnpdp.restserver
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -14,6 +17,7 @@ import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
+import org.slf4j.LoggerFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -130,10 +134,7 @@ class ServerTest {
 
     @Test
     fun `a malformed body never echoes the request or kotlinx's own advice back`() = authorizeTest {
-        val response = postAuthorize(
-            """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
-                """"organizationNumber":923609016,"action":"read"}""",
-        )
+        val response = postAuthorize(malformedBody)
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
         val text = response.bodyAsText()
@@ -144,6 +145,24 @@ class ServerTest {
         assertFalse(text.contains("coerceInputValues"), "leaks kotlinx advice: $text")
         assertFalse(text.contains("JSON input"), "echoes the caller's body: $text")
         assertFalse(text.contains("923609016"), "echoes the caller's values: $text")
+    }
+
+    @Test
+    fun `a malformed body is never written to the log`() {
+        val appender = ListAppender<ILoggingEvent>().apply { start() }
+        val root = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME) as Logger
+        root.addAppender(appender)
+        try {
+            authorizeTest { postAuthorize(malformedBody) }
+        } finally {
+            root.detachAppender(appender)
+        }
+
+        val logged = appender.list.flatMap { event ->
+            listOf(event.formattedMessage) + generateSequence(event.throwableProxy) { it.cause }.map { it.message }
+        }
+        assertTrue(logged.any { it.startsWith("Malformed request body: ") }, "expected the warning, got: $logged")
+        assertFalse(logged.any { it.orEmpty().contains(SAMPLE_SYSTEMUSER_ID) }, "logs the caller's body: $logged")
     }
 
     @Test
@@ -186,6 +205,9 @@ class ServerTest {
             assertEquals(HttpStatusCode.InternalServerError, response.status)
             assertEquals(ErrorResponse("Internal server error", ErrorCode.INTERNAL_ERROR), response.errorResponse())
         }
+
+    private val malformedBody = """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
+        """"organizationNumber":923609016,"action":"read"}"""
 
     private data class ValidationCase(val why: String, val body: String, val errors: List<FieldError>)
 

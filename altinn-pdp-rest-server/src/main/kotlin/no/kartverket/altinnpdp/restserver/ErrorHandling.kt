@@ -52,7 +52,8 @@ private suspend fun io.ktor.server.application.ApplicationCall.respondUnreadable
 }
 
 private suspend fun io.ktor.server.application.ApplicationCall.respondMalformedBody(cause: Throwable) {
-    application.log.warn("Malformed request body", cause)
+    val causes = generateSequence(cause) { it.cause }.joinToString(" caused by ") { it.javaClass.name }
+    application.log.warn("Malformed request body: $causes")
     respond(HttpStatusCode.BadRequest, ErrorResponse("Malformed request body", ErrorCode.MALFORMED_BODY))
 }
 
