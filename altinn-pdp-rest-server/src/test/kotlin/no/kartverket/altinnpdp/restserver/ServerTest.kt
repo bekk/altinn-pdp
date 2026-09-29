@@ -12,6 +12,7 @@ import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import no.kartverket.altinnpdp.client.PdpDecision
+import no.kartverket.altinnpdp.client.http.PdpHttpRequest
 import no.kartverket.altinnpdp.client.validation.PdpValidationCode
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorCode
@@ -19,6 +20,7 @@ import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
 import org.slf4j.LoggerFactory
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -64,6 +66,22 @@ class ServerTest {
     }
 
     @Test
+    fun `the subject reaches Altinn as the attribute for its kind`() {
+        val cases = mapOf(
+            authorizeBody() to """{"attributeId":"urn:altinn:systemuser:uuid","value":"$SAMPLE_SYSTEMUSER_ID"}""",
+            authorizeBody(systemuserId = null, pid = SAMPLE_PID) to
+                """{"attributeId":"urn:altinn:person:identifier-no","value":"$SAMPLE_PID"}""",
+        )
+        for ((body, subject) in cases) {
+            val sent = mutableListOf<PdpHttpRequest>()
+            authorizeTest(sent = sent) {
+                assertEquals(HttpStatusCode.OK, postAuthorize(body).status, "for $body")
+            }
+            assertContains(sent.single { it.url.path == "/authorization/api/v1/authorize" }.body.orEmpty(), subject)
+        }
+    }
+
+    @Test
     fun `authorize passes the minimum authentication levels through to the caller`() =
         authorizeTest(obligations = true) {
             val response = postAuthorize()
@@ -92,9 +110,25 @@ class ServerTest {
     fun `authorize reports every field it rejects, in one response`() {
         val cases = listOf(
             ValidationCase(
-                why = "an absent field",
+                why = "neither systemuserId nor pid",
                 body = authorizeBody(systemuserId = null),
-                errors = listOf(FieldError("systemuserId", PdpValidationCode.MISSING, "systemuserId is required")),
+                errors = listOf(
+                    FieldError("systemuserId", PdpValidationCode.MISSING, "systemuserId or pid is required"),
+                    FieldError("pid", PdpValidationCode.MISSING, "systemuserId or pid is required"),
+                ),
+            ),
+            ValidationCase(
+                why = "both systemuserId and pid",
+                body = authorizeBody(pid = SAMPLE_PID),
+                errors = listOf(
+                    FieldError("systemuserId", PdpValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
+                    FieldError("pid", PdpValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
+                ),
+            ),
+            ValidationCase(
+                why = "a pid with a bad check digit",
+                body = authorizeBody(systemuserId = null, pid = "31827012312"),
+                errors = listOf(FieldError("pid", PdpValidationCode.INVALID_FORMAT, "pid must have valid check digits")),
             ),
             ValidationCase(
                 why = "an explicit null",
@@ -153,7 +187,10 @@ class ServerTest {
         val root = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME) as Logger
         root.addAppender(appender)
         try {
-            authorizeTest { postAuthorize(malformedBody) }
+            authorizeTest {
+                postAuthorize(malformedBody)
+                postAuthorize(malformedPersonBody)
+            }
         } finally {
             root.detachAppender(appender)
         }
@@ -162,7 +199,9 @@ class ServerTest {
             listOf(event.formattedMessage) + generateSequence(event.throwableProxy) { it.cause }.map { it.message }
         }
         assertTrue(logged.any { it.startsWith("Malformed request body: ") }, "expected the warning, got: $logged")
-        assertFalse(logged.any { it.orEmpty().contains(SAMPLE_SYSTEMUSER_ID) }, "logs the caller's body: $logged")
+        for (value in listOf(SAMPLE_SYSTEMUSER_ID, SAMPLE_PID)) {
+            assertFalse(logged.any { it.orEmpty().contains(value) }, "logs the caller's body: $logged")
+        }
     }
 
     @Test
@@ -207,6 +246,9 @@ class ServerTest {
         }
 
     private val malformedBody = """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
+        """"organizationNumber":923609016,"action":"read"}"""
+
+    private val malformedPersonBody = """{"pid":"$SAMPLE_PID","resourceId":"test-resource",""" +
         """"organizationNumber":923609016,"action":"read"}"""
 
     private data class ValidationCase(val why: String, val body: String, val errors: List<FieldError>)

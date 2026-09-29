@@ -14,6 +14,7 @@ import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.auth.MaskinportenKey
 import no.kartverket.altinnpdp.client.http.PdpHttpClient
+import no.kartverket.altinnpdp.client.http.PdpHttpRequest
 import no.kartverket.altinnpdp.client.http.PdpHttpResponse
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
@@ -24,16 +25,20 @@ internal const val OK_STATUS = "urn:oasis:names:tc:xacml:1.0:status:ok"
 
 internal const val SAMPLE_SYSTEMUSER_ID = "1725580f-70f4-4ace-a748-4f912497a0d7"
 
+internal const val SAMPLE_PID = "31827012311"
+
 private val testKey: MaskinportenKey =
     MaskinportenKey.parse(RSAKeyGenerator(2048).keyID("test-key").generate().toJSONString())
 
 internal fun authorizeBody(
     systemuserId: String? = SAMPLE_SYSTEMUSER_ID,
+    pid: String? = null,
     resourceId: String? = "test-resource",
     organizationNumber: String? = "923609016",
     action: String? = "read",
 ): String = listOf(
     "systemuserId" to systemuserId,
+    "pid" to pid,
     "resourceId" to resourceId,
     "organizationNumber" to organizationNumber,
     "action" to action,
@@ -61,9 +66,11 @@ internal fun authorizeTest(
     maskinportenStatus: Int = 200,
     exchangeStatus: Int = 200,
     failure: Exception? = null,
+    sent: MutableList<PdpHttpRequest> = mutableListOf(),
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = testApplication {
     val altinn = PdpHttpClient { request ->
+        sent += request
         if (failure != null) throw failure
         when (request.url.path) {
             "/token" -> PdpHttpResponse(maskinportenStatus, """{"access_token":"mp-token","expires_in":3600}""")

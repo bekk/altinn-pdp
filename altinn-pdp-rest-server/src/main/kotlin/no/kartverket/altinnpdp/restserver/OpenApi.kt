@@ -24,6 +24,7 @@ import kotlinx.serialization.modules.EmptySerializersModule
 import no.kartverket.altinnpdp.client.ActionId
 import no.kartverket.altinnpdp.client.OrganizationNumber
 import no.kartverket.altinnpdp.client.PdpDecision
+import no.kartverket.altinnpdp.client.PersonId
 import no.kartverket.altinnpdp.client.ResourceId
 import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
@@ -86,7 +87,16 @@ private val authorizeRequestSchema = schemaInference.jsonSchema<AuthorizeRequest
         copy(
             type = JsonType.STRING,
             format = "uuid",
-            description = "The system user id from the token's authorization_details. Always a UUID.",
+            description = "The system user id from the Maskinporten token's authorization_details. Always a UUID. " +
+                "Send either this or pid, not both.",
+        )
+    },
+    "pid" to {
+        copy(
+            type = JsonType.STRING,
+            pattern = PdpRequestValidation.PID_FORMAT.pattern,
+            description = "The person's national identity number or D number, from the pid claim in their " +
+                "Ansattporten token. 11 digits with valid check digits. Send either this or systemuserId, not both.",
         )
     },
     "resourceId" to {
@@ -102,15 +112,17 @@ private val authorizeRequestSchema = schemaInference.jsonSchema<AuthorizeRequest
             type = JsonType.STRING,
             pattern = PdpRequestValidation.ORGANIZATION_NUMBER_FORMAT.pattern,
             description = "Plain Norwegian org number (exactly 9 digits, with a valid MOD11 check digit) of the " +
-                "customer the system user acts on behalf of, e.g. \"923609016\". In the Maskinporten token this " +
-                "is authorization_details[].systemuser_org, NOT the consumer claim, which is the vendor's own org " +
-                "number. Strip the ISO6523 prefix: send \"311718371\", not \"0192:311718371\".",
+                "organisation the system user or person acts on behalf of, e.g. \"923609016\". For a system user " +
+                "this is the customer, authorization_details[].systemuser_org in the Maskinporten token, NOT the " +
+                "consumer claim, which is the vendor's own org number. For a person it is the organisation they " +
+                "act for, which Ansattporten puts in authorization_details[].authorized_parties[].orgno.ID. Strip " +
+                "the ISO6523 prefix: send \"311718371\", not \"0192:311718371\".",
         )
     },
     "action" to {
         copy(type = JsonType.STRING, description = "e.g. \"read\" or \"write\".")
     },
-    required = listOf("systemuserId", "resourceId", "organizationNumber", "action"),
+    required = listOf("resourceId", "organizationNumber", "action"),
 )
 
 private val authorizeResponseSchema = schemaInference.jsonSchema<AuthorizeResponse>().documented(
@@ -163,19 +175,29 @@ internal val healthLiveOperation: Operation.Builder.() -> Unit = {
 }
 
 internal val authorizeOperation: Operation.Builder.() -> Unit = {
-    summary = "Check whether a system user is authorized"
-    description = "Asks the Altinn PDP whether the system user identified by [systemuserId] has been delegated " +
-        "[action] on [resourceId] for the customer identified by [organizationNumber]. The Altinn " +
-        "subscription key and Maskinporten token are configured server-side; the caller never supplies them."
+    summary = "Check whether a system user or a person is authorized"
+    description = "Asks the Altinn PDP whether the system user identified by [systemuserId], or the person " +
+        "identified by [pid], may perform [action] on [resourceId] on behalf of the organisation identified by " +
+        "[organizationNumber]. Send exactly one of systemuserId and pid. The Altinn subscription key and " +
+        "Maskinporten token are configured server-side; the caller never supplies them."
 
     requestBody {
         required = true
         ContentType.Application.Json {
             schema = authorizeRequestSchema
             example(
-                "Example",
+                "SystemUser",
                 AuthorizeRequest(
-                    systemuserId = SystemUserId.parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                    subject = SystemUserId.parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                    resourceId = ResourceId.parse("altinn_access_management"),
+                    organizationNumber = OrganizationNumber.parse("923609016"),
+                    action = ActionId.parse("read"),
+                ),
+            )
+            example(
+                "Person",
+                AuthorizeRequest(
+                    subject = PersonId.parse("31827012311"),
                     resourceId = ResourceId.parse("altinn_access_management"),
                     organizationNumber = OrganizationNumber.parse("923609016"),
                     action = ActionId.parse("read"),
@@ -225,8 +247,20 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                         error = "Validation failed",
                         code = ErrorCode.VALIDATION_ERROR,
                         errors = listOf(
-                            FieldError("systemuserId", PdpValidationCode.MISSING, "systemuserId is required"),
+                            FieldError("systemuserId", PdpValidationCode.MISSING, "systemuserId or pid is required"),
+                            FieldError("pid", PdpValidationCode.MISSING, "systemuserId or pid is required"),
                             FieldError("resourceId", PdpValidationCode.MISSING, "resourceId is required"),
+                        ),
+                    ),
+                )
+                example(
+                    "BothSystemuserIdAndPid",
+                    ErrorResponse(
+                        error = "Validation failed",
+                        code = ErrorCode.VALIDATION_ERROR,
+                        errors = listOf(
+                            FieldError("systemuserId", PdpValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
+                            FieldError("pid", PdpValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
                         ),
                     ),
                 )

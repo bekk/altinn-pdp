@@ -40,22 +40,15 @@ public class PdpClient internal constructor(
     private val authorizeUrl: URI = Http.url(platformBaseUrl, AUTHORIZE_PATH)
 
     public suspend fun authorize(
-        systemuserId: SystemUserId,
+        subject: PdpSubject,
         resourceId: ResourceId,
         organizationNumber: OrganizationNumber,
         action: ActionId,
-    ): PdpAuthorization = fetchAuthorization(systemuserId, resourceId, organizationNumber, action)
-
-    private suspend fun fetchAuthorization(
-        subject: SystemUserId,
-        resource: ResourceId,
-        org: OrganizationNumber,
-        actionId: ActionId,
     ): PdpAuthorization {
         val token = tokenProvider.getAltinnToken()
         val body = Http.json.encodeToString(
             XacmlAuthorizationRequest.serializer(),
-            XacmlAuthorizationRequest.forSystemUser(subject, resource, org, actionId),
+            XacmlAuthorizationRequest.of(subject, resourceId, organizationNumber, action),
         )
         val request = PdpHttpRequest(
             method = "POST",
