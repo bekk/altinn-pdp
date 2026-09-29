@@ -305,8 +305,8 @@ The build fails if the checked-in file is stale, so there is no way to forget.
 | :------------------------ | :------- | :------ |
 | `MASKINPORTEN_CLIENT_ID`  | yes      | -       |
 | `MASKINPORTEN_CLIENT_JWK` | yes      | -       |
+| `ALTINN_ENVIRONMENT`      | yes      | -       |
 | `ALTINN_SUBSCRIPTION_KEY` | yes      | -       |
-| `ALTINN_ENVIRONMENT`      | no       | `TT02`  |
 | `ACCESS_LOG_ENABLED`      | no       | `true`  |
 | `LOGBACK_CONFIG_FILE`     | no       | -       |
 | `APPLICATION_CONFIG_FILE` | no       | -       |

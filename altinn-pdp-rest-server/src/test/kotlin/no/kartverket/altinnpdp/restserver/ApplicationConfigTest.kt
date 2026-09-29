@@ -2,20 +2,15 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.yaml.YamlConfig
-import no.kartverket.altinnpdp.client.AltinnEnvironment
 import kotlin.test.Test
-import kotlin.test.assertNotNull
+import kotlin.test.assertFails
 import kotlin.test.fail
 
 class ApplicationConfigTest {
 
     @Test
-    fun `the altinn environment default is a real AltinnEnvironment`() {
-        val configured = loadConfig().property("altinn.environment").getString()
-        assertNotNull(
-            AltinnEnvironment.entries.find { it.name == configured },
-            "altinn.environment resolved to \"$configured\", which is not an AltinnEnvironment",
-        )
+    fun `the altinn environment has no default`() {
+        assertFails { loadConfig(without = "ALTINN_ENVIRONMENT") }
     }
 
     @Test
@@ -23,13 +18,18 @@ class ApplicationConfigTest {
         loadConfig().port("server.port")
     }
 
-    private fun loadConfig(): ApplicationConfig {
-        val required = listOf("ALTINN_SUBSCRIPTION_KEY", "MASKINPORTEN_CLIENT_ID", "MASKINPORTEN_CLIENT_JWK")
-        required.forEach { System.setProperty(it, "placeholder") }
+    private fun loadConfig(without: String? = null): ApplicationConfig {
+        val required = mapOf(
+            "ALTINN_ENVIRONMENT" to "TT02",
+            "ALTINN_SUBSCRIPTION_KEY" to "placeholder",
+            "MASKINPORTEN_CLIENT_ID" to "placeholder",
+            "MASKINPORTEN_CLIENT_JWK" to "placeholder",
+        ).filterKeys { it != without }
+        required.forEach { (name, value) -> System.setProperty(name, value) }
         try {
             return YamlConfig("application.yaml") ?: fail("application.yaml is not on the classpath")
         } finally {
-            required.forEach { System.clearProperty(it) }
+            required.keys.forEach { System.clearProperty(it) }
         }
     }
 }
