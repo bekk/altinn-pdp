@@ -1,5 +1,7 @@
 package no.kartverket.altinnpdp.client.validation
 
+import no.bekk.bekkopen.org.OrganisasjonsnummerValidator
+import no.bekk.bekkopen.person.FodselsnummerValidator
 import kotlin.uuid.Uuid
 
 public enum class PdpValidationCode {
@@ -22,13 +24,9 @@ public object PdpRequestValidation {
 
     public val PID_FORMAT: Regex = Regex("^[0-9]{11}$")
 
-    private val MOD11_WEIGHTS = intArrayOf(3, 2, 7, 6, 5, 4, 3, 2)
-
-    private val PID_FIRST_CHECK_WEIGHTS = intArrayOf(3, 7, 6, 1, 8, 9, 4, 5, 2, 1)
-
-    private val PID_SECOND_CHECK_WEIGHTS = intArrayOf(5, 4, 3, 2, 7, 6, 5, 4, 3, 2, 1)
-
-    private val PID_FIRST_CHECK_REMAINDERS_FROM_2032 = 0..3
+    init {
+        FodselsnummerValidator.ALLOW_SYNTHETIC_NUMBERS = true
+    }
 
     public fun validate(
         systemuserId: String?,
@@ -63,7 +61,7 @@ public object PdpRequestValidation {
         fieldError(value, "pid") {
             when {
                 !it.matches(PID_FORMAT) -> "must be exactly 11 digits"
-                !hasValidPidCheckDigits(it) -> "must have valid check digits"
+                !FodselsnummerValidator.isValid(it) -> "must be a valid fødselsnummer or D number"
                 else -> null
             }
         }
@@ -81,27 +79,13 @@ public object PdpRequestValidation {
         fieldError(value, "customerOrganizationNumber") {
             when {
                 !it.matches(ORGANIZATION_NUMBER_FORMAT) -> "must be exactly 9 digits"
-                !hasValidMod11(it) -> "must have a valid MOD11 check digit"
+                !OrganisasjonsnummerValidator.isValid(it) -> "must have a valid MOD11 check digit"
                 else -> null
             }
         }
 
     internal fun actionError(value: String?): PdpValidationError? =
         fieldError(value, "action") { null }
-
-    internal fun hasValidMod11(customerOrganizationNumber: String): Boolean {
-        if (!customerOrganizationNumber.matches(ORGANIZATION_NUMBER_FORMAT)) return false
-        val remainder = weightedSum(customerOrganizationNumber, MOD11_WEIGHTS) % 11
-        val control = if (remainder == 0) 0 else 11 - remainder
-        return control != 10 && control == customerOrganizationNumber[8] - '0'
-    }
-
-    private fun hasValidPidCheckDigits(pid: String): Boolean =
-        weightedSum(pid, PID_FIRST_CHECK_WEIGHTS) % 11 in PID_FIRST_CHECK_REMAINDERS_FROM_2032 &&
-            weightedSum(pid, PID_SECOND_CHECK_WEIGHTS) % 11 == 0
-
-    private fun weightedSum(digits: String, weights: IntArray): Int =
-        weights.indices.sumOf { (digits[it] - '0') * weights[it] }
 
     private inline fun fieldError(
         value: String?,

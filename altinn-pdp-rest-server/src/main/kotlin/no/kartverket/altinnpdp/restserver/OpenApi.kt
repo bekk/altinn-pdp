@@ -91,7 +91,7 @@ private val authorizeRequestSchema = schemaInference.jsonSchema<AuthorizeRequest
             type = JsonType.STRING,
             pattern = PdpRequestValidation.PID_FORMAT.pattern,
             description = "The person's national identity number or D number, from the pid claim in their " +
-                "Ansattporten token. 11 digits with valid check digits. Send either this or systemuserId, not both.",
+                "Ansattporten token. Must have a valid date and check digits. Send either this or systemuserId, not both.",
         )
     },
     "resourceId" to {
@@ -192,7 +192,7 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
             example(
                 "Person",
                 AuthorizeRequest(
-                    pid = "31827012311",
+                    pid = "01817012309",
                     resourceId = "altinn_access_management",
                     customerOrganizationNumber = "923609016",
                     action = "read",

@@ -25,7 +25,7 @@ internal const val OK_STATUS = "urn:oasis:names:tc:xacml:1.0:status:ok"
 
 internal const val SAMPLE_SYSTEMUSER_ID = "1725580f-70f4-4ace-a748-4f912497a0d7"
 
-internal const val SAMPLE_PID = "31827012311"
+internal const val SAMPLE_PID = "01817012309"
 
 private val testKey: MaskinportenKey =
     MaskinportenKey.parse(RSAKeyGenerator(2048).keyID("test-key").generate().toJSONString())

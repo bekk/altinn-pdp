@@ -128,7 +128,7 @@ class ServerTest {
             ValidationCase(
                 why = "a pid with a bad check digit",
                 body = authorizeBody(systemuserId = null, pid = "31827012312"),
-                errors = listOf(FieldError("pid", PdpValidationCode.INVALID_FORMAT, "pid must have valid check digits")),
+                errors = listOf(FieldError("pid", PdpValidationCode.INVALID_FORMAT, "pid must be a valid fødselsnummer or D number")),
             ),
             ValidationCase(
                 why = "an explicit null",

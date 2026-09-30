@@ -2,7 +2,6 @@ package no.kartverket.altinnpdp.client.validation
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PdpRequestValidationTest {
@@ -48,7 +47,7 @@ class PdpRequestValidationTest {
 
     @Test
     fun `a pid can stand in for systemuserId`() {
-        assertTrue(validate(systemuserId = null, pid = "31827012311").isEmpty())
+        assertTrue(validate(systemuserId = null, pid = "01017012343").isEmpty())
     }
 
     @Test
@@ -61,23 +60,35 @@ class PdpRequestValidationTest {
 
     @Test
     fun `both systemuserId and pid is reported as a conflict on both fields`() {
-        val errors = validate(pid = "31827012311")
+        val errors = validate(pid = "01017012343")
 
         assertEquals(listOf("systemuserId", "pid"), errors.map { it.field })
         assertTrue(errors.all { it.code == PdpValidationCode.CONFLICTING })
     }
 
     @Test
-    fun `pid checks the check digits but not the date`() {
+    fun `pid accepts fødselsnummer, D numbers and Tenor test persons`() {
         val accepted = mapOf(
-            "31027012356" to "a date that does not exist",
-            "31827012311" to "a Tenor test person, with 80 added to the month",
-            "71027012420" to "a D number, with 40 added to the day",
-            "31027012445" to "a first check digit that is only valid from 2032",
+            "01017012343" to "a fødselsnummer",
+            "41017012337" to "a D number, with 40 added to the day",
+            "01817012309" to "a Tenor test person, with 80 added to the month",
         )
         for ((pid, why) in accepted) {
             assertTrue(validate(systemuserId = null, pid = pid).isEmpty(), why)
         }
+    }
+
+    @Test
+    fun `pid rejects a date that does not exist`() {
+        assertEquals(
+            "pid must be a valid fødselsnummer or D number",
+            validate(systemuserId = null, pid = "31027012356").single().message,
+        )
+    }
+
+    @Test
+    fun `pid does not yet accept first check digits that are only valid from 2032`() {
+        assertTrue(validate(systemuserId = null, pid = "01017012351").isNotEmpty())
     }
 
     @Test
@@ -89,10 +100,10 @@ class PdpRequestValidationTest {
 
     @Test
     fun `a pid with a bad check digit is reported as such`() {
-        val cases = mapOf("31027012399" to "the first", "31027012357" to "the second")
+        val cases = mapOf("01017012393" to "the first", "01017012344" to "the second")
         for ((pid, which) in cases) {
             assertEquals(
-                "pid must have valid check digits",
+                "pid must be a valid fødselsnummer or D number",
                 validate(systemuserId = null, pid = pid).single().message,
                 "$which check digit",
             )
@@ -126,14 +137,14 @@ class PdpRequestValidationTest {
 
     @Test
     fun `MOD11 accepts real organisation numbers`() {
-        assertTrue(PdpRequestValidation.hasValidMod11("923609016"))
-        assertTrue(PdpRequestValidation.hasValidMod11("311718371"))
+        assertTrue(validate(customerOrganizationNumber = "923609016").isEmpty())
+        assertTrue(validate(customerOrganizationNumber = "311718371").isEmpty())
     }
 
     @Test
     fun `MOD11 rejects a transposed or altered digit`() {
-        assertFalse(PdpRequestValidation.hasValidMod11("311718372"))
-        assertFalse(PdpRequestValidation.hasValidMod11("987654321"))
+        assertTrue(validate(customerOrganizationNumber = "311718372").isNotEmpty())
+        assertTrue(validate(customerOrganizationNumber = "987654321").isNotEmpty())
     }
 
     @Test

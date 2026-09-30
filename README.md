@@ -202,7 +202,7 @@ other three fields. All are strings, and are validated before Altinn is called:
 | Field                        | Rule                                                 |
 | :--------------------------- | :--------------------------------------------------- |
 | `systemuserId`               | UUID                                                 |
-| `pid`                        | 11 digits with valid check digits                    |
+| `pid`                        | 11 digits with a valid date and check digits         |
 | `resourceId`                 | `^[a-z0-9_-]{4,}$`, the Resource Registry's own rule |
 | `customerOrganizationNumber` | 9 digits with a valid MOD11 check digit              |
 | `action`                     | Non-empty, no format constraint                      |
