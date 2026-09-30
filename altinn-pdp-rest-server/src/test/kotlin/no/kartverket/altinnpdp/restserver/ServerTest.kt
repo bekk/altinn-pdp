@@ -133,14 +133,14 @@ class ServerTest {
             ValidationCase(
                 why = "an explicit null",
                 body = """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
-                    """"organizationNumber":null,"action":"read"}""",
+                    """"customerOrganizationNumber":null,"action":"read"}""",
                 errors = listOf(
-                    FieldError("organizationNumber", PdpValidationCode.MISSING, "organizationNumber is required"),
+                    FieldError("customerOrganizationNumber", PdpValidationCode.MISSING, "customerOrganizationNumber is required"),
                 ),
             ),
             ValidationCase(
                 why = "every field at once",
-                body = """{"systemuserId":"nope","resourceId":"ab","organizationNumber":"12345"}""",
+                body = """{"systemuserId":"nope","resourceId":"ab","customerOrganizationNumber":"12345"}""",
                 errors = listOf(
                     FieldError("systemuserId", PdpValidationCode.INVALID_FORMAT, "systemuserId must be a UUID"),
                     FieldError(
@@ -149,9 +149,9 @@ class ServerTest {
                         "resourceId must be at least 4 characters of lowercase letters, digits, underscore or hyphen",
                     ),
                     FieldError(
-                        "organizationNumber",
+                        "customerOrganizationNumber",
                         PdpValidationCode.INVALID_FORMAT,
-                        "organizationNumber must be exactly 9 digits",
+                        "customerOrganizationNumber must be exactly 9 digits",
                     ),
                     FieldError("action", PdpValidationCode.MISSING, "action is required"),
                 ),
@@ -246,10 +246,10 @@ class ServerTest {
         }
 
     private val malformedBody = """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
-        """"organizationNumber":923609016,"action":"read"}"""
+        """"customerOrganizationNumber":923609016,"action":"read"}"""
 
     private val malformedPersonBody = """{"pid":"$SAMPLE_PID","resourceId":"test-resource",""" +
-        """"organizationNumber":923609016,"action":"read"}"""
+        """"customerOrganizationNumber":923609016,"action":"read"}"""
 
     private data class ValidationCase(val why: String, val body: String, val errors: List<FieldError>)
 

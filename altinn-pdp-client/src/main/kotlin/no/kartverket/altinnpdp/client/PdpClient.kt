@@ -42,13 +42,13 @@ public class PdpClient internal constructor(
     public suspend fun authorize(
         subject: PdpSubject,
         resourceId: ResourceId,
-        organizationNumber: OrganizationNumber,
+        customerOrganizationNumber: OrganizationNumber,
         action: ActionId,
     ): PdpAuthorization {
         val token = tokenProvider.getAltinnToken()
         val body = Http.json.encodeToString(
             XacmlAuthorizationRequest.serializer(),
-            XacmlAuthorizationRequest.of(subject, resourceId, organizationNumber, action),
+            XacmlAuthorizationRequest.of(subject, resourceId, customerOrganizationNumber, action),
         )
         val request = PdpHttpRequest(
             method = "POST",

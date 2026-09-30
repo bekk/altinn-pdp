@@ -34,11 +34,11 @@ public object PdpRequestValidation {
         systemuserId: String?,
         pid: String?,
         resourceId: String?,
-        organizationNumber: String?,
+        customerOrganizationNumber: String?,
         action: String?,
     ): List<PdpValidationError> = subjectErrors(systemuserId, pid) + listOfNotNull(
         resourceIdError(resourceId),
-        organizationNumberError(organizationNumber),
+        organizationNumberError(customerOrganizationNumber),
         actionError(action),
     )
 
@@ -78,7 +78,7 @@ public object PdpRequestValidation {
         }
 
     internal fun organizationNumberError(value: String?): PdpValidationError? =
-        fieldError(value, "organizationNumber") {
+        fieldError(value, "customerOrganizationNumber") {
             when {
                 !it.matches(ORGANIZATION_NUMBER_FORMAT) -> "must be exactly 9 digits"
                 !hasValidMod11(it) -> "must have a valid MOD11 check digit"
@@ -89,11 +89,11 @@ public object PdpRequestValidation {
     internal fun actionError(value: String?): PdpValidationError? =
         fieldError(value, "action") { null }
 
-    internal fun hasValidMod11(organizationNumber: String): Boolean {
-        if (!organizationNumber.matches(ORGANIZATION_NUMBER_FORMAT)) return false
-        val remainder = weightedSum(organizationNumber, MOD11_WEIGHTS) % 11
+    internal fun hasValidMod11(customerOrganizationNumber: String): Boolean {
+        if (!customerOrganizationNumber.matches(ORGANIZATION_NUMBER_FORMAT)) return false
+        val remainder = weightedSum(customerOrganizationNumber, MOD11_WEIGHTS) % 11
         val control = if (remainder == 0) 0 else 11 - remainder
-        return control != 10 && control == organizationNumber[8] - '0'
+        return control != 10 && control == customerOrganizationNumber[8] - '0'
     }
 
     private fun hasValidPidCheckDigits(pid: String): Boolean =

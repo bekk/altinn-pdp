@@ -43,7 +43,7 @@ internal data class XacmlAuthorizationRequest(val request: Request) {
         fun of(
             subject: PdpSubject,
             resourceId: ResourceId,
-            organizationNumber: OrganizationNumber,
+            customerOrganizationNumber: OrganizationNumber,
             action: ActionId,
         ): XacmlAuthorizationRequest = XacmlAuthorizationRequest(
             Request(
@@ -53,7 +53,7 @@ internal data class XacmlAuthorizationRequest(val request: Request) {
                 resource = listOf(
                     Category.of(
                         Attribute(ATTRIBUTE_RESOURCE, resourceId.value),
-                        Attribute(ATTRIBUTE_ORGANIZATION_NUMBER, organizationNumber.value),
+                        Attribute(ATTRIBUTE_ORGANIZATION_NUMBER, customerOrganizationNumber.value),
                     ),
                 ),
             ),

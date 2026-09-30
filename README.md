@@ -104,7 +104,7 @@ fetched again shortly before they expire, and it is safe to call from several co
 val authorization = client.authorize(
     subject = SystemUserId.parse("<system user uuid>"),
     resourceId = ResourceId.parse("<resource id>"),
-    organizationNumber = OrganizationNumber.parse("923609016"),
+    customerOrganizationNumber = OrganizationNumber.parse("923609016"),
     action = ActionId.parse("read"),
 )
 ```
@@ -116,7 +116,7 @@ number never reaches a log through `toString`:
 val authorization = client.authorize(
     subject = PersonId.parse("<national identity number or D number>"),
     resourceId = ResourceId.parse("<resource id>"),
-    organizationNumber = OrganizationNumber.parse("923609016"),
+    customerOrganizationNumber = OrganizationNumber.parse("923609016"),
     action = ActionId.parse("read"),
 )
 ```
@@ -137,12 +137,12 @@ The answer is a `PdpAuthorization`:
 > [Authentication level obligations](#authentication-level-obligations).
 
 > [!IMPORTANT]
-> `organizationNumber` is the organisation the system user or person acts **on behalf of**, not
-> your own. For a system user it is the customer: `authorization_details[].systemuser_org` in the
-> Maskinporten token, **not** the `consumer` claim, which holds the vendor's org number. For a
-> person it is the organisation they act for, which Ansattporten puts in
-> `authorization_details[].authorized_parties[].orgno.ID`. Strip the ISO6523 prefix: send
-> `311718371`, not `0192:311718371`.
+> `customerOrganizationNumber` is the customer: the organisation the system user or person acts
+> **on behalf of** when calling your API, not your own. For a system user it is
+> `authorization_details[].systemuser_org` in the Maskinporten token, **not** the `consumer`
+> claim, which holds the vendor's org number. For a person it is the organisation they chose when
+> logging in, `authorization_details[].authorized_parties[].orgno.ID` in the Ansattporten token.
+> Strip the ISO6523 prefix: send `311718371`, not `0192:311718371`.
 
 ### HTTP client
 
@@ -190,7 +190,7 @@ Request body:
 {
   "systemuserId": "<system user id from the token's authorization_details>",
   "resourceId": "<resource identifier in the Altinn Resource Registry>",
-  "organizationNumber": "923609016",
+  "customerOrganizationNumber": "923609016",
   "action": "read"
 }
 ```
@@ -199,13 +199,13 @@ For a person, send `pid` instead of `systemuserId`: their national identity numb
 from the `pid` claim in their Ansattporten token. Exactly one of the two is required, as are the
 other three fields. All are strings, and are validated before Altinn is called:
 
-| Field                | Rule                                                 |
-| :------------------- | :--------------------------------------------------- |
-| `systemuserId`       | UUID                                                 |
-| `pid`                | 11 digits with valid check digits                    |
-| `resourceId`         | `^[a-z0-9_-]{4,}$`, the Resource Registry's own rule |
-| `organizationNumber` | 9 digits with a valid MOD11 check digit              |
-| `action`             | Non-empty, no format constraint                      |
+| Field                        | Rule                                                 |
+| :--------------------------- | :--------------------------------------------------- |
+| `systemuserId`               | UUID                                                 |
+| `pid`                        | 11 digits with valid check digits                    |
+| `resourceId`                 | `^[a-z0-9_-]{4,}$`, the Resource Registry's own rule |
+| `customerOrganizationNumber` | 9 digits with a valid MOD11 check digit              |
+| `action`                     | Non-empty, no format constraint                      |
 
 The Altinn subscription key and Maskinporten credentials are configured
 server-side (see [Environment variables](#-environment-variables)) - callers never supply them.
@@ -276,9 +276,9 @@ just the first:
   "code": "VALIDATION_ERROR",
   "errors": [
     {
-      "field": "organizationNumber",
+      "field": "customerOrganizationNumber",
       "code": "INVALID_FORMAT",
-      "message": "organizationNumber must have a valid MOD11 check digit"
+      "message": "customerOrganizationNumber must have a valid MOD11 check digit"
     },
     { "field": "action", "code": "MISSING", "message": "action is required" }
   ]

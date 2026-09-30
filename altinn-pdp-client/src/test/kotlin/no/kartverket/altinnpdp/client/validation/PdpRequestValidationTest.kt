@@ -13,9 +13,9 @@ class PdpRequestValidationTest {
         systemuserId: String? = uuid,
         pid: String? = null,
         resourceId: String? = "fleks-pdp-demo",
-        organizationNumber: String? = "311718371",
+        customerOrganizationNumber: String? = "311718371",
         action: String? = "read",
-    ) = PdpRequestValidation.validate(systemuserId, pid, resourceId, organizationNumber, action)
+    ) = PdpRequestValidation.validate(systemuserId, pid, resourceId, customerOrganizationNumber, action)
 
     @Test
     fun `a valid request produces no errors`() {
@@ -24,9 +24,9 @@ class PdpRequestValidationTest {
 
     @Test
     fun `every missing field is reported, not just the first`() {
-        val errors = validate(systemuserId = null, resourceId = null, organizationNumber = null, action = null)
+        val errors = validate(systemuserId = null, resourceId = null, customerOrganizationNumber = null, action = null)
 
-        assertEquals(listOf("systemuserId", "pid", "resourceId", "organizationNumber", "action"), errors.map { it.field })
+        assertEquals(listOf("systemuserId", "pid", "resourceId", "customerOrganizationNumber", "action"), errors.map { it.field })
         assertTrue(errors.all { it.code == PdpValidationCode.MISSING })
     }
 
@@ -109,18 +109,18 @@ class PdpRequestValidationTest {
     }
 
     @Test
-    fun `an organizationNumber of the wrong length is reported as such`() {
+    fun `a customerOrganizationNumber of the wrong length is reported as such`() {
         assertEquals(
-            "organizationNumber must be exactly 9 digits",
-            validate(organizationNumber = "92360901").single().message,
+            "customerOrganizationNumber must be exactly 9 digits",
+            validate(customerOrganizationNumber = "92360901").single().message,
         )
     }
 
     @Test
     fun `nine digits with a bad check digit is reported as a MOD11 failure`() {
         assertEquals(
-            "organizationNumber must have a valid MOD11 check digit",
-            validate(organizationNumber = "123456789").single().message,
+            "customerOrganizationNumber must have a valid MOD11 check digit",
+            validate(customerOrganizationNumber = "123456789").single().message,
         )
     }
 

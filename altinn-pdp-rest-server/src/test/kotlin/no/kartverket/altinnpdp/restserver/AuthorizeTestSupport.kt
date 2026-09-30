@@ -34,13 +34,13 @@ internal fun authorizeBody(
     systemuserId: String? = SAMPLE_SYSTEMUSER_ID,
     pid: String? = null,
     resourceId: String? = "test-resource",
-    organizationNumber: String? = "923609016",
+    customerOrganizationNumber: String? = "923609016",
     action: String? = "read",
 ): String = listOf(
     "systemuserId" to systemuserId,
     "pid" to pid,
     "resourceId" to resourceId,
-    "organizationNumber" to organizationNumber,
+    "customerOrganizationNumber" to customerOrganizationNumber,
     "action" to action,
 ).mapNotNull { (field, value) -> value?.let { """"$field":"$it"""" } }
     .joinToString(prefix = "{", postfix = "}")

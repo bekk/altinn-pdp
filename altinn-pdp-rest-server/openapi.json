@@ -20,7 +20,7 @@
         "/authorize": {
             "post": {
                 "summary": "Check whether a system user or a person is authorized",
-                "description": "Asks the Altinn PDP whether the system user identified by [systemuserId], or the person identified by [pid], may perform [action] on [resourceId] on behalf of the organisation identified by [organizationNumber]. Send exactly one of systemuserId and pid. The Altinn subscription key and Maskinporten token are configured server-side; the caller never supplies them.",
+                "description": "Asks the Altinn PDP whether the system user identified by [systemuserId], or the person identified by [pid], may perform [action] on [resourceId] on behalf of the customer identified by [customerOrganizationNumber]. Send exactly one of systemuserId and pid. The Altinn subscription key and Maskinporten token are configured server-side; the caller never supplies them.",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -32,7 +32,7 @@
                                     "value": {
                                         "systemuserId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
                                         "resourceId": "altinn_access_management",
-                                        "organizationNumber": "923609016",
+                                        "customerOrganizationNumber": "923609016",
                                         "action": "read"
                                     }
                                 },
@@ -40,7 +40,7 @@
                                     "value": {
                                         "pid": "31827012311",
                                         "resourceId": "altinn_access_management",
-                                        "organizationNumber": "923609016",
+                                        "customerOrganizationNumber": "923609016",
                                         "action": "read"
                                     }
                                 }
@@ -134,15 +134,15 @@
                                             ]
                                         }
                                     },
-                                    "InvalidOrganizationNumber": {
+                                    "InvalidCustomerOrganizationNumber": {
                                         "value": {
                                             "error": "Validation failed",
                                             "code": "VALIDATION_ERROR",
                                             "errors": [
                                                 {
-                                                    "field": "organizationNumber",
+                                                    "field": "customerOrganizationNumber",
                                                     "code": "INVALID_FORMAT",
-                                                    "message": "organizationNumber must have a valid MOD11 check digit"
+                                                    "message": "customerOrganizationNumber must have a valid MOD11 check digit"
                                                 }
                                             ]
                                         }
@@ -210,7 +210,7 @@
                 "title": "AuthorizeRequest",
                 "required": [
                     "resourceId",
-                    "organizationNumber",
+                    "customerOrganizationNumber",
                     "action"
                 ],
                 "properties": {
@@ -229,9 +229,9 @@
                         "description": "The resource's identifier in the Altinn Resource Registry. Lowercase letters, digits, underscore and hyphen, at least 4 characters - the Resource Registry's own rule.",
                         "pattern": "^[a-z0-9_-]{4,}$"
                     },
-                    "organizationNumber": {
+                    "customerOrganizationNumber": {
                         "type": "string",
-                        "description": "Plain Norwegian org number (exactly 9 digits, with a valid MOD11 check digit) of the organisation the system user or person acts on behalf of, e.g. \"923609016\". For a system user this is the customer, authorization_details[].systemuser_org in the Maskinporten token, NOT the consumer claim, which is the vendor's own org number. For a person it is the organisation they act for, which Ansattporten puts in authorization_details[].authorized_parties[].orgno.ID. Strip the ISO6523 prefix: send \"311718371\", not \"0192:311718371\".",
+                        "description": "The customer: the organisation the system user or person acts on behalf of when calling your API. For a system user it is authorization_details[].systemuser_org in the Maskinporten token, NOT the consumer claim, which is the vendor's own org number. For a person it is the organisation they chose when logging in, authorization_details[].authorized_parties[].orgno.ID in the Ansattporten token. A plain Norwegian org number, exactly 9 digits with a valid MOD11 check digit. Strip the ISO6523 prefix: send \"311718371\", not \"0192:311718371\".",
                         "pattern": "^[0-9]{9}$"
                     },
                     "action": {

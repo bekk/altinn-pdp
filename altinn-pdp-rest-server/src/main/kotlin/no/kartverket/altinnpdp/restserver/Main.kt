@@ -59,7 +59,7 @@ fun Application.configureRouting() {
             val authorization = pdpClient.authorize(
                 subject = request.subject,
                 resourceId = request.resourceId,
-                organizationNumber = request.organizationNumber,
+                customerOrganizationNumber = request.customerOrganizationNumber,
                 action = request.action,
             )
 
