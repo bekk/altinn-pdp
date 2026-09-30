@@ -7,6 +7,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
@@ -60,6 +61,7 @@ internal suspend fun HttpResponse.errorResponse(): ErrorResponse =
     Json.decodeFromString(ErrorResponse.serializer(), bodyAsText())
 
 internal fun authorizeTest(
+    altinnEnvironment: AltinnEnvironment = AltinnEnvironment.TT02,
     decision: String = "Permit",
     statusCode: Int = 200,
     obligations: Boolean = false,
@@ -79,12 +81,16 @@ internal fun authorizeTest(
             else -> error("unexpected call to ${request.url}")
         }
     }
+    environment {
+        config = MapApplicationConfig("altinn.environment" to altinnEnvironment.name)
+    }
     application {
         configureSerialization()
         configureErrorHandling()
+        configureSyntheticPersons()
         configurePdp(
             PdpClient(
-                environment = AltinnEnvironment.TT02,
+                environment = altinnEnvironment,
                 subscriptionKey = "test-subscription-key",
                 maskinportenClientId = "test-client",
                 maskinportenKey = testKey,

@@ -221,7 +221,7 @@
                     },
                     "pid": {
                         "type": "string",
-                        "description": "The person's national identity number or D number, from the pid claim in their Ansattporten token. Must have a valid date and check digits. Send either this or systemuserId, not both.",
+                        "description": "The person's national identity number or D number, from the pid claim in their Ansattporten token. Must have a valid date and check digits. Synthetic test persons, such as those from Tenor, are only accepted against TT02. Send either this or systemuserId, not both.",
                         "pattern": "^[0-9]{11}$"
                     },
                     "resourceId": {

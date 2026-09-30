@@ -91,7 +91,8 @@ private val authorizeRequestSchema = schemaInference.jsonSchema<AuthorizeRequest
             type = JsonType.STRING,
             pattern = PdpRequestValidation.PID_FORMAT.pattern,
             description = "The person's national identity number or D number, from the pid claim in their " +
-                "Ansattporten token. Must have a valid date and check digits. Send either this or systemuserId, not both.",
+                "Ansattporten token. Must have a valid date and check digits. Synthetic test persons, such as those " +
+                "from Tenor, are only accepted against TT02. Send either this or systemuserId, not both.",
         )
     },
     "resourceId" to {

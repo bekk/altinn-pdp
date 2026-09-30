@@ -24,10 +24,6 @@ public object PdpRequestValidation {
 
     public val PID_FORMAT: Regex = Regex("^[0-9]{11}$")
 
-    init {
-        FodselsnummerValidator.ALLOW_SYNTHETIC_NUMBERS = true
-    }
-
     public fun validate(
         systemuserId: String?,
         pid: String?,

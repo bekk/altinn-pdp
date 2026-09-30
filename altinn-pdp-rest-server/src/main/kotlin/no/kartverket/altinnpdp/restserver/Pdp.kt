@@ -4,12 +4,18 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
+import no.bekk.bekkopen.person.FodselsnummerValidator
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.auth.MaskinportenKey
 import no.kartverket.altinnpdp.client.http.JavaPdpHttpClient
 import java.net.http.HttpClient
 import java.time.Duration
+
+fun Application.configureSyntheticPersons() {
+    FodselsnummerValidator.ALLOW_SYNTHETIC_NUMBERS =
+        environment.config.enum<AltinnEnvironment>("altinn.environment") == AltinnEnvironment.TT02
+}
 
 fun Application.configurePdp(client: PdpClient = pdpClientFromConfig()) {
     install(DI)

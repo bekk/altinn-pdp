@@ -36,6 +36,7 @@ fun Application.module() {
     configureAccessLogging()
     configureSerialization()
     configureErrorHandling()
+    configureSyntheticPersons()
     configurePdp()
     configureRouting()
 }

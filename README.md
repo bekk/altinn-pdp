@@ -121,6 +121,10 @@ val authorization = client.authorize(
 )
 ```
 
+`PersonId.parse` only accepts real persons by default. Against TT02, set NoCommons'
+`FodselsnummerValidator.ALLOW_SYNTHETIC_NUMBERS = true` at startup to accept Tenor test persons
+too. The switch is global for the whole application, so the library leaves it alone.
+
 The answer is a `PdpAuthorization`:
 
 | Member                          | What it is                                                                                                                                                 |
@@ -206,6 +210,9 @@ other three fields. All are strings, and are validated before Altinn is called:
 | `resourceId`                 | `^[a-z0-9_-]{4,}$`, the Resource Registry's own rule |
 | `customerOrganizationNumber` | 9 digits with a valid MOD11 check digit              |
 | `action`                     | Non-empty, no format constraint                      |
+
+A synthetic `pid`, such as a Tenor test person, is only accepted when `ALTINN_ENVIRONMENT` is
+`TT02`. In `PROD`, only real persons pass.
 
 The Altinn subscription key and Maskinporten credentials are configured
 server-side (see [Environment variables](#-environment-variables)) - callers never supply them.

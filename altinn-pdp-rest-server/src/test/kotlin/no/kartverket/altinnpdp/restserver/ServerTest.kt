@@ -11,6 +11,7 @@ import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.http.PdpHttpRequest
 import no.kartverket.altinnpdp.client.validation.PdpValidationCode
@@ -78,6 +79,26 @@ class ServerTest {
                 assertEquals(HttpStatusCode.OK, postAuthorize(body).status, "for $body")
             }
             assertContains(sent.single { it.url.path == "/authorization/api/v1/authorize" }.body.orEmpty(), subject)
+        }
+    }
+
+    @Test
+    fun `a synthetic person is accepted against TT02, but only a real person in PROD`() {
+        val synthetic = authorizeBody(systemuserId = null, pid = SAMPLE_PID)
+        val real = authorizeBody(systemuserId = null, pid = "01017012343")
+
+        authorizeTest(altinnEnvironment = AltinnEnvironment.TT02) {
+            assertEquals(HttpStatusCode.OK, postAuthorize(synthetic).status)
+        }
+        authorizeTest(altinnEnvironment = AltinnEnvironment.PROD) {
+            assertEquals(HttpStatusCode.OK, postAuthorize(real).status)
+
+            val response = postAuthorize(synthetic)
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertEquals(
+                listOf(FieldError("pid", PdpValidationCode.INVALID_FORMAT, "pid must be a valid fødselsnummer or D number")),
+                response.errorResponse().errors,
+            )
         }
     }
 
