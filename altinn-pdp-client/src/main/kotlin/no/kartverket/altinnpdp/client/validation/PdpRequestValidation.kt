@@ -1,5 +1,6 @@
 package no.kartverket.altinnpdp.client.validation
 
+import no.bekk.bekkopen.org.OrganisasjonsnummerValidator
 import kotlin.uuid.Uuid
 
 public enum class PdpValidationCode {
@@ -18,8 +19,6 @@ public object PdpRequestValidation {
     public val RESOURCE_ID_FORMAT: Regex = Regex("^[a-z0-9_-]{4,}$")
 
     public val ORGANIZATION_NUMBER_FORMAT: Regex = Regex("^[0-9]{9}$")
-
-    private val MOD11_WEIGHTS = intArrayOf(3, 2, 7, 6, 5, 4, 3, 2)
 
     public fun validate(
         systemuserId: String?,
@@ -49,21 +48,13 @@ public object PdpRequestValidation {
         fieldError(value, "customerOrganizationNumber") {
             when {
                 !it.matches(ORGANIZATION_NUMBER_FORMAT) -> "must be exactly 9 digits"
-                !hasValidMod11(it) -> "must have a valid MOD11 check digit"
+                !OrganisasjonsnummerValidator.isValid(it) -> "must have a valid MOD11 check digit"
                 else -> null
             }
         }
 
     internal fun actionError(value: String?): PdpValidationError? =
         fieldError(value, "action") { null }
-
-    internal fun hasValidMod11(customerOrganizationNumber: String): Boolean {
-        if (!customerOrganizationNumber.matches(ORGANIZATION_NUMBER_FORMAT)) return false
-        val sum = MOD11_WEIGHTS.indices.sumOf { (customerOrganizationNumber[it] - '0') * MOD11_WEIGHTS[it] }
-        val remainder = sum % 11
-        val control = if (remainder == 0) 0 else 11 - remainder
-        return control != 10 && control == customerOrganizationNumber[8] - '0'
-    }
 
     private inline fun fieldError(
         value: String?,

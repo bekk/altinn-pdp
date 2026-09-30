@@ -2,7 +2,6 @@ package no.kartverket.altinnpdp.client.validation
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PdpRequestValidationTest {
@@ -72,14 +71,14 @@ class PdpRequestValidationTest {
 
     @Test
     fun `MOD11 accepts real organisation numbers`() {
-        assertTrue(PdpRequestValidation.hasValidMod11("923609016"))
-        assertTrue(PdpRequestValidation.hasValidMod11("311718371"))
+        assertTrue(validate(customerOrganizationNumber = "923609016").isEmpty())
+        assertTrue(validate(customerOrganizationNumber = "311718371").isEmpty())
     }
 
     @Test
     fun `MOD11 rejects a transposed or altered digit`() {
-        assertFalse(PdpRequestValidation.hasValidMod11("311718372"))
-        assertFalse(PdpRequestValidation.hasValidMod11("987654321"))
+        assertTrue(validate(customerOrganizationNumber = "311718372").isNotEmpty())
+        assertTrue(validate(customerOrganizationNumber = "987654321").isNotEmpty())
     }
 
     @Test
