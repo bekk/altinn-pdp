@@ -21,12 +21,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.modules.EmptySerializersModule
-import no.kartverket.altinnpdp.client.ActionId
-import no.kartverket.altinnpdp.client.OrganizationNumber
 import no.kartverket.altinnpdp.client.PdpDecision
-import no.kartverket.altinnpdp.client.PersonId
-import no.kartverket.altinnpdp.client.ResourceId
-import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 import no.kartverket.altinnpdp.client.validation.PdpValidationCode
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
@@ -188,19 +183,19 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
             example(
                 "SystemUser",
                 AuthorizeRequest(
-                    subject = SystemUserId.parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
-                    resourceId = ResourceId.parse("altinn_access_management"),
-                    customerOrganizationNumber = OrganizationNumber.parse("923609016"),
-                    action = ActionId.parse("read"),
+                    systemuserId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    resourceId = "altinn_access_management",
+                    customerOrganizationNumber = "923609016",
+                    action = "read",
                 ),
             )
             example(
                 "Person",
                 AuthorizeRequest(
-                    subject = PersonId.parse("31827012311"),
-                    resourceId = ResourceId.parse("altinn_access_management"),
-                    customerOrganizationNumber = OrganizationNumber.parse("923609016"),
-                    action = ActionId.parse("read"),
+                    pid = "31827012311",
+                    resourceId = "altinn_access_management",
+                    customerOrganizationNumber = "923609016",
+                    action = "read",
                 ),
             )
         }

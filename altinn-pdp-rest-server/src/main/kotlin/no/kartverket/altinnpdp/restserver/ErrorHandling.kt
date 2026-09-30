@@ -18,9 +18,10 @@ import no.kartverket.altinnpdp.restserver.models.FieldError
 
 fun Application.configureErrorHandling() {
     install(StatusPages) {
-        exception<JsonConvertException> { call, cause -> call.respondUnreadableBody(cause) }
-        exception<ContentTransformationException> { call, cause -> call.respondUnreadableBody(cause) }
-        exception<BadRequestException> { call, cause -> call.respondUnreadableBody(cause) }
+        exception<JsonConvertException> { call, cause -> call.respondMalformedBody(cause) }
+        exception<ContentTransformationException> { call, cause -> call.respondMalformedBody(cause) }
+        exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
+        exception<PdpValidationException> { call, cause -> call.respondValidationFailed(cause) }
         exception<AltinnPdpException> { call, cause ->
             call.application.log.error("Call to Maskinporten or Altinn failed: statusCode=${cause.statusCode}", cause)
             call.respondUpstream(cause)
@@ -44,11 +45,6 @@ private suspend fun io.ktor.server.application.ApplicationCall.respondValidation
             errors = cause.errors.map { FieldError(it.field, it.code, it.message) },
         ),
     )
-}
-
-private suspend fun io.ktor.server.application.ApplicationCall.respondUnreadableBody(cause: Throwable) {
-    val rejected = generateSequence(cause) { it.cause }.filterIsInstance<PdpValidationException>().firstOrNull()
-    if (rejected != null) respondValidationFailed(rejected) else respondMalformedBody(cause)
 }
 
 private suspend fun io.ktor.server.application.ApplicationCall.respondMalformedBody(cause: Throwable) {
