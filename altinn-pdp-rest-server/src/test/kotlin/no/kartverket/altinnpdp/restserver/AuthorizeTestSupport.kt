@@ -7,6 +7,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
@@ -14,6 +15,7 @@ import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.auth.MaskinportenKey
 import no.kartverket.altinnpdp.client.http.PdpHttpClient
+import no.kartverket.altinnpdp.client.http.PdpHttpRequest
 import no.kartverket.altinnpdp.client.http.PdpHttpResponse
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
@@ -24,16 +26,20 @@ internal const val OK_STATUS = "urn:oasis:names:tc:xacml:1.0:status:ok"
 
 internal const val SAMPLE_SYSTEMUSER_ID = "1725580f-70f4-4ace-a748-4f912497a0d7"
 
+internal const val SAMPLE_PID = "01817012309"
+
 private val testKey: MaskinportenKey =
     MaskinportenKey.parse(RSAKeyGenerator(2048).keyID("test-key").generate().toJSONString())
 
 internal fun authorizeBody(
     systemuserId: String? = SAMPLE_SYSTEMUSER_ID,
+    pid: String? = null,
     resourceId: String? = "test-resource",
     customerOrganizationNumber: String? = "923609016",
     action: String? = "read",
 ): String = listOf(
     "systemuserId" to systemuserId,
+    "pid" to pid,
     "resourceId" to resourceId,
     "customerOrganizationNumber" to customerOrganizationNumber,
     "action" to action,
@@ -55,15 +61,18 @@ internal suspend fun HttpResponse.errorResponse(): ErrorResponse =
     Json.decodeFromString(ErrorResponse.serializer(), bodyAsText())
 
 internal fun authorizeTest(
+    altinnEnvironment: AltinnEnvironment = AltinnEnvironment.TT02,
     decision: String = "Permit",
     statusCode: Int = 200,
     obligations: Boolean = false,
     maskinportenStatus: Int = 200,
     exchangeStatus: Int = 200,
     failure: Exception? = null,
+    sent: MutableList<PdpHttpRequest> = mutableListOf(),
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = testApplication {
     val altinn = PdpHttpClient { request ->
+        sent += request
         if (failure != null) throw failure
         when (request.url.path) {
             "/token" -> PdpHttpResponse(maskinportenStatus, """{"access_token":"mp-token","expires_in":3600}""")
@@ -72,12 +81,16 @@ internal fun authorizeTest(
             else -> error("unexpected call to ${request.url}")
         }
     }
+    environment {
+        config = MapApplicationConfig("altinn.environment" to altinnEnvironment.name)
+    }
     application {
         configureSerialization()
         configureErrorHandling()
+        configureSyntheticPersons()
         configurePdp(
             PdpClient(
-                environment = AltinnEnvironment.TT02,
+                environment = altinnEnvironment,
                 subscriptionKey = "test-subscription-key",
                 maskinportenClientId = "test-client",
                 maskinportenKey = testKey,

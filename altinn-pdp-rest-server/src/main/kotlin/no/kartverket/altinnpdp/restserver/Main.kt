@@ -36,6 +36,7 @@ fun Application.module() {
     configureAccessLogging()
     configureSerialization()
     configureErrorHandling()
+    configureSyntheticPersons()
     configurePdp()
     configureRouting()
 }
@@ -55,9 +56,9 @@ fun Application.configureRouting() {
 
         post("/authorize") {
             val pdpClient: PdpClient by dependencies
-            val request = call.receive<AuthorizeRequest>()
+            val request = call.receive<AuthorizeRequest>().parse()
             val authorization = pdpClient.authorize(
-                systemuserId = request.systemuserId,
+                subject = request.subject,
                 resourceId = request.resourceId,
                 customerOrganizationNumber = request.customerOrganizationNumber,
                 action = request.action,

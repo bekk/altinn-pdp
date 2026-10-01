@@ -4,10 +4,21 @@ import no.kartverket.altinnpdp.client.exception.PdpValidationException
 import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 import no.kartverket.altinnpdp.client.validation.PdpValidationError
 
+public sealed interface PdpSubject
+
 @JvmInline
-public value class SystemUserId private constructor(public val value: String) {
+public value class SystemUserId private constructor(public val value: String) : PdpSubject {
     public companion object {
         public fun parse(value: String): SystemUserId = SystemUserId(valid(value, PdpRequestValidation::systemuserIdError))
+    }
+}
+
+@JvmInline
+public value class PersonId private constructor(public val value: String) : PdpSubject {
+    override fun toString(): String = "PersonId(***********)"
+
+    public companion object {
+        public fun parse(value: String): PersonId = PersonId(valid(value, PdpRequestValidation::pidError))
     }
 }
 

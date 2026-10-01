@@ -2,10 +2,12 @@ package no.kartverket.altinnpdp.client
 
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.exception.PdpException
+import no.kartverket.altinnpdp.client.support.SAMPLE_PID
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.client.support.TestHttpServer
 import no.kartverket.altinnpdp.client.support.TestResponse
 import no.kartverket.altinnpdp.client.support.authorizeSample
+import no.kartverket.altinnpdp.client.support.authorizeSamplePerson
 import no.kartverket.altinnpdp.client.support.pdpDecisionResponse
 import no.kartverket.altinnpdp.client.support.testPdpClient
 import kotlin.test.AfterTest
@@ -55,6 +57,18 @@ class PdpClientTest {
 
         val expected = """
             {"request":{"returnPolicyIdList":true,"accessSubject":[{"attribute":[{"attributeId":"urn:altinn:systemuser:uuid","value":"$SAMPLE_SYSTEMUSER_ID"}]}],"action":[{"attribute":[{"attributeId":"urn:oasis:names:tc:xacml:1.0:action:action-id","value":"read"}]}],"resource":[{"attribute":[{"attributeId":"urn:altinn:resource","value":"test-resource"},{"attributeId":"urn:altinn:organization:identifier-no","value":"923609016"}]}]}}
+        """.trimIndent()
+        assertEquals(expected, server.lastRequest(path).body)
+    }
+
+    @Test
+    fun `sends a pid as the person asking, with the rest of the body unchanged`() = runBlocking {
+        serverAnswers()
+
+        testPdpClient(server.baseUrl).authorizeSamplePerson()
+
+        val expected = """
+            {"request":{"returnPolicyIdList":true,"accessSubject":[{"attribute":[{"attributeId":"urn:altinn:person:identifier-no","value":"$SAMPLE_PID"}]}],"action":[{"attribute":[{"attributeId":"urn:oasis:names:tc:xacml:1.0:action:action-id","value":"read"}]}],"resource":[{"attribute":[{"attributeId":"urn:altinn:resource","value":"test-resource"},{"attributeId":"urn:altinn:organization:identifier-no","value":"923609016"}]}]}}
         """.trimIndent()
         assertEquals(expected, server.lastRequest(path).body)
     }

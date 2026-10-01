@@ -2,7 +2,7 @@
 
 # 🗝️ Fleks · Altinn PDP
 
-**Kotlin library and REST service for asking Altinn whether a system user has access to a resource.**
+**Kotlin library and REST service for asking Altinn whether a system user or a person has access to a resource.**
 
 <br/>
 
@@ -102,12 +102,28 @@ fetched again shortly before they expire, and it is safe to call from several co
 
 ```kotlin
 val authorization = client.authorize(
-    systemuserId = SystemUserId.parse("<system user uuid>"),
+    subject = SystemUserId.parse("<system user uuid>"),
     resourceId = ResourceId.parse("<resource id>"),
     customerOrganizationNumber = OrganizationNumber.parse("923609016"),
     action = ActionId.parse("read"),
 )
 ```
+
+For a person, the subject is a `PersonId` instead. It prints as `PersonId(***********)`, so the
+number never reaches a log through `toString`:
+
+```kotlin
+val authorization = client.authorize(
+    subject = PersonId.parse("<national identity number or D number>"),
+    resourceId = ResourceId.parse("<resource id>"),
+    customerOrganizationNumber = OrganizationNumber.parse("923609016"),
+    action = ActionId.parse("read"),
+)
+```
+
+`PersonId.parse` only accepts real persons by default. Against TT02, set NoCommons'
+`FodselsnummerValidator.ALLOW_SYNTHETIC_NUMBERS = true` at startup to accept Tenor test persons
+too. The switch is global for the whole application, so the library leaves it alone.
 
 The answer is a `PdpAuthorization`:
 
@@ -125,10 +141,12 @@ The answer is a `PdpAuthorization`:
 > [Authentication level obligations](#authentication-level-obligations).
 
 > [!IMPORTANT]
-> This is the org number of the customer the system user acts **on behalf of**, not your own.
-> In the Maskinporten token it is `authorization_details[].systemuser_org`. It is **not** the
-> `consumer` claim, which holds the vendor's org number. Strip the ISO6523 prefix: send
-> `311718371`, not `0192:311718371`.
+> `customerOrganizationNumber` is the customer: the organisation the system user or person acts
+> **on behalf of** when calling your API, not your own. For a system user it is
+> `authorization_details[].systemuser_org` in the Maskinporten token, **not** the `consumer`
+> claim, which holds the vendor's org number. For a person it is the organisation they chose when
+> logging in, `authorization_details[].authorized_parties[].orgno.ID` in the Ansattporten token.
+> Strip the ISO6523 prefix: send `311718371`, not `0192:311718371`.
 
 ### HTTP client
 
@@ -181,14 +199,20 @@ Request body:
 }
 ```
 
-All four fields are required strings, and are validated before Altinn is called:
+For a person, send `pid` instead of `systemuserId`: their national identity number or D number,
+from the `pid` claim in their Ansattporten token. Exactly one of the two is required, as are the
+other three fields. All are strings, and are validated before Altinn is called:
 
 | Field                        | Rule                                                 |
 | :--------------------------- | :--------------------------------------------------- |
 | `systemuserId`               | UUID                                                 |
+| `pid`                        | 11 digits with a valid date and check digits         |
 | `resourceId`                 | `^[a-z0-9_-]{4,}$`, the Resource Registry's own rule |
 | `customerOrganizationNumber` | 9 digits with a valid MOD11 check digit              |
 | `action`                     | Non-empty, no format constraint                      |
+
+A synthetic `pid`, such as a Tenor test person, is only accepted when `ALTINN_ENVIRONMENT` is
+`TT02`. In `PROD`, only real persons pass.
 
 The Altinn subscription key and Maskinporten credentials are configured
 server-side (see [Environment variables](#-environment-variables)) - callers never supply them.
@@ -215,12 +239,12 @@ Altinn sends nothing for them, so a response may still be just `permit` and `dec
 
 `decision` is one of:
 
-| Value            | Meaning                                                                     |
-| :--------------- | :-------------------------------------------------------------------------- |
-| `PERMIT`         | The system user is allowed to perform `action` on the resource for that org |
-| `DENY`           | Explicitly denied                                                           |
-| `NOT_APPLICABLE` | No matching policy - not necessarily an error                               |
-| `INDETERMINATE`  | The PDP couldn't evaluate the request                                       |
+| Value            | Meaning                                                                               |
+| :--------------- | :------------------------------------------------------------------------------------ |
+| `PERMIT`         | The system user or person is allowed to perform `action` on the resource for that org |
+| `DENY`           | Explicitly denied                                                                     |
+| `NOT_APPLICABLE` | No matching policy - not necessarily an error                                         |
+| `INDETERMINATE`  | The PDP couldn't evaluate the request                                                 |
 
 #### Authentication level obligations
 
@@ -276,7 +300,8 @@ just the first:
 | `UPSTREAM_ERROR`    | 502    | Calling Maskinporten or Altinn failed, including our own auth and quota problems |
 | `INTERNAL_ERROR`    | 500    | Anything unanticipated                                                           |
 
-Per-field `code` is `MISSING` (absent, null or blank) or `INVALID_FORMAT` (present but wrong shape).
+Per-field `code` is `MISSING` (absent, null or blank), `INVALID_FORMAT` (present but wrong shape) or
+`CONFLICTING` (both `systemuserId` and `pid` were sent).
 
 ### `GET /health/live`
 
@@ -367,14 +392,16 @@ them differently, from the rest:
 
 ## 🔗 Useful links
 
-| Resource                          | Link                                                                                    |
-| :-------------------------------- | :-------------------------------------------------------------------------------------- |
-| Authorising a system user         | https://docs.altinn.studio/nb/authorization/guides/resource-owner/system-user/          |
-| Altinn Studio documentation       | https://docs.altinn.studio                                                              |
-| Altinn delegation in Maskinporten | https://skip.kartverket.no/docs/tilgangsstyring/valg-av-identitetstilbyder/delegering   |
-| System user                       | https://skip.kartverket.no/docs/tilgangsstyring/valg-av-identitetstilbyder/systembruker |
-| Maskinporten                      | https://docs.digdir.no/docs/Maskinporten                                                |
-| Altinn TT02 (test)                | https://tt02.altinn.no                                                                  |
+| Resource                          | Link                                                                                                                |
+| :-------------------------------- | :------------------------------------------------------------------------------------------------------------------ |
+| Authorising a system user         | https://docs.altinn.studio/nb/authorization/guides/resource-owner/system-user/                                      |
+| Authorising a person              | https://docs.altinn.studio/nb/authorization/guides/resource-owner/generic-access-resource/integrating-link-service/ |
+| Altinn Studio documentation       | https://docs.altinn.studio                                                                                          |
+| Altinn delegation in Maskinporten | https://skip.kartverket.no/docs/tilgangsstyring/valg-av-identitetstilbyder/delegering                               |
+| System user                       | https://skip.kartverket.no/docs/tilgangsstyring/valg-av-identitetstilbyder/systembruker                             |
+| Maskinporten                      | https://docs.digdir.no/docs/Maskinporten                                                                            |
+| Ansattporten                      | https://docs.digdir.no/docs/ansattporten/ansattporten_om.html                                                       |
+| Altinn TT02 (test)                | https://tt02.altinn.no                                                                                              |
 
 ---
 

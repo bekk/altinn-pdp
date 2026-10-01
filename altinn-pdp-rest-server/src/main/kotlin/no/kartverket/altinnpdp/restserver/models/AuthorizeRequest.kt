@@ -1,64 +1,38 @@
 package no.kartverket.altinnpdp.restserver.models
 
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import no.kartverket.altinnpdp.client.ActionId
 import no.kartverket.altinnpdp.client.OrganizationNumber
+import no.kartverket.altinnpdp.client.PdpSubject
+import no.kartverket.altinnpdp.client.PersonId
 import no.kartverket.altinnpdp.client.ResourceId
 import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.client.exception.PdpValidationException
 import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 
-@Serializable(with = AuthorizeRequest.Serializer::class)
+@Serializable
 data class AuthorizeRequest(
-    val systemuserId: SystemUserId,
-    val resourceId: ResourceId,
-    val customerOrganizationNumber: OrganizationNumber,
-    val action: ActionId,
+    val systemuserId: String? = null,
+    val pid: String? = null,
+    val resourceId: String? = null,
+    val customerOrganizationNumber: String? = null,
+    val action: String? = null,
 ) {
-    object Serializer : KSerializer<AuthorizeRequest> {
-        override val descriptor: SerialDescriptor = Raw.serializer().descriptor
-
-        override fun deserialize(decoder: Decoder): AuthorizeRequest {
-            val raw = decoder.decodeSerializableValue(Raw.serializer())
-            val errors = PdpRequestValidation.validate(
-                raw.systemuserId,
-                raw.resourceId,
-                raw.customerOrganizationNumber,
-                raw.action,
-            )
-            if (errors.isNotEmpty()) throw PdpValidationException(errors)
-            return AuthorizeRequest(
-                SystemUserId.parse(raw.systemuserId!!),
-                ResourceId.parse(raw.resourceId!!),
-                OrganizationNumber.parse(raw.customerOrganizationNumber!!),
-                ActionId.parse(raw.action!!),
-            )
-        }
-
-        override fun serialize(encoder: Encoder, value: AuthorizeRequest) {
-            encoder.encodeSerializableValue(
-                Raw.serializer(),
-                Raw(
-                    value.systemuserId.value,
-                    value.resourceId.value,
-                    value.customerOrganizationNumber.value,
-                    value.action.value,
-                ),
-            )
-        }
+    fun parse(): Parsed {
+        val errors = PdpRequestValidation.validate(systemuserId, pid, resourceId, customerOrganizationNumber, action)
+        if (errors.isNotEmpty()) throw PdpValidationException(errors)
+        return Parsed(
+            if (pid.isNullOrBlank()) SystemUserId.parse(systemuserId!!) else PersonId.parse(pid),
+            ResourceId.parse(resourceId!!),
+            OrganizationNumber.parse(customerOrganizationNumber!!),
+            ActionId.parse(action!!),
+        )
     }
 
-    @Serializable
-    @SerialName("AuthorizeRequest")
-    private data class Raw(
-        val systemuserId: String? = null,
-        val resourceId: String? = null,
-        val customerOrganizationNumber: String? = null,
-        val action: String? = null,
+    data class Parsed(
+        val subject: PdpSubject,
+        val resourceId: ResourceId,
+        val customerOrganizationNumber: OrganizationNumber,
+        val action: ActionId,
     )
 }

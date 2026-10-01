@@ -7,12 +7,14 @@ jib = "3.5.4"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 nimbus-jose-jwt = "10.10"
+nocommons = "0.16.0"
 
 [libraries]
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
+nocommons = { module = "no.bekk.bekkopen:nocommons", version.ref = "nocommons" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
