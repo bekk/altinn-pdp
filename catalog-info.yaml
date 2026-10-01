@@ -49,3 +49,18 @@ metadata:
 spec:
   type: service
   owner: group:default/tilgangsstyring
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: altinn-pdp-rest-server-api
+  title: Altinn PDP - REST Server API
+  description: API definition for Altinn PDP - REST Server
+spec:
+  type: openapi
+  owner: group:default/tilgangsstyring
+  lifecycle: experimental
+  system: system:default/altinn-plattformfunksjonalitet
+  definition:
+    $text: https://github.com/kartverket/altinn-pdp/blob/main/altinn-pdp-rest-server/openapi.json
