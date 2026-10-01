@@ -37,6 +37,8 @@ spec:
   owner: group:default/tilgangsstyring
   lifecycle: experimental
   system: system:default/altinn-plattformfunksjonalitet
+  providesApis:
+    - api:default/altinn-pdp-rest-server-api
 
 ---
 apiVersion: backstage.io/v1alpha1
