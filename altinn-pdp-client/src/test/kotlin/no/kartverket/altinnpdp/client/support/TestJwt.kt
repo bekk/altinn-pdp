@@ -11,7 +11,7 @@ import java.time.Instant
 import java.util.Date
 
 internal object TestKeys {
-    val rsa: RSAKey by lazy { RSAKeyGenerator(2048).keyID("test-key").generate() }
+    val rsa: RSAKey = RSAKeyGenerator(2048).keyID("test-key").generate()
 }
 
 internal fun signedJwt(expiresAt: Instant?, issuedAt: Instant = NOW): String {
