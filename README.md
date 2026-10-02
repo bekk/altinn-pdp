@@ -133,12 +133,14 @@ The answer is a `PdpAuthorization`:
 | `isPermit`                      | Shorthand for `decision == PERMIT`                                                                                                                         |
 | `obligations`                   | Every obligation Altinn attached, unfiltered, including ones this library does not model                                                                   |
 | `minimumAuthenticationLevel`    | The `urn:altinn:minimum-authenticationlevel` obligation as an `Int`, or null                                                                               |
-| `minimumAuthenticationLevelOrg` | The same for `urn:altinn:minimum-authenticationlevel-org`                                                                                                  |
+| `minimumAuthenticationLevelOrg` | The same for `urn:altinn:minimum-authenticationlevel-org`. Altinn only applies it to its service owners, never to a system user or person                  |
 | `statusCode`                    | Altinn's XACML status URN, or null                                                                                                                         |
 
 > [!WARNING]
-> A `PERMIT` that carries a `minimumAuthenticationLevel` is **conditional**. See
-> [Authentication level obligations](#authentication-level-obligations).
+> A `PERMIT` that carries a `minimumAuthenticationLevel` is **conditional**: it only holds if your
+> end user logged in at that level or higher, and the library cannot check that for you. A system
+> user counts as level 3. A person with `acr` `substantial` in their Ansattporten token is level 3,
+> and with `high` level 4.
 
 > [!IMPORTANT]
 > `customerOrganizationNumber` is the customer: the organisation the system user or person acts
@@ -186,135 +188,19 @@ means setting them yourself.
 
 ## 🔌 API
 
-### `POST /authorize`
+The REST server's API is documented in its OpenAPI spec. It covers every field, decision and
+error code, and how to act on the answer.
 
-Request body:
+| Endpoint           | What it is                                                      |
+| :----------------- | :-------------------------------------------------------------- |
+| `POST /authorize`  | Asks whether a system user or a person has access to a resource |
+| `GET /openapi`     | The OpenAPI spec as JSON                                        |
+| `GET /health/live` | Liveness probe for the platform, left out of the spec           |
 
-```json
-{
-  "systemuserId": "<system user id from the token's authorization_details>",
-  "resourceId": "<resource identifier in the Altinn Resource Registry>",
-  "customerOrganizationNumber": "923609016",
-  "action": "read"
-}
-```
-
-For a person, send `pid` instead of `systemuserId`: their national identity number or D number,
-from the `pid` claim in their Ansattporten token. Exactly one of the two is required, as are the
-other three fields. All are strings, and are validated before Altinn is called:
-
-| Field                        | Rule                                                 |
-| :--------------------------- | :--------------------------------------------------- |
-| `systemuserId`               | UUID                                                 |
-| `pid`                        | 11 digits with a valid date and check digits         |
-| `resourceId`                 | `^[a-z0-9_-]{4,}$`, the Resource Registry's own rule |
-| `customerOrganizationNumber` | 9 digits with a valid MOD11 check digit              |
-| `action`                     | Non-empty, no format constraint                      |
-
-A synthetic `pid`, such as a Tenor test person, is only accepted when `ALTINN_ENVIRONMENT` is
-`TT02`. In `PROD`, only real persons pass.
-
-The Altinn subscription key and Maskinporten credentials are configured
-server-side (see [Environment variables](#-environment-variables)) - callers never supply them.
-
-Allow at least 10 seconds for a response, so a stalled Altinn reaches you as a `502` rather than
-as a timeout of your own - see [HTTP client](#http-client).
-
-Response body (`200 OK`):
-
-```json
-{
-  "permit": true,
-  "decision": "PERMIT",
-  "status": "urn:oasis:names:tc:xacml:1.0:status:ok",
-  "minimumAuthenticationLevel": 3,
-  "minimumAuthenticationLevelOrg": 3
-}
-```
-
-`permit` is a boolean shorthand for `decision == "PERMIT"`.
-
-`status`, `minimumAuthenticationLevel` and `minimumAuthenticationLevelOrg` are omitted when
-Altinn sends nothing for them, so a response may still be just `permit` and `decision`.
-
-`decision` is one of:
-
-| Value            | Meaning                                                                               |
-| :--------------- | :------------------------------------------------------------------------------------ |
-| `PERMIT`         | The system user or person is allowed to perform `action` on the resource for that org |
-| `DENY`           | Explicitly denied                                                                     |
-| `NOT_APPLICABLE` | No matching policy - not necessarily an error                                         |
-| `INDETERMINATE`  | The PDP couldn't evaluate the request                                                 |
-
-#### Authentication level obligations
-
-A `PERMIT` can be **conditional**. When Altinn attaches a minimum authentication level to the
-decision, it arrives as `minimumAuthenticationLevel` (and `minimumAuthenticationLevelOrg` for the
-organisation-level equivalent).
-
-This service cannot check those levels. It never sees your token - that is the point of the
-design - so it passes them to you instead. **A `PERMIT` carrying a level you have not met is not
-a permit.** Before acting on one, confirm your own end user authenticated at that level or higher.
-Callers that ignore these fields are trusting a condition nobody verified.
-
-#### Telling "no" apart from "couldn't tell"
-
-`status` is Altinn's XACML status URN. `...:status:ok` means the question was evaluated;
-`...:status:processing-error` means it wasn't. This matters because both come back as
-`permit: false`: a misspelled `resourceId` returns `INDETERMINATE` with a processing-error status,
-which is a bug in the caller, not a denial. Branch on `status` if you need to tell them apart.
-
-Error responses (any non-2xx) share one shape:
-
-```json
-{
-  "error": "<human-readable summary>",
-  "code": "<stable machine-readable code>"
-}
-```
-
-Branch on `code`, never on `error`. `error` is prose and may be reworded; `code` is part of the
-contract. A validation failure adds an `errors` array listing **every** field that failed, not
-just the first:
-
-```json
-{
-  "error": "Validation failed",
-  "code": "VALIDATION_ERROR",
-  "errors": [
-    {
-      "field": "customerOrganizationNumber",
-      "code": "INVALID_FORMAT",
-      "message": "customerOrganizationNumber must have a valid MOD11 check digit"
-    },
-    { "field": "action", "code": "MISSING", "message": "action is required" }
-  ]
-}
-```
-
-| `code`              | Status | Meaning                                                                          |
-| :------------------ | :----- | :------------------------------------------------------------------------------- |
-| `VALIDATION_ERROR`  | 400    | One or more fields failed validation. See `errors`                               |
-| `MALFORMED_BODY`    | 400    | Not valid JSON, or a field of the wrong type                                     |
-| `UPSTREAM_REJECTED` | 400    | Altinn itself answered 400 to the request we built                               |
-| `UPSTREAM_ERROR`    | 502    | Calling Maskinporten or Altinn failed, including our own auth and quota problems |
-| `INTERNAL_ERROR`    | 500    | Anything unanticipated                                                           |
-
-Per-field `code` is `MISSING` (absent, null or blank), `INVALID_FORMAT` (present but wrong shape) or
-`CONFLICTING` (both `systemuserId` and `pid` were sent).
-
-### `GET /health/live`
-
-Liveness probe. Returns `200 OK` with an empty body if the server is up - not part of the stable
-API.
-
-### `GET /openapi`
-
-The OpenAPI spec as JSON, built from the routes themselves so it cannot describe an API the server
-does not serve. It names no `servers`, so a client uses the host it fetched the spec from.
-
-The same spec is checked in as `altinn-pdp-rest-server/openapi.json` for anyone who needs it
-without running the server. Regenerate it after changing the API:
+The spec is built from the routes themselves, so it cannot describe an API the server does not
+serve. It names no `servers`, so a client uses the host it fetched the spec from. The same spec is
+checked in as [`altinn-pdp-rest-server/openapi.json`](altinn-pdp-rest-server/openapi.json).
+Regenerate it after changing the API:
 
 ```bash
 ./gradlew :altinn-pdp-rest-server:generateOpenApiSpec
@@ -377,6 +263,9 @@ them differently, from the rest:
 | :---------- | :-------------------------------- | :----------------------------------- |
 | `TT02`      | `https://platform.tt02.altinn.no` | `https://test.maskinporten.no/token` |
 | `PROD`      | `https://platform.altinn.no`      | `https://maskinporten.no/token`      |
+
+The REST server accepts a synthetic `pid`, such as a Tenor test person, only when
+`ALTINN_ENVIRONMENT` is `TT02`. In `PROD`, only real persons pass.
 
 ---
 

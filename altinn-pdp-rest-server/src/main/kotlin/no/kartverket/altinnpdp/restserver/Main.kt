@@ -48,7 +48,7 @@ fun Application.configureRouting() {
     routing {
         get("/health/live") {
             call.respond(HttpStatusCode.OK)
-        }.describe(healthLiveOperation)
+        }.hide()
 
         get("/openapi") {
             call.respondText(spec, ContentType.Application.Json)
@@ -70,7 +70,6 @@ fun Application.configureRouting() {
                     decision = authorization.decision,
                     status = authorization.statusCode,
                     minimumAuthenticationLevel = authorization.minimumAuthenticationLevel,
-                    minimumAuthenticationLevelOrg = authorization.minimumAuthenticationLevelOrg,
                 ),
             )
         }.describe(authorizeOperation)

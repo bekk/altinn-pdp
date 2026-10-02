@@ -9,5 +9,4 @@ data class AuthorizeResponse(
     val decision: PdpDecision,
     val status: String? = null,
     val minimumAuthenticationLevel: Int? = null,
-    val minimumAuthenticationLevelOrg: Int? = null,
 )

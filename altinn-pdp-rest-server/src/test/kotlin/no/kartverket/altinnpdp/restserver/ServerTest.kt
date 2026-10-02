@@ -46,7 +46,7 @@ class ServerTest {
         assertEquals(ContentType.Application.Json, response.contentType()?.withoutParameters())
 
         val spec = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-        assertTrue(spec.getValue("paths").jsonObject.containsKey("/authorize"))
+        assertEquals(setOf("/authorize"), spec.getValue("paths").jsonObject.keys)
         assertFalse(spec.containsKey("servers"), "the host differs per environment, so the spec names none")
     }
 
@@ -103,7 +103,7 @@ class ServerTest {
     }
 
     @Test
-    fun `authorize passes the minimum authentication levels through to the caller`() =
+    fun `authorize passes the minimum authentication level through to the caller`() =
         authorizeTest(obligations = true) {
             val response = postAuthorize()
 
@@ -114,7 +114,6 @@ class ServerTest {
                     decision = PdpDecision.PERMIT,
                     status = OK_STATUS,
                     minimumAuthenticationLevel = 3,
-                    minimumAuthenticationLevelOrg = 3,
                 ),
                 response.authorizeResponse(),
             )
