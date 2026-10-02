@@ -11,6 +11,7 @@ import io.ktor.openapi.MediaType
 import io.ktor.openapi.OpenApiDoc
 import io.ktor.openapi.OpenApiInfo
 import io.ktor.openapi.Operation
+import io.ktor.openapi.ReferenceOr
 import io.ktor.openapi.jsonSchema
 import io.ktor.server.application.Application
 import io.ktor.server.application.plugin
@@ -43,7 +44,40 @@ private val exampleJson = Json {
 private val apiInfo = OpenApiInfo(
     title = "Altinn PDP REST API",
     version = "0.1.0",
-    description = "Simplified JSON REST API for the Altinn PDP",
+    description = """
+        Asks Altinn whether a system user or a person may perform an action on an Altinn resource, on behalf of an
+        organisation.
+
+        The token your API receives says who the caller is. It does not say whether they have access to your
+        resource. That is what this API answers.
+
+        ## How to use it
+
+        1. Validate the token your API received, as you do today. This API never sees that token.
+        2. Take the subject and the organisation from the token. For a system user (Maskinporten token), send
+           `systemuserId`. For a person (Ansattporten token), send `pid`. Either way, also send
+           `customerOrganizationNumber`.
+        3. Call `POST /authorize` with those, your `resourceId` and the `action`.
+        4. Grant access only if `permit` is `true` and your end user meets `minimumAuthenticationLevel`, when the
+           response has one.
+        5. Treat everything else as no access, including every error response.
+
+        Set your client timeout to at least 10 seconds. If Altinn is slow, you then get a `502` instead of a
+        timeout of your own.
+
+        ## Authentication level
+
+        A `PERMIT` can come with a `minimumAuthenticationLevel`. The permit then only holds if your end user logged
+        in at that level or higher. This API cannot check that, so you must. Your user's level is:
+
+        | End user | Level |
+        | :-- | :-- |
+        | A system user, or any other Maskinporten token | 3 |
+        | A person whose Ansattporten token has `acr` `substantial` | 3 |
+        | A person whose Ansattporten token has `acr` `high` | 4 |
+
+        If your user's level is lower than `minimumAuthenticationLevel`, treat the answer as no access.
+    """.trimIndent(),
 )
 
 private const val OK_STATUS = "urn:oasis:names:tc:xacml:1.0:status:ok"
@@ -82,84 +116,149 @@ private val authorizeRequestSchema = schemaInference.jsonSchema<AuthorizeRequest
         copy(
             type = JsonType.STRING,
             format = "uuid",
-            description = "The system user id from the Maskinporten token's authorization_details. Always a UUID. " +
-                "Send either this or pid, not both.",
+            description = "The system user, when your caller uses one. In the Maskinporten token it is the UUID in " +
+                "`authorization_details[].systemuser_id`. Send either this or `pid`, not both.",
         )
     },
     "pid" to {
         copy(
             type = JsonType.STRING,
             pattern = PdpRequestValidation.PID_FORMAT.pattern,
-            description = "The person's national identity number or D number, from the pid claim in their " +
-                "Ansattporten token. Must have a valid date and check digits. Synthetic test persons, such as those " +
-                "from Tenor, are only accepted against TT02. Send either this or systemuserId, not both.",
+            description = "The person, when your caller is logged in as one: their national identity number or D " +
+                "number, from the `pid` claim in the Ansattporten token. It must have a valid date and check " +
+                "digits. In test, synthetic persons such as those from Tenor are accepted too. In production, " +
+                "only real persons are. Send either this or `systemuserId`, not both.",
         )
     },
     "resourceId" to {
         copy(
             type = JsonType.STRING,
             pattern = PdpRequestValidation.RESOURCE_ID_FORMAT.pattern,
-            description = "The resource's identifier in the Altinn Resource Registry. Lowercase letters, digits, " +
-                "underscore and hyphen, at least 4 characters - the Resource Registry's own rule.",
+            description = "Your resource's id in the Altinn Resource Registry, for example " +
+                "`altinn_access_management`. At least 4 characters, using lowercase letters, digits, underscore " +
+                "and hyphen. An id that does not exist is not rejected with a `400`. You get a `200` with " +
+                "`decision` `INDETERMINATE` instead.",
         )
     },
     "customerOrganizationNumber" to {
         copy(
             type = JsonType.STRING,
             pattern = PdpRequestValidation.ORGANIZATION_NUMBER_FORMAT.pattern,
-            description = "The customer: the organisation the system user or person acts on behalf of when " +
-                "calling your API. For a system user it is authorization_details[].systemuser_org in the " +
-                "Maskinporten token, NOT the consumer claim, which is the vendor's own org number. For a person it " +
-                "is the organisation they chose when logging in, authorization_details[].authorized_parties[]" +
-                ".orgno.ID in the Ansattporten token. A plain Norwegian org number, exactly 9 digits with a valid " +
-                "MOD11 check digit. Strip the ISO6523 prefix: send \"311718371\", not \"0192:311718371\".",
+            description = """
+                The customer: the organisation the system user or person acts on behalf of when calling your API.
+
+                - For a system user, it is the org number in `authorization_details[].systemuser_org` in the
+                  Maskinporten token. Do not use the `consumer` claim. That is the vendor's own org number.
+                - For a person, it is the organisation they chose when logging in, in
+                  `authorization_details[].authorized_parties[].orgno` in the Ansattporten token.
+
+                Send the 9 digits without the `0192:` prefix: `311718371`, not `0192:311718371`. The last digit
+                must be a valid check digit.
+            """.trimIndent(),
         )
     },
     "action" to {
-        copy(type = JsonType.STRING, description = "e.g. \"read\" or \"write\".")
+        copy(
+            type = JsonType.STRING,
+            description = "What the caller wants to do, as named in your resource's policy, for example `read` or " +
+                "`write`. Any value that is not empty is accepted.",
+        )
     },
     required = listOf("resourceId", "customerOrganizationNumber", "action"),
 )
 
 private val authorizeResponseSchema = schemaInference.jsonSchema<AuthorizeResponse>().documented(
     "permit" to {
-        copy(description = "Whether the request is permitted - shorthand for decision == \"PERMIT\".")
+        copy(
+            description = "`true` only when `decision` is `PERMIT`. Before granting access, also check " +
+                "`minimumAuthenticationLevel`.",
+        )
     },
-    "decision" to { copy(description = "The underlying XACML decision.") },
+    "decision" to {
+        copy(
+            description = """
+                Altinn's answer:
+
+                - `PERMIT`: allowed. Check `minimumAuthenticationLevel` before granting access.
+                - `NOT_APPLICABLE`: no rule gives access. This is the usual answer when the caller has no access.
+                - `DENY`: a rule refuses access.
+                - `INDETERMINATE`: Altinn could not answer, for example because `resourceId` does not exist. See
+                  `status`.
+            """.trimIndent(),
+        )
+    },
     "status" to {
         copy(
-            description = "Altinn's XACML status URN. \"...:status:ok\" means the request was evaluated; " +
-                "\"...:status:processing-error\" means it could not be, which is how an unknown resourceId shows " +
-                "up. Omitted when Altinn sends no status.",
+            type = JsonType.STRING,
+            description = """
+                Tells "no access" apart from "could not answer". Both come with `permit` `false`.
+
+                - `$OK_STATUS`: Altinn evaluated the request.
+                - `$PROCESSING_ERROR_STATUS`: Altinn could not evaluate it, for example because
+                  `resourceId` does not exist. This points to a mistake in the request, not a refusal.
+
+                Not always present.
+            """.trimIndent(),
         )
     },
     "minimumAuthenticationLevel" to {
         copy(
-            description = "From the urn:altinn:minimum-authenticationlevel obligation. When present on a PERMIT, " +
-                "the decision is conditional: the caller must confirm its own end user met at least this " +
-                "authentication level before acting on the permit. This API cannot check it, as it never sees the " +
-                "caller's token. Omitted when Altinn attaches no such obligation.",
+            type = JsonType.INTEGER,
+            description = "The lowest level your end user must have logged in with for a `PERMIT` to hold. See " +
+                "Authentication level in the API description for how to find your user's level. Only present when " +
+                "Altinn sets such a requirement.",
         )
     },
 )
 
+private val fieldErrorSchema = schemaInference.jsonSchema<FieldError>().documented(
+    "field" to { copy(description = "The request field, for example `customerOrganizationNumber`.") },
+    "code" to {
+        copy(
+            description = """
+                - `MISSING`: the field is absent, null or blank. If neither `systemuserId` nor `pid` is sent, both
+                  are listed.
+                - `INVALID_FORMAT`: the field is present but not valid.
+                - `CONFLICTING`: both `systemuserId` and `pid` were sent. Both are listed.
+            """.trimIndent(),
+        )
+    },
+    "message" to { copy(description = "What is wrong, for people to read. The wording may change.") },
+)
+
 private val errorResponseSchema = schemaInference.jsonSchema<ErrorResponse>().documented(
     "error" to {
-        copy(description = "Human-readable summary. Not stable - branch on `code`, not on this.")
+        copy(description = "A short summary for people to read. The wording may change, so check `code` in your code.")
     },
-    "code" to { copy(description = "Stable machine-readable code.") },
+    "code" to {
+        copy(
+            description = """
+                What went wrong. These values do not change, so your code can rely on them.
+
+                - `VALIDATION_ERROR` (400): one or more fields are missing or invalid. `errors` lists all of them.
+                - `MALFORMED_BODY` (400): the body is not valid JSON, or a field has the wrong type.
+                - `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.
+                - `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause
+                  it.
+                - `INTERNAL_ERROR` (500): an unexpected error in this API.
+            """.trimIndent(),
+        )
+    },
     "errors" to {
-        copy(description = "Present when code is VALIDATION_ERROR. Every field that failed, not just the first.")
+        copy(
+            type = JsonType.ARRAY,
+            items = ReferenceOr.Value(fieldErrorSchema),
+            description = "Only with `VALIDATION_ERROR`: every field that failed, so you can fix them all at once.",
+        )
     },
     required = listOf("error", "code"),
 )
 
 internal val authorizeOperation: Operation.Builder.() -> Unit = {
-    summary = "Check whether a system user or a person is authorized"
-    description = "Asks the Altinn PDP whether the system user identified by [systemuserId], or the person " +
-        "identified by [pid], may perform [action] on [resourceId] on behalf of the customer identified by " +
-        "[customerOrganizationNumber]. Send exactly one of systemuserId and pid. The Altinn subscription key and " +
-        "Maskinporten token are configured server-side; the caller never supplies them."
+    summary = "Check whether a system user or person has access"
+    description = "Asks Altinn whether the system user (`systemuserId`) or person (`pid`) may perform `action` on " +
+        "`resourceId`, on behalf of the organisation `customerOrganizationNumber`. Send exactly one of " +
+        "`systemuserId` and `pid`."
 
     requestBody {
         required = true
@@ -188,7 +287,7 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
 
     responses {
         HttpStatusCode.OK {
-            description = "The PDP's decision."
+            description = "Altinn answered. This includes answers that deny access, so check `permit`."
             ContentType.Application.Json {
                 schema = authorizeResponseSchema
                 example(
@@ -200,9 +299,12 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                         minimumAuthenticationLevel = 3,
                     ),
                 )
-                example("Deny", AuthorizeResponse(permit = false, decision = PdpDecision.DENY, status = OK_STATUS))
                 example(
-                    "NotEvaluated",
+                    "NoAccess",
+                    AuthorizeResponse(permit = false, decision = PdpDecision.NOT_APPLICABLE, status = OK_STATUS),
+                )
+                example(
+                    "UnknownResource",
                     AuthorizeResponse(
                         permit = false,
                         decision = PdpDecision.INDETERMINATE,
@@ -213,11 +315,7 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
         }
 
         HttpStatusCode.BadRequest {
-            description = "The request could not be understood. Validation failures carry code VALIDATION_ERROR " +
-                "and list every failing field in \"errors\". A body that is not valid JSON, or has a field of the " +
-                "wrong type, carries MALFORMED_BODY. Note that an unknown resourceId is not a 400: Altinn answers " +
-                "200 with decision INDETERMINATE and a processing-error status, which this API passes through in " +
-                "the \"status\" field."
+            description = "The request was not accepted. `code` says why."
             ContentType.Application.Json {
                 schema = errorResponseSchema
                 example(
@@ -263,20 +361,19 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
         }
 
         HttpStatusCode.BadGateway {
-            description = "The call to Altinn or Maskinporten failed for a reason unrelated to this request's " +
-                "content - the PDP itself errored, or a token could not be obtained. The response never includes " +
-                "Altinn's own error details; those are logged server-side instead."
+            description = "This API could not get an answer from Altinn. Your request did not cause it. Treat it as " +
+                "no access."
             ContentType.Application.Json {
                 schema = errorResponseSchema
-                example("Example", ErrorResponse("The call to Altinn failed", ErrorCode.UPSTREAM_ERROR))
+                example("UpstreamError", ErrorResponse("The call to Altinn failed", ErrorCode.UPSTREAM_ERROR))
             }
         }
 
         HttpStatusCode.InternalServerError {
-            description = "An unanticipated server error."
+            description = "An unexpected error in this API. Treat it as no access."
             ContentType.Application.Json {
                 schema = errorResponseSchema
-                example("Example", ErrorResponse("Internal server error", ErrorCode.INTERNAL_ERROR))
+                example("InternalError", ErrorResponse("Internal server error", ErrorCode.INTERNAL_ERROR))
             }
         }
     }
