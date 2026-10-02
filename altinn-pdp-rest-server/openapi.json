@@ -63,8 +63,7 @@
                                             "permit": true,
                                             "decision": "PERMIT",
                                             "status": "urn:oasis:names:tc:xacml:1.0:status:ok",
-                                            "minimumAuthenticationLevel": 3,
-                                            "minimumAuthenticationLevelOrg": 3
+                                            "minimumAuthenticationLevel": 3
                                         }
                                     },
                                     "Deny": {
@@ -275,13 +274,6 @@
                             "null"
                         ],
                         "description": "From the urn:altinn:minimum-authenticationlevel obligation. When present on a PERMIT, the decision is conditional: the caller must confirm its own end user met at least this authentication level before acting on the permit. This API cannot check it, as it never sees the caller's token. Omitted when Altinn attaches no such obligation."
-                    },
-                    "minimumAuthenticationLevelOrg": {
-                        "type": [
-                            "integer",
-                            "null"
-                        ],
-                        "description": "As minimumAuthenticationLevel, but from the urn:altinn:minimum-authenticationlevel-org obligation."
                     }
                 }
             },

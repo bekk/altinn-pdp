@@ -141,12 +141,6 @@ private val authorizeResponseSchema = schemaInference.jsonSchema<AuthorizeRespon
                 "caller's token. Omitted when Altinn attaches no such obligation.",
         )
     },
-    "minimumAuthenticationLevelOrg" to {
-        copy(
-            description = "As minimumAuthenticationLevel, but from the " +
-                "urn:altinn:minimum-authenticationlevel-org obligation.",
-        )
-    },
 )
 
 private val errorResponseSchema = schemaInference.jsonSchema<ErrorResponse>().documented(
@@ -214,7 +208,6 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                         decision = PdpDecision.PERMIT,
                         status = OK_STATUS,
                         minimumAuthenticationLevel = 3,
-                        minimumAuthenticationLevelOrg = 3,
                     ),
                 )
                 example("Deny", AuthorizeResponse(permit = false, decision = PdpDecision.DENY, status = OK_STATUS))

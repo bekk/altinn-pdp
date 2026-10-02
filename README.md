@@ -227,15 +227,14 @@ Response body (`200 OK`):
   "permit": true,
   "decision": "PERMIT",
   "status": "urn:oasis:names:tc:xacml:1.0:status:ok",
-  "minimumAuthenticationLevel": 3,
-  "minimumAuthenticationLevelOrg": 3
+  "minimumAuthenticationLevel": 3
 }
 ```
 
 `permit` is a boolean shorthand for `decision == "PERMIT"`.
 
-`status`, `minimumAuthenticationLevel` and `minimumAuthenticationLevelOrg` are omitted when
-Altinn sends nothing for them, so a response may still be just `permit` and `decision`.
+`status` and `minimumAuthenticationLevel` are omitted when Altinn sends nothing for them, so a
+response may still be just `permit` and `decision`.
 
 `decision` is one of:
 
@@ -249,13 +248,12 @@ Altinn sends nothing for them, so a response may still be just `permit` and `dec
 #### Authentication level obligations
 
 A `PERMIT` can be **conditional**. When Altinn attaches a minimum authentication level to the
-decision, it arrives as `minimumAuthenticationLevel` (and `minimumAuthenticationLevelOrg` for the
-organisation-level equivalent).
+decision, it arrives as `minimumAuthenticationLevel`.
 
-This service cannot check those levels. It never sees your token - that is the point of the
-design - so it passes them to you instead. **A `PERMIT` carrying a level you have not met is not
+This service cannot check that level. It never sees your token - that is the point of the
+design - so it passes it to you instead. **A `PERMIT` carrying a level you have not met is not
 a permit.** Before acting on one, confirm your own end user authenticated at that level or higher.
-Callers that ignore these fields are trusting a condition nobody verified.
+Callers that ignore this field are trusting a condition nobody verified.
 
 #### Telling "no" apart from "couldn't tell"
 
