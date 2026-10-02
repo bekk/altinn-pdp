@@ -188,8 +188,8 @@ means setting them yourself.
 
 ## 🔌 API
 
-The REST server's API is documented in its OpenAPI spec, which is also what Backstage shows. It
-covers every field, decision and error code, and how to act on the answer.
+The REST server's API is documented in its OpenAPI spec. It covers every field, decision and
+error code, and how to act on the answer.
 
 | Endpoint           | What it is                                                      |
 | :----------------- | :-------------------------------------------------------------- |
