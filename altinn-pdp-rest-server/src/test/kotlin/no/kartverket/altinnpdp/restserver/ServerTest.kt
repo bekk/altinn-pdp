@@ -46,7 +46,7 @@ class ServerTest {
         assertEquals(ContentType.Application.Json, response.contentType()?.withoutParameters())
 
         val spec = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-        assertTrue(spec.getValue("paths").jsonObject.containsKey("/authorize"))
+        assertEquals(setOf("/authorize"), spec.getValue("paths").jsonObject.keys)
         assertFalse(spec.containsKey("servers"), "the host differs per environment, so the spec names none")
     }
 

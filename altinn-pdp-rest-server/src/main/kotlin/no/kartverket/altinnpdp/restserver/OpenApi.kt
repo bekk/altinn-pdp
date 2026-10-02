@@ -154,16 +154,6 @@ private val errorResponseSchema = schemaInference.jsonSchema<ErrorResponse>().do
     required = listOf("error", "code"),
 )
 
-internal val healthLiveOperation: Operation.Builder.() -> Unit = {
-    summary = "Liveness probe"
-    description = "Returns 200 OK if the server is up. Not part of the stable API."
-    responses {
-        HttpStatusCode.OK {
-            description = "OK"
-        }
-    }
-}
-
 internal val authorizeOperation: Operation.Builder.() -> Unit = {
     summary = "Check whether a system user or a person is authorized"
     description = "Asks the Altinn PDP whether the system user identified by [systemuserId], or the person " +

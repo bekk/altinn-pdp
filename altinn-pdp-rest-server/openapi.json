@@ -6,17 +6,6 @@
         "description": "Simplified JSON REST API for the Altinn PDP"
     },
     "paths": {
-        "/health/live": {
-            "get": {
-                "summary": "Liveness probe",
-                "description": "Returns 200 OK if the server is up. Not part of the stable API.",
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
         "/authorize": {
             "post": {
                 "summary": "Check whether a system user or a person is authorized",
