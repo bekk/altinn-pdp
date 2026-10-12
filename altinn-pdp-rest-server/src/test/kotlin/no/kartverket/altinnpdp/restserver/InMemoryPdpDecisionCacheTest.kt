@@ -1,4 +1,4 @@
-package no.kartverket.altinnpdp.client.cache
+package no.kartverket.altinnpdp.restserver
 
 import com.github.benmanes.caffeine.cache.Ticker
 import kotlinx.coroutines.CompletableDeferred
@@ -11,14 +11,9 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import no.kartverket.altinnpdp.client.ActionId
-import no.kartverket.altinnpdp.client.OrganizationNumber
 import no.kartverket.altinnpdp.client.PdpAuthorization
 import no.kartverket.altinnpdp.client.PdpDecision
-import no.kartverket.altinnpdp.client.ResourceId
-import no.kartverket.altinnpdp.client.SystemUserId
-import no.kartverket.altinnpdp.client.exception.PdpException
-import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
+import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
@@ -66,8 +61,8 @@ class InMemoryPdpDecisionCacheTest {
 
     @Test
     fun `does not keep a failed load`() = runBlocking {
-        assertFailsWith<PdpException> {
-            cache.get(key()) { loads.incrementAndGet(); throw PdpException("Altinn is down", 503, "") }
+        assertFailsWith<IllegalStateException> {
+            cache.get(key()) { loads.incrementAndGet(); error("Altinn is down") }
         }
         cache.get(key(), permit)
 
@@ -118,12 +113,12 @@ class InMemoryPdpDecisionCacheTest {
         assertEquals(1, loads.get())
     }
 
-    private fun key(action: String = "read") = PdpDecisionKey(
-        SystemUserId.parse(SAMPLE_SYSTEMUSER_ID),
-        ResourceId.parse("test-resource"),
-        OrganizationNumber.parse("923609016"),
-        ActionId.parse(action),
-    )
+    private fun key(action: String = "read") = AuthorizeRequest(
+        systemuserId = SAMPLE_SYSTEMUSER_ID,
+        resourceId = "test-resource",
+        customerOrganizationNumber = "923609016",
+        action = action,
+    ).parse()
 
     private class TestTicker : Ticker {
         private var nanos = 0L

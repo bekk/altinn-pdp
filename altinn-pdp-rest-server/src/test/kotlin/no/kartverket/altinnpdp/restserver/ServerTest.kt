@@ -20,6 +20,7 @@ import no.kartverket.altinnpdp.restserver.models.ErrorCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
 import org.slf4j.LoggerFactory
+import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -63,6 +64,19 @@ class ServerTest {
                 assertEquals(HttpStatusCode.OK, response.status, "for $decision")
                 assertEquals(expectedResponse, response.authorizeResponse(), "for $decision")
             }
+        }
+    }
+
+    @Test
+    fun `a repeated authorize is answered from the decision cache`() {
+        val sent = mutableListOf<PdpHttpRequest>()
+        val cache = InMemoryPdpDecisionCache(Duration.ofMinutes(1), maximumSize = 100)
+        authorizeTest(sent = sent, decisionCache = cache) {
+            val first = postAuthorize().authorizeResponse()
+            val second = postAuthorize().authorizeResponse()
+
+            assertEquals(first, second)
+            assertEquals(1, sent.count { it.url.path == "/authorization/api/v1/authorize" })
         }
     }
 
