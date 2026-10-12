@@ -1,11 +1,15 @@
 package no.kartverket.altinnpdp.client.cache
 
 import com.github.benmanes.caffeine.cache.Ticker
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.ActionId
 import no.kartverket.altinnpdp.client.OrganizationNumber
@@ -93,6 +97,24 @@ class InMemoryPdpDecisionCacheTest {
             }.awaitAll()
         }
 
+        assertEquals(1, loads.get())
+    }
+
+    @Test
+    fun `a cancelled lookup does not cancel the load others are waiting on`() = runBlocking {
+        val release = CompletableDeferred<Unit>()
+        val load: suspend () -> PdpAuthorization = {
+            loads.incrementAndGet()
+            release.await()
+            PdpAuthorization(PdpDecision.PERMIT)
+        }
+
+        val cancelled = launch(start = CoroutineStart.UNDISPATCHED) { cache.get(key(), load) }
+        val waiting = async(start = CoroutineStart.UNDISPATCHED) { cache.get(key(), load) }
+        cancelled.cancelAndJoin()
+        release.complete(Unit)
+
+        assertEquals(PdpDecision.PERMIT, waiting.await().decision)
         assertEquals(1, loads.get())
     }
 

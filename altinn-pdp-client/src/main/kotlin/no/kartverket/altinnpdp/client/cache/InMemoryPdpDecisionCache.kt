@@ -5,7 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.Ticker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.future.await
+import kotlinx.coroutines.future.asDeferred
 import kotlinx.coroutines.future.future
 import no.kartverket.altinnpdp.client.PdpAuthorization
 import no.kartverket.altinnpdp.client.PdpDecision
@@ -31,7 +31,7 @@ public class InMemoryPdpDecisionCache internal constructor(
     override suspend fun get(key: PdpDecisionKey, load: suspend () -> PdpAuthorization): PdpAuthorization {
         val pending = cache.get(key) { _, _ -> loadScope.future { load() } }
         val authorization = try {
-            pending.await()
+            pending.asDeferred().await()
         } catch (e: Exception) {
             if (pending.isCompletedExceptionally) forget(key, pending)
             throw e
