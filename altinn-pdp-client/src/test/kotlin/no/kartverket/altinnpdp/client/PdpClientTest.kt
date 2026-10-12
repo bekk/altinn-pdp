@@ -1,6 +1,7 @@
 package no.kartverket.altinnpdp.client
 
 import kotlinx.coroutines.runBlocking
+import no.kartverket.altinnpdp.client.cache.InMemoryPdpDecisionCache
 import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.support.SAMPLE_PID
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
@@ -10,6 +11,7 @@ import no.kartverket.altinnpdp.client.support.authorizeSample
 import no.kartverket.altinnpdp.client.support.authorizeSamplePerson
 import no.kartverket.altinnpdp.client.support.pdpDecisionResponse
 import no.kartverket.altinnpdp.client.support.testPdpClient
+import java.time.Duration
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -172,5 +174,31 @@ class PdpClientTest {
         assertEquals(PdpDecision.INDETERMINATE, authorization.decision)
         assertEquals("urn:oasis:names:tc:xacml:1.0:status:processing-error", authorization.statusCode)
         assertTrue(authorization.obligations.isEmpty())
+    }
+
+    @Test
+    fun `asks Altinn every time without a decision cache`() = runBlocking {
+        serverAnswers()
+        val client = testPdpClient(server.baseUrl)
+
+        repeat(2) { client.authorizeSample() }
+
+        assertEquals(2, server.requestCount(path))
+    }
+
+    @Test
+    fun `answers a repeated lookup from the decision cache`() = runBlocking {
+        serverAnswers()
+        val client = testPdpClient(
+            server.baseUrl,
+            decisionCache = InMemoryPdpDecisionCache(Duration.ofMinutes(5), maximumSize = 100),
+        )
+
+        val first = client.authorizeSample()
+        val second = client.authorizeSample()
+
+        assertEquals(PdpDecision.PERMIT, second.decision)
+        assertEquals(first, second)
+        assertEquals(1, server.requestCount(path))
     }
 }

@@ -98,6 +98,18 @@ val client = PdpClient(
 Build one client and reuse it. Both the Maskinporten token and the Altinn token are cached and
 fetched again shortly before they expire, and it is safe to call from several coroutines at once.
 
+Every PDP lookup costs money and time, so the client can also cache decisions. Pass a
+`decisionCache` to turn it on; without one, every lookup goes to Altinn:
+
+```kotlin
+decisionCache = InMemoryPdpDecisionCache(timeToLive = Duration.ofMinutes(1), maximumSize = 10_000),
+```
+
+A cached `Permit` keeps working until it expires, even if the access is revoked in Altinn in the
+meantime, so choose `timeToLive` with that in mind. The cache lives in memory, so each instance of
+your service has its own. Failed lookups and `INDETERMINATE` decisions are not cached, and
+concurrent lookups of the same key share one call to Altinn.
+
 ### Asking the PDP
 
 ```kotlin

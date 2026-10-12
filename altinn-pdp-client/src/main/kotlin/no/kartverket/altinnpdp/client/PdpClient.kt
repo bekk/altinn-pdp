@@ -5,6 +5,8 @@ import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
 import no.kartverket.altinnpdp.client.auth.MaskinportenKey
+import no.kartverket.altinnpdp.client.cache.PdpDecisionCache
+import no.kartverket.altinnpdp.client.cache.PdpDecisionKey
 import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.PdpHttpClient
@@ -19,6 +21,7 @@ public class PdpClient internal constructor(
     private val tokenProvider: AltinnTokenProvider,
     private val subscriptionKey: String,
     private val httpClient: PdpHttpClient,
+    private val decisionCache: PdpDecisionCache? = null,
 ) {
     public constructor(
         environment: AltinnEnvironment,
@@ -26,6 +29,7 @@ public class PdpClient internal constructor(
         maskinportenClientId: String,
         maskinportenKey: MaskinportenKey,
         httpClient: PdpHttpClient,
+        decisionCache: PdpDecisionCache? = null,
     ) : this(
         platformBaseUrl = environment.platformBaseUrl,
         tokenProvider = MaskinportenAltinnTokenProvider(
@@ -35,6 +39,7 @@ public class PdpClient internal constructor(
         ),
         subscriptionKey = subscriptionKey,
         httpClient = httpClient,
+        decisionCache = decisionCache,
     )
 
     private val authorizeUrl: URI = Http.url(platformBaseUrl, AUTHORIZE_PATH)
@@ -45,10 +50,16 @@ public class PdpClient internal constructor(
         customerOrganizationNumber: OrganizationNumber,
         action: ActionId,
     ): PdpAuthorization {
+        val key = PdpDecisionKey(subject, resourceId, customerOrganizationNumber, action)
+        if (decisionCache == null) return requestDecision(key)
+        return decisionCache.get(key) { requestDecision(key) }
+    }
+
+    private suspend fun requestDecision(key: PdpDecisionKey): PdpAuthorization {
         val token = tokenProvider.getAltinnToken()
         val body = Http.json.encodeToString(
             XacmlAuthorizationRequest.serializer(),
-            XacmlAuthorizationRequest.of(subject, resourceId, customerOrganizationNumber, action),
+            XacmlAuthorizationRequest.of(key.subject, key.resourceId, key.customerOrganizationNumber, key.action),
         )
         val request = PdpHttpRequest(
             method = "POST",

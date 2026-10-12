@@ -4,12 +4,14 @@ ktlint-cli = "1.8.0"
 ktlint-gradle = "14.2.0"
 logback = "1.6.4"
 jib = "3.5.4"
+caffeine = "3.3.0"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 nimbus-jose-jwt = "10.10"
 nocommons = "0.17.0"
 
 [libraries]
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
