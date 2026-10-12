@@ -7,6 +7,8 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
+import kotlin.test.assertSame
 
 class ConfigTest {
 
@@ -51,6 +53,39 @@ class ConfigTest {
 
             assertContains(e.message!!, "server.port", message = raw)
         }
+    }
+
+    @Test
+    fun `a positive number falls back to its default when absent`() {
+        assertEquals(60, MapApplicationConfig().positiveLong("seconds", default = 60))
+        assertEquals(30, MapApplicationConfig("seconds" to "30").positiveLong("seconds", default = 60))
+    }
+
+    @Test
+    fun `a positive number must be a whole number above zero`() {
+        for (raw in listOf("ten", "0", "-1", "1.5")) {
+            val e = assertFailsWith<IllegalStateException>(raw) {
+                MapApplicationConfig("seconds" to raw).positiveLong("seconds", default = 60)
+            }
+
+            assertContains(e.message!!, "seconds must be a positive whole number", message = raw)
+        }
+    }
+
+    @Test
+    fun `the decision cache is off unless enabled`() {
+        assertSame(NoPdpDecisionCache, MapApplicationConfig().decisionCache())
+        assertSame(NoPdpDecisionCache, MapApplicationConfig("decisionCache.enabled" to "false").decisionCache())
+        assertIs<InMemoryPdpDecisionCache>(MapApplicationConfig("decisionCache.enabled" to "true").decisionCache())
+    }
+
+    @Test
+    fun `an enabled decision cache refuses an invalid time to live`() {
+        val config = MapApplicationConfig("decisionCache.enabled" to "true", "decisionCache.timeToLiveSeconds" to "0")
+
+        val e = assertFailsWith<IllegalStateException> { config.decisionCache() }
+
+        assertContains(e.message!!, "decisionCache.timeToLiveSeconds")
     }
 
     @Test

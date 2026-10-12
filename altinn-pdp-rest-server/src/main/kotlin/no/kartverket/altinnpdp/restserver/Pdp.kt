@@ -2,6 +2,7 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
+import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
 import no.bekk.bekkopen.person.FodselsnummerValidator
@@ -19,7 +20,7 @@ fun Application.configureSyntheticPersons() {
 
 fun Application.configurePdp(
     client: PdpClient = pdpClientFromConfig(),
-    decisionCache: PdpDecisionCache = NoPdpDecisionCache,
+    decisionCache: PdpDecisionCache = environment.config.decisionCache(),
 ) {
     install(DI)
     dependencies.provide<PdpClient> { client }
@@ -40,6 +41,14 @@ private fun Application.pdpClientFromConfig(): PdpClient {
                 .build(),
             REQUEST_TIMEOUT,
         ),
+    )
+}
+
+internal fun ApplicationConfig.decisionCache(): PdpDecisionCache {
+    if (!boolean("decisionCache.enabled", default = false)) return NoPdpDecisionCache
+    return InMemoryPdpDecisionCache(
+        timeToLive = Duration.ofSeconds(positiveLong("decisionCache.timeToLiveSeconds", default = 60)),
+        maximumSize = positiveLong("decisionCache.maximumSize", default = 10_000),
     )
 }
 
