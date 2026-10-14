@@ -28,9 +28,11 @@ internal fun configurePidValidation(environment: AltinnEnvironment) {
 
 internal fun ApplicationConfig.decisionCache(): PdpDecisionCache {
     val enabled = boolean("decisionCache.enabled", default = false)
-    val timeToLive = Duration.ofSeconds(positiveLong("decisionCache.timeToLiveSeconds", default = 60))
-    val maximumSize = positiveLong("decisionCache.maximumSize", default = 10_000)
-    return if (enabled) InMemoryPdpDecisionCache(timeToLive, maximumSize) else NoPdpDecisionCache
+    val timeToLive = Duration.ofSeconds(long("decisionCache.timeToLiveSeconds", default = 60, minimum = 1))
+    val defaultMaxAge = Duration.ofSeconds(long("decisionCache.defaultMaxAgeSeconds", default = 0, minimum = 0))
+    val maximumSize = long("decisionCache.maximumSize", default = 10_000, minimum = 1)
+    if (!enabled) return NoPdpDecisionCache
+    return InMemoryPdpDecisionCache(timeToLive = timeToLive, defaultMaxAge = defaultMaxAge, maximumSize = maximumSize)
 }
 
 private val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(2)

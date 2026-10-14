@@ -16,6 +16,7 @@ data class ErrorResponse(
 
 - `VALIDATION_ERROR` (400): one or more fields are missing or invalid. `errors` lists all of them.
 - `MALFORMED_BODY` (400): the body is not valid JSON, or a field has the wrong type.
+- `INVALID_CACHE_CONTROL` (400): `max-age` in the `Cache-Control` header is not a whole number of seconds, 0 or more.
 - `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.
 - `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause
   it.

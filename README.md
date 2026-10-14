@@ -212,19 +212,20 @@ The build fails if the checked-in file is stale, so there is no way to forget.
 
 ## 🔑 Environment variables
 
-| Variable                              | Required | Default |
-| :------------------------------------ | :------- | :------ |
-| `MASKINPORTEN_CLIENT_ID`              | yes      | -       |
-| `MASKINPORTEN_CLIENT_JWK`             | yes      | -       |
-| `ALTINN_ENVIRONMENT`                  | yes      | -       |
-| `ALTINN_SUBSCRIPTION_KEY`             | yes      | -       |
-| `ACCESS_LOG_ENABLED`                  | no       | `true`  |
-| `DECISION_CACHE_ENABLED`              | no       | `false` |
-| `DECISION_CACHE_TIME_TO_LIVE_SECONDS` | no       | `60`    |
-| `DECISION_CACHE_MAXIMUM_SIZE`         | no       | `10000` |
-| `LOGBACK_CONFIG_FILE`                 | no       | -       |
-| `APPLICATION_CONFIG_FILE`             | no       | -       |
-| `PORT`                                | no       | `8080`  |
+| Variable                                 | Required | Default |
+| :--------------------------------------- | :------- | :------ |
+| `MASKINPORTEN_CLIENT_ID`                 | yes      | -       |
+| `MASKINPORTEN_CLIENT_JWK`                | yes      | -       |
+| `ALTINN_ENVIRONMENT`                     | yes      | -       |
+| `ALTINN_SUBSCRIPTION_KEY`                | yes      | -       |
+| `ACCESS_LOG_ENABLED`                     | no       | `true`  |
+| `DECISION_CACHE_ENABLED`                 | no       | `false` |
+| `DECISION_CACHE_TIME_TO_LIVE_SECONDS`    | no       | `60`    |
+| `DECISION_CACHE_DEFAULT_MAX_AGE_SECONDS` | no       | `0`     |
+| `DECISION_CACHE_MAXIMUM_SIZE`            | no       | `10000` |
+| `LOGBACK_CONFIG_FILE`                    | no       | -       |
+| `APPLICATION_CONFIG_FILE`                | no       | -       |
+| `PORT`                                   | no       | `8080`  |
 
 See `.env.example` for what each variable is and where to get it.
 

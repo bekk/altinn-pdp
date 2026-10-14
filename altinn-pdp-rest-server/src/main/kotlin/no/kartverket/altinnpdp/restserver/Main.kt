@@ -1,6 +1,7 @@
 package no.kartverket.altinnpdp.restserver
 
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -11,6 +12,7 @@ import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.receive
+import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
@@ -52,7 +54,8 @@ fun Application.module(
         get("/openapi") { call.respondText(spec, ContentType.Application.Json) }.hide()
         post("/authorize") {
             val request = call.receive<AuthorizeRequest>().parse()
-            val authorization = decisionCache.get(request) {
+            val maxAge = call.request.headers.maxAge()
+            val (authorization, age) = decisionCache.get(request, maxAge) {
                 pdpClient.authorize(
                     subject = request.subject,
                     resourceId = request.resourceId,
@@ -61,6 +64,7 @@ fun Application.module(
                 )
             }
 
+            call.response.header(HttpHeaders.Age, age.seconds)
             call.respond(
                 AuthorizeResponse(
                     permit = authorization.isPermit,
