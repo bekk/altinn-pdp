@@ -23,8 +23,9 @@ import kotlin.test.assertFailsWith
 class InMemoryPdpDecisionCacheTest {
 
     private val timeToLive: Duration = Duration.ofMinutes(5)
+    private val defaultMaxAge: Duration = Duration.ofMinutes(1)
     private val ticker = TestTicker()
-    private val cache = InMemoryPdpDecisionCache(timeToLive, maximumSize = 100, ticker)
+    private val cache = InMemoryPdpDecisionCache(timeToLive, defaultMaxAge, maximumSize = 100, ticker)
     private val loads = AtomicInteger()
 
     private val permit: suspend () -> PdpAuthorization = {
@@ -33,28 +34,66 @@ class InMemoryPdpDecisionCacheTest {
     }
 
     @Test
-    fun `serves the cached decision while it is fresh`() = runBlocking {
-        repeat(3) { cache.get(key(), permit) }
-
-        assertEquals(1, loads.get())
-    }
-
-    @Test
-    fun `loads again once the decision has expired`() = runBlocking {
-        cache.get(key(), permit)
-        ticker.advance(timeToLive.minusNanos(1))
-        cache.get(key(), permit)
+    fun `serves the cached decision while it is younger than the max age`() = runBlocking {
+        val maxAge = Duration.ofSeconds(30)
+        lookup(maxAge)
+        ticker.advance(maxAge.minusNanos(1))
+        lookup(maxAge)
         assertEquals(1, loads.get(), "one nanosecond left, so still cached")
 
         ticker.advance(Duration.ofNanos(1))
-        cache.get(key(), permit)
+        lookup(maxAge)
+        assertEquals(2, loads.get())
+    }
+
+    @Test
+    fun `uses the default max age when the caller gives none`() = runBlocking {
+        lookup()
+        ticker.advance(defaultMaxAge.minusNanos(1))
+        lookup()
+        assertEquals(1, loads.get())
+
+        ticker.advance(Duration.ofNanos(1))
+        lookup()
+        assertEquals(2, loads.get())
+    }
+
+    @Test
+    fun `a max age of zero always loads`() = runBlocking {
+        lookup()
+        lookup(Duration.ZERO)
+        lookup(Duration.ZERO)
+
+        assertEquals(3, loads.get())
+    }
+
+    @Test
+    fun `a max age above the time to live is capped to the time to live`() = runBlocking {
+        val maxAge = timeToLive.multipliedBy(10)
+        lookup(maxAge)
+        ticker.advance(timeToLive.minusNanos(1))
+        lookup(maxAge)
+        assertEquals(1, loads.get())
+
+        ticker.advance(Duration.ofNanos(1))
+        lookup(maxAge)
+        assertEquals(2, loads.get())
+    }
+
+    @Test
+    fun `a decision loaded for one caller is served to the others`() = runBlocking {
+        lookup()
+        ticker.advance(Duration.ofSeconds(10))
+        lookup(Duration.ZERO) { loads.incrementAndGet(); PdpAuthorization(PdpDecision.DENY) }
+
+        assertEquals(PdpDecision.DENY, lookup().decision)
         assertEquals(2, loads.get())
     }
 
     @Test
     fun `keeps a separate decision for each key`() = runBlocking {
-        cache.get(key(action = "read"), permit)
-        cache.get(key(action = "write"), permit)
+        lookup(key = key(action = "read"))
+        lookup(key = key(action = "write"))
 
         assertEquals(2, loads.get())
     }
@@ -62,17 +101,17 @@ class InMemoryPdpDecisionCacheTest {
     @Test
     fun `does not keep a failed load`() = runBlocking {
         assertFailsWith<IllegalStateException> {
-            cache.get(key()) { loads.incrementAndGet(); error("Altinn is down") }
+            lookup { loads.incrementAndGet(); error("Altinn is down") }
         }
-        cache.get(key(), permit)
+        lookup()
 
         assertEquals(2, loads.get())
     }
 
     @Test
     fun `does not keep an indeterminate decision`() = runBlocking {
-        val indeterminate = cache.get(key()) { loads.incrementAndGet(); PdpAuthorization(PdpDecision.INDETERMINATE) }
-        cache.get(key(), permit)
+        val indeterminate = lookup { loads.incrementAndGet(); PdpAuthorization(PdpDecision.INDETERMINATE) }
+        lookup()
 
         assertEquals(PdpDecision.INDETERMINATE, indeterminate.decision)
         assertEquals(2, loads.get())
@@ -83,7 +122,7 @@ class InMemoryPdpDecisionCacheTest {
         coroutineScope {
             List(50) {
                 async(Dispatchers.Default) {
-                    cache.get(key()) {
+                    lookup {
                         loads.incrementAndGet()
                         delay(20)
                         PdpAuthorization(PdpDecision.PERMIT)
@@ -91,6 +130,19 @@ class InMemoryPdpDecisionCacheTest {
                 }
             }.awaitAll()
         }
+
+        assertEquals(1, loads.get())
+    }
+
+    @Test
+    fun `a lookup with max age zero waits for the load already in flight`() = runBlocking {
+        val release = CompletableDeferred<Unit>()
+        val inFlight = async(start = CoroutineStart.UNDISPATCHED) {
+            lookup { loads.incrementAndGet(); release.await(); PdpAuthorization(PdpDecision.PERMIT) }
+        }
+        val fresh = async(start = CoroutineStart.UNDISPATCHED) { lookup(Duration.ZERO) }
+        release.complete(Unit)
+        awaitAll(inFlight, fresh)
 
         assertEquals(1, loads.get())
     }
@@ -104,14 +156,20 @@ class InMemoryPdpDecisionCacheTest {
             PdpAuthorization(PdpDecision.PERMIT)
         }
 
-        val cancelled = launch(start = CoroutineStart.UNDISPATCHED) { cache.get(key(), load) }
-        val waiting = async(start = CoroutineStart.UNDISPATCHED) { cache.get(key(), load) }
+        val cancelled = launch(start = CoroutineStart.UNDISPATCHED) { lookup(load = load) }
+        val waiting = async(start = CoroutineStart.UNDISPATCHED) { lookup(load = load) }
         cancelled.cancelAndJoin()
         release.complete(Unit)
 
         assertEquals(PdpDecision.PERMIT, waiting.await().decision)
         assertEquals(1, loads.get())
     }
+
+    private suspend fun lookup(
+        maxAge: Duration? = null,
+        key: AuthorizeRequest.Parsed = key(),
+        load: suspend () -> PdpAuthorization = permit,
+    ): PdpAuthorization = cache.get(key, maxAge, load)
 
     private fun key(action: String = "read") = AuthorizeRequest(
         systemuserId = SAMPLE_SYSTEMUSER_ID,

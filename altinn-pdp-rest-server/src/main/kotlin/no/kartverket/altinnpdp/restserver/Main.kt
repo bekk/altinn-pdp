@@ -58,7 +58,8 @@ fun Application.configureRouting() {
             val pdpClient: PdpClient by dependencies
             val decisionCache: PdpDecisionCache by dependencies
             val request = call.receive<AuthorizeRequest>().parse()
-            val authorization = decisionCache.get(request) {
+            val maxAge = call.request.headers.maxAge()
+            val authorization = decisionCache.get(request, maxAge) {
                 pdpClient.authorize(
                     subject = request.subject,
                     resourceId = request.resourceId,

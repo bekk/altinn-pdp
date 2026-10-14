@@ -3,13 +3,24 @@
     "info": {
         "title": "Altinn PDP REST API",
         "version": "0.1.0",
-        "description": "Asks Altinn whether a system user or a person may perform an action on an Altinn resource, on behalf of an\norganisation.\n\nThe token your API receives says who the caller is. It does not say whether they have access to your\nresource. That is what this API answers.\n\n## How to use it\n\n1. Validate the token your API received, as you do today. This API never sees that token.\n2. Take the subject and the organisation from the token. For a system user (Maskinporten token), send\n   `systemuserId`. For a person (Ansattporten token), send `pid`. Either way, also send\n   `customerOrganizationNumber`.\n3. Call `POST /authorize` with those, your `resourceId` and the `action`.\n4. Grant access only if `permit` is `true` and your end user meets `minimumAuthenticationLevel`, when the\n   response has one.\n5. Treat everything else as no access, including every error response.\n\nSet your client timeout to at least 10 seconds. If Altinn is slow, you then get a `502` instead of a\ntimeout of your own.\n\n## Authentication level\n\nA `PERMIT` can come with a `minimumAuthenticationLevel`. The permit then only holds if your end user logged\nin at that level or higher. This API cannot check that, so you must. Your user's level is:\n\n| End user | Level |\n| :-- | :-- |\n| A system user, or any other Maskinporten token | 3 |\n| A person whose Ansattporten token has `acr` `substantial` | 3 |\n| A person whose Ansattporten token has `acr` `high` | 4 |\n\nIf your user's level is lower than `minimumAuthenticationLevel`, treat the answer as no access."
+        "description": "Asks Altinn whether a system user or a person may perform an action on an Altinn resource, on behalf of an\norganisation.\n\nThe token your API receives says who the caller is. It does not say whether they have access to your\nresource. That is what this API answers.\n\n## How to use it\n\n1. Validate the token your API received, as you do today. This API never sees that token.\n2. Take the subject and the organisation from the token. For a system user (Maskinporten token), send\n   `systemuserId`. For a person (Ansattporten token), send `pid`. Either way, also send\n   `customerOrganizationNumber`.\n3. Call `POST /authorize` with those, your `resourceId` and the `action`.\n4. Grant access only if `permit` is `true` and your end user meets `minimumAuthenticationLevel`, when the\n   response has one.\n5. Treat everything else as no access, including every error response.\n\nSet your client timeout to at least 10 seconds. If Altinn is slow, you then get a `502` instead of a\ntimeout of your own.\n\n## Authentication level\n\nA `PERMIT` can come with a `minimumAuthenticationLevel`. The permit then only holds if your end user logged\nin at that level or higher. This API cannot check that, so you must. Your user's level is:\n\n| End user | Level |\n| :-- | :-- |\n| A system user, or any other Maskinporten token | 3 |\n| A person whose Ansattporten token has `acr` `substantial` | 3 |\n| A person whose Ansattporten token has `acr` `high` | 4 |\n\nIf your user's level is lower than `minimumAuthenticationLevel`, treat the answer as no access.\n\n## How fresh the answer is\n\nThis API may answer from a cache instead of asking Altinn every time. A cached answer can still say `PERMIT`\nfor a while after the access was removed in Altinn.\n\nSend `Cache-Control: max-age=<seconds>` to say how old an answer you accept. Send `max-age=0`, or `no-cache`,\nwhen you need Altinn's answer right now, for example before a write. Without the header, the server's default\napplies. The server also has an upper limit, and never answers with anything older, whatever `max-age` you send."
     },
     "paths": {
         "/authorize": {
             "post": {
                 "summary": "Check whether a system user or person has access",
                 "description": "Asks Altinn whether the system user (`systemuserId`) or person (`pid`) may perform `action` on `resourceId`, on behalf of the organisation `customerOrganizationNumber`. Send exactly one of `systemuserId` and `pid`.",
+                "parameters": [
+                    {
+                        "name": "Cache-Control",
+                        "in": "header",
+                        "description": "How old an answer you accept, as `max-age=<seconds>`. `max-age=0` or `no-cache` always asks Altinn. Without it, the server's default applies. See How fresh the answer is in the API description.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "max-age=60"
+                    }
+                ],
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -139,6 +150,12 @@
                                         "value": {
                                             "error": "Malformed request body",
                                             "code": "MALFORMED_BODY"
+                                        }
+                                    },
+                                    "InvalidCacheControl": {
+                                        "value": {
+                                            "error": "Invalid max-age in Cache-Control",
+                                            "code": "INVALID_CACHE_CONTROL"
                                         }
                                     },
                                     "AltinnRejected": {
@@ -302,10 +319,11 @@
                     },
                     "code": {
                         "type": "string",
-                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `VALIDATION_ERROR` (400): one or more fields are missing or invalid. `errors` lists all of them.\n- `MALFORMED_BODY` (400): the body is not valid JSON, or a field has the wrong type.\n- `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause\n  it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
+                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `VALIDATION_ERROR` (400): one or more fields are missing or invalid. `errors` lists all of them.\n- `MALFORMED_BODY` (400): the body is not valid JSON, or a field has the wrong type.\n- `INVALID_CACHE_CONTROL` (400): `max-age` in the `Cache-Control` header is not a whole number of\n  seconds, 0 or more.\n- `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause\n  it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
                         "enum": [
                             "VALIDATION_ERROR",
                             "MALFORMED_BODY",
+                            "INVALID_CACHE_CONTROL",
                             "UPSTREAM_REJECTED",
                             "UPSTREAM_ERROR",
                             "INTERNAL_ERROR"

@@ -12,6 +12,7 @@ maskinporten:
 decisionCache:
   enabled: "$?DECISION_CACHE_ENABLED"
   timeToLiveSeconds: "$?DECISION_CACHE_TIME_TO_LIVE_SECONDS"
+  defaultMaxAgeSeconds: "$?DECISION_CACHE_DEFAULT_MAX_AGE_SECONDS"
   maximumSize: "$?DECISION_CACHE_MAXIMUM_SIZE"
 
 accessLog:

@@ -1,6 +1,7 @@
 package no.kartverket.altinnpdp.restserver
 
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.openapi.ExampleObject
 import io.ktor.openapi.GenericElement
@@ -77,6 +78,15 @@ private val apiInfo = OpenApiInfo(
         | A person whose Ansattporten token has `acr` `high` | 4 |
 
         If your user's level is lower than `minimumAuthenticationLevel`, treat the answer as no access.
+
+        ## How fresh the answer is
+
+        This API may answer from a cache instead of asking Altinn every time. A cached answer can still say `PERMIT`
+        for a while after the access was removed in Altinn.
+
+        Send `Cache-Control: max-age=<seconds>` to say how old an answer you accept. Send `max-age=0`, or `no-cache`,
+        when you need Altinn's answer right now, for example before a write. Without the header, the server's default
+        applies. The server also has an upper limit, and never answers with anything older, whatever `max-age` you send.
     """.trimIndent(),
 )
 
@@ -237,6 +247,8 @@ private val errorResponseSchema = schemaInference.jsonSchema<ErrorResponse>().do
 
                 - `VALIDATION_ERROR` (400): one or more fields are missing or invalid. `errors` lists all of them.
                 - `MALFORMED_BODY` (400): the body is not valid JSON, or a field has the wrong type.
+                - `INVALID_CACHE_CONTROL` (400): `max-age` in the `Cache-Control` header is not a whole number of
+                  seconds, 0 or more.
                 - `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.
                 - `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause
                   it.
@@ -259,6 +271,16 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
     description = "Asks Altinn whether the system user (`systemuserId`) or person (`pid`) may perform `action` on " +
         "`resourceId`, on behalf of the organisation `customerOrganizationNumber`. Send exactly one of " +
         "`systemuserId` and `pid`."
+
+    parameters {
+        header(HttpHeaders.CacheControl) {
+            description = "How old an answer you accept, as `max-age=<seconds>`. `max-age=0` or `no-cache` always " +
+                "asks Altinn. Without it, the server's default applies. See How fresh the answer is in the API " +
+                "description."
+            schema = JsonSchema(type = JsonType.STRING)
+            example = GenericElement("max-age=60")
+        }
+    }
 
     requestBody {
         required = true
@@ -356,6 +378,10 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                     ),
                 )
                 example("MalformedBody", ErrorResponse("Malformed request body", ErrorCode.MALFORMED_BODY))
+                example(
+                    "InvalidCacheControl",
+                    ErrorResponse("Invalid max-age in Cache-Control", ErrorCode.INVALID_CACHE_CONTROL),
+                )
                 example("AltinnRejected", ErrorResponse("Altinn rejected the request", ErrorCode.UPSTREAM_REJECTED))
             }
         }
