@@ -22,6 +22,12 @@ fun Application.configureErrorHandling() {
         exception<ContentTransformationException> { call, cause -> call.respondMalformedBody(cause) }
         exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
         exception<PdpValidationException> { call, cause -> call.respondValidationFailed(cause) }
+        exception<InvalidCacheControlException> { call, _ ->
+            call.respond(
+                HttpStatusCode.BadRequest,
+                ErrorResponse("Invalid max-age in Cache-Control", ErrorCode.INVALID_CACHE_CONTROL),
+            )
+        }
         exception<AltinnPdpException> { call, cause ->
             call.application.log.error("Call to Maskinporten or Altinn failed: statusCode=${cause.statusCode}", cause)
             call.respondUpstream(cause)

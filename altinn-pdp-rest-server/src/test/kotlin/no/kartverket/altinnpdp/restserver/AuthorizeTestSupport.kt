@@ -1,11 +1,13 @@
 package no.kartverket.altinnpdp.restserver
 
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.ApplicationTestBuilder
@@ -49,8 +51,10 @@ internal fun authorizeBody(
 internal suspend fun ApplicationTestBuilder.postAuthorize(
     body: String = authorizeBody(),
     json: Boolean = true,
+    cacheControl: String? = null,
 ): HttpResponse = client.post("/authorize") {
     if (json) contentType(ContentType.Application.Json)
+    cacheControl?.let { header(HttpHeaders.CacheControl, it) }
     setBody(body)
 }
 

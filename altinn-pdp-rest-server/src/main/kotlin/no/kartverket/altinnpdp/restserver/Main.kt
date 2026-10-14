@@ -1,6 +1,7 @@
 package no.kartverket.altinnpdp.restserver
 
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.engine.applicationEnvironment
@@ -9,6 +10,7 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.request.receive
+import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
@@ -58,7 +60,8 @@ fun Application.configureRouting() {
             val pdpClient: PdpClient by dependencies
             val decisionCache: PdpDecisionCache by dependencies
             val request = call.receive<AuthorizeRequest>().parse()
-            val authorization = decisionCache.get(request) {
+            val maxAge = call.request.headers.maxAge()
+            val (authorization, age) = decisionCache.get(request, maxAge) {
                 pdpClient.authorize(
                     subject = request.subject,
                     resourceId = request.resourceId,
@@ -67,6 +70,7 @@ fun Application.configureRouting() {
                 )
             }
 
+            call.response.header(HttpHeaders.Age, age.seconds)
             call.respond(
                 AuthorizeResponse(
                     permit = authorization.isPermit,
