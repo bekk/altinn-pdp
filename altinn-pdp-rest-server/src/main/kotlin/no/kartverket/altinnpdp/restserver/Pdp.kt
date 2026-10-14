@@ -17,9 +17,13 @@ fun Application.configureSyntheticPersons() {
         environment.config.enum<AltinnEnvironment>("altinn.environment") == AltinnEnvironment.TT02
 }
 
-fun Application.configurePdp(client: PdpClient = pdpClientFromConfig()) {
+fun Application.configurePdp(
+    client: PdpClient = pdpClientFromConfig(),
+    decisionCache: PdpDecisionCache = NoPdpDecisionCache,
+) {
     install(DI)
     dependencies.provide<PdpClient> { client }
+    dependencies.provide<PdpDecisionCache> { decisionCache }
 }
 
 private fun Application.pdpClientFromConfig(): PdpClient {

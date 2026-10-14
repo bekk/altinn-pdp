@@ -69,6 +69,7 @@ internal fun authorizeTest(
     exchangeStatus: Int = 200,
     failure: Exception? = null,
     sent: MutableList<PdpHttpRequest> = mutableListOf(),
+    decisionCache: PdpDecisionCache = NoPdpDecisionCache,
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = testApplication {
     val altinn = PdpHttpClient { request ->
@@ -96,6 +97,7 @@ internal fun authorizeTest(
                 maskinportenKey = testKey,
                 httpClient = altinn,
             ),
+            decisionCache,
         )
         configureRouting()
     }
