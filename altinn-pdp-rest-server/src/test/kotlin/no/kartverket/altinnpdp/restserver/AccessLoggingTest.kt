@@ -4,7 +4,6 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import io.ktor.client.request.get
-import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.testApplication
 import org.slf4j.LoggerFactory
 import kotlin.test.AfterTest
@@ -31,18 +30,10 @@ class AccessLoggingTest {
         root.detachAppender(appender)
     }
 
-    private fun linesFor(enabled: String?) = run {
+    private fun linesFor(accessLog: Boolean?) = run {
         testApplication {
-            environment {
-                config = if (enabled == null) {
-                    MapApplicationConfig()
-                } else {
-                    MapApplicationConfig("accessLog.enabled" to enabled)
-                }
-            }
             application {
-                configureAccessLogging()
-                configureRouting()
+                if (accessLog == null) module(testPdpClient()) else module(testPdpClient(), accessLog)
             }
             client.get("/health/live")
         }
@@ -61,7 +52,7 @@ class AccessLoggingTest {
 
     @Test
     fun `the line has its own logger, so logback can route it apart from other logs`() {
-        linesFor("true")
+        linesFor(true)
         val event = appender.list.single { it.formattedMessage.contains("/health/live") }
 
         assertEquals("access", event.loggerName)
@@ -69,7 +60,7 @@ class AccessLoggingTest {
 
     @Test
     fun `logs nothing when switched off`() {
-        val logged = linesFor("false")
+        val logged = linesFor(false)
 
         assertFalse(
             logged.any { it.contains("/health/live") },

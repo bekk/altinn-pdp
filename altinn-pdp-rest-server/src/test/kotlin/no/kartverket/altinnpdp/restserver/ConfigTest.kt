@@ -54,6 +54,29 @@ class ConfigTest {
     }
 
     @Test
+    fun `the access log is on unless switched off`() {
+        val required = arrayOf(
+            "server.port" to "8080",
+            "altinn.environment" to "TT02",
+            "altinn.subscriptionKey" to "key",
+            "maskinporten.clientId" to "client",
+            "maskinporten.clientJwk" to testJwk,
+        )
+
+        assertEquals(true, AppConfig.load(MapApplicationConfig(*required)).accessLog)
+        assertEquals(false, AppConfig.load(MapApplicationConfig(*required, "accessLog.enabled" to "false")).accessLog)
+    }
+
+    @Test
+    fun `refuses a logback config path that is not a file`() {
+        val e = assertFailsWith<IllegalStateException> {
+            MapApplicationConfig("logback.configFile" to "/no/such/logback.xml").file("logback.configFile")
+        }
+
+        assertContains(e.message!!, "/no/such/logback.xml")
+    }
+
+    @Test
     fun `loads the application config from the given file`() {
         val file = File.createTempFile("application", ".yaml").apply { deleteOnExit() }
         file.writeText("server:\n  port: \"9090\"\n")

@@ -31,7 +31,7 @@ class ServerTest {
     @Test
     fun `test health liveness endpoint`() = testApplication {
         application {
-            configureRouting()
+            module(testPdpClient())
         }
         assertEquals(HttpStatusCode.OK, client.get("/health/live").status)
     }
@@ -39,7 +39,7 @@ class ServerTest {
     @Test
     fun `openapi endpoint serves the generated spec as json`() = testApplication {
         application {
-            configureRouting()
+            module(testPdpClient())
         }
         val response = client.get("/openapi")
         assertEquals(HttpStatusCode.OK, response.status)
