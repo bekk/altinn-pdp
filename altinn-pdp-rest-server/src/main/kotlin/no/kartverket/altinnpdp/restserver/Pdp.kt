@@ -45,11 +45,10 @@ private fun Application.pdpClientFromConfig(): PdpClient {
 }
 
 internal fun ApplicationConfig.decisionCache(): PdpDecisionCache {
-    if (!boolean("decisionCache.enabled", default = false)) return NoPdpDecisionCache
-    return InMemoryPdpDecisionCache(
-        timeToLive = Duration.ofSeconds(positiveLong("decisionCache.timeToLiveSeconds", default = 60)),
-        maximumSize = positiveLong("decisionCache.maximumSize", default = 10_000),
-    )
+    val enabled = boolean("decisionCache.enabled", default = false)
+    val timeToLive = Duration.ofSeconds(positiveLong("decisionCache.timeToLiveSeconds", default = 60))
+    val maximumSize = positiveLong("decisionCache.maximumSize", default = 10_000)
+    return if (enabled) InMemoryPdpDecisionCache(timeToLive, maximumSize) else NoPdpDecisionCache
 }
 
 private val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(2)

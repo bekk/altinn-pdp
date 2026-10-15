@@ -80,12 +80,14 @@ class ConfigTest {
     }
 
     @Test
-    fun `an enabled decision cache refuses an invalid time to live`() {
-        val config = MapApplicationConfig("decisionCache.enabled" to "true", "decisionCache.timeToLiveSeconds" to "0")
+    fun `the decision cache refuses invalid settings even when disabled`() {
+        for (path in listOf("decisionCache.timeToLiveSeconds", "decisionCache.maximumSize")) {
+            val config = MapApplicationConfig("decisionCache.enabled" to "false", path to "0")
 
-        val e = assertFailsWith<IllegalStateException> { config.decisionCache() }
+            val e = assertFailsWith<IllegalStateException>(path) { config.decisionCache() }
 
-        assertContains(e.message!!, "decisionCache.timeToLiveSeconds")
+            assertContains(e.message!!, path, message = path)
+        }
     }
 
     @Test
