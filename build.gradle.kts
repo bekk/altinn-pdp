@@ -16,7 +16,7 @@ subprojects {
     version = "0.1.0-SNAPSHOT"
 
     extensions.configure<KotlinJvmProjectExtension> {
-        jvmToolchain(21)
+        jvmToolchain(25)
     }
 
     extensions.configure<KtlintExtension> {

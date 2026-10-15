@@ -67,7 +67,7 @@ this project is for.
 
 ## 📦 Prerequisites
 
-- JDK 21, or let the Gradle toolchain resolver provision one
+- JDK 25, or let the Gradle toolchain resolver provision one
 - A [Maskinporten client](https://docs.digdir.no/docs/Maskinporten/maskinporten_guide_apikonsument.html):
   a client id and its private key as JWK, granted `altinn:authorization/authorize`
 - An Azure API Management subscription key for the Access Management products, ordered from
