@@ -29,6 +29,12 @@ internal fun ApplicationConfig.boolean(path: String, default: Boolean): Boolean 
         ?: error("$path must be true or false, but was \"$raw\" (see .env.example)")
 }
 
+internal fun ApplicationConfig.positiveLong(path: String, default: Long): Long {
+    val raw = optional(path) ?: return default
+    return raw.toLongOrNull()?.takeIf { it > 0 }
+        ?: error("$path must be a positive whole number, but was \"$raw\" (see .env.example)")
+}
+
 internal inline fun <reified T : Enum<T>> ApplicationConfig.enum(path: String): T {
     val raw = required(path)
     return enumValues<T>().find { it.name == raw }
