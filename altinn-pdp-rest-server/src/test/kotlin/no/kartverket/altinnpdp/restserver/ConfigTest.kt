@@ -56,19 +56,20 @@ class ConfigTest {
     }
 
     @Test
-    fun `a positive number falls back to its default when absent`() {
-        assertEquals(60, MapApplicationConfig().positiveLong("seconds", default = 60))
-        assertEquals(30, MapApplicationConfig("seconds" to "30").positiveLong("seconds", default = 60))
+    fun `a number falls back to its default when absent`() {
+        assertEquals(60, MapApplicationConfig().long("seconds", default = 60, minimum = 1))
+        assertEquals(30, MapApplicationConfig("seconds" to "30").long("seconds", default = 60, minimum = 1))
     }
 
     @Test
-    fun `a positive number must be a whole number above zero`() {
-        for (raw in listOf("ten", "0", "-1", "1.5")) {
+    fun `a number must be a whole number of at least the minimum`() {
+        assertEquals(0, MapApplicationConfig("seconds" to "0").long("seconds", default = 60, minimum = 0))
+        for (raw in listOf("ten", "-1", "1.5")) {
             val e = assertFailsWith<IllegalStateException>(raw) {
-                MapApplicationConfig("seconds" to raw).positiveLong("seconds", default = 60)
+                MapApplicationConfig("seconds" to raw).long("seconds", default = 60, minimum = 0)
             }
 
-            assertContains(e.message!!, "seconds must be a positive whole number", message = raw)
+            assertContains(e.message!!, "seconds must be a whole number of at least 0", message = raw)
         }
     }
 
@@ -88,6 +89,15 @@ class ConfigTest {
 
             assertContains(e.message!!, path, message = path)
         }
+    }
+
+    @Test
+    fun `an enabled decision cache refuses a negative default max age`() {
+        val config = MapApplicationConfig("decisionCache.enabled" to "true", "decisionCache.defaultMaxAgeSeconds" to "-1")
+
+        val e = assertFailsWith<IllegalStateException> { config.decisionCache() }
+
+        assertContains(e.message!!, "decisionCache.defaultMaxAgeSeconds")
     }
 
     @Test

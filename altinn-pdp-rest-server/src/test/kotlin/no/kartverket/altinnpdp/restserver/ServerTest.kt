@@ -70,13 +70,36 @@ class ServerTest {
     @Test
     fun `a repeated authorize is answered from the decision cache`() {
         val sent = mutableListOf<PdpHttpRequest>()
-        val cache = InMemoryPdpDecisionCache(Duration.ofMinutes(1), maximumSize = 100)
-        authorizeTest(sent = sent, decisionCache = cache) {
+        authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
             val first = postAuthorize().authorizeResponse()
             val second = postAuthorize().authorizeResponse()
 
             assertEquals(first, second)
             assertEquals(1, sent.count { it.url.path == "/authorization/api/v1/authorize" })
+        }
+    }
+
+    @Test
+    fun `Cache-Control max-age=0 asks Altinn even when the decision is cached`() {
+        val sent = mutableListOf<PdpHttpRequest>()
+        authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
+            postAuthorize()
+            val response = postAuthorize(cacheControl = "max-age=0")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals(2, sent.count { it.url.path == "/authorization/api/v1/authorize" })
+        }
+    }
+
+    @Test
+    fun `an invalid max-age is rejected before Altinn is asked`() {
+        val sent = mutableListOf<PdpHttpRequest>()
+        authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
+            val response = postAuthorize(cacheControl = "max-age=-1")
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertEquals(ErrorCode.INVALID_CACHE_CONTROL, response.errorResponse().code)
+            assertEquals(emptyList(), sent)
         }
     }
 
@@ -284,6 +307,9 @@ class ServerTest {
 
     private val malformedPersonBody = """{"pid":"$SAMPLE_PID","resourceId":"test-resource",""" +
         """"customerOrganizationNumber":923609016,"action":"read"}"""
+
+    private fun cacheForAMinute() =
+        InMemoryPdpDecisionCache(Duration.ofMinutes(1), defaultMaxAge = Duration.ofMinutes(1), maximumSize = 100)
 
     private data class ValidationCase(val why: String, val body: String, val errors: List<FieldError>)
 
