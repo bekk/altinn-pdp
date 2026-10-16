@@ -18,11 +18,17 @@ public data class PdpValidationError(
 
 public object PdpRequestValidation {
 
-    public val RESOURCE_ID_FORMAT: Regex = Regex("^[a-z0-9_-]{4,}$")
+    public const val RESOURCE_ID_PATTERN: String = "^[a-z0-9_-]{4,}$"
 
-    public val ORGANIZATION_NUMBER_FORMAT: Regex = Regex("^[0-9]{9}$")
+    public val RESOURCE_ID_FORMAT: Regex = Regex(RESOURCE_ID_PATTERN)
 
-    public val PID_FORMAT: Regex = Regex("^[0-9]{11}$")
+    public const val ORGANIZATION_NUMBER_PATTERN: String = "^[0-9]{9}$"
+
+    public val ORGANIZATION_NUMBER_FORMAT: Regex = Regex(ORGANIZATION_NUMBER_PATTERN)
+
+    public const val PID_PATTERN: String = "^[0-9]{11}$"
+
+    public val PID_FORMAT: Regex = Regex(PID_PATTERN)
 
     public fun validate(
         systemuserId: String?,

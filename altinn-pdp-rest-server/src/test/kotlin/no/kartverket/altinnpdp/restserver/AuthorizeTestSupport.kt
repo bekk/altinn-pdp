@@ -7,7 +7,6 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
@@ -28,8 +27,20 @@ internal const val SAMPLE_SYSTEMUSER_ID = "1725580f-70f4-4ace-a748-4f912497a0d7"
 
 internal const val SAMPLE_PID = "01817012309"
 
-private val testKey: MaskinportenKey =
-    MaskinportenKey.parse(RSAKeyGenerator(2048).keyID("test-key").generate().toJSONString())
+internal val testJwk: String = RSAKeyGenerator(2048).keyID("test-key").generate().toJSONString()
+
+private val testKey: MaskinportenKey = MaskinportenKey.parse(testJwk)
+
+internal fun testPdpClient(
+    altinnEnvironment: AltinnEnvironment = AltinnEnvironment.TT02,
+    httpClient: PdpHttpClient = PdpHttpClient { error("unexpected call to ${it.url}") },
+): PdpClient = PdpClient(
+    environment = altinnEnvironment,
+    subscriptionKey = "test-subscription-key",
+    maskinportenClientId = "test-client",
+    maskinportenKey = testKey,
+    httpClient = httpClient,
+)
 
 internal fun authorizeBody(
     systemuserId: String? = SAMPLE_SYSTEMUSER_ID,
@@ -81,23 +92,9 @@ internal fun authorizeTest(
             else -> error("unexpected call to ${request.url}")
         }
     }
-    environment {
-        config = MapApplicationConfig("altinn.environment" to altinnEnvironment.name)
-    }
+    configurePidValidation(altinnEnvironment)
     application {
-        configureSerialization()
-        configureErrorHandling()
-        configureSyntheticPersons()
-        configurePdp(
-            PdpClient(
-                environment = altinnEnvironment,
-                subscriptionKey = "test-subscription-key",
-                maskinportenClientId = "test-client",
-                maskinportenKey = testKey,
-                httpClient = altinn,
-            ),
-        )
-        configureRouting()
+        module(testPdpClient(altinnEnvironment, altinn))
     }
     block()
 }

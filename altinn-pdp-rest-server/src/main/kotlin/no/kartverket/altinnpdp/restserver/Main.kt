@@ -2,12 +2,14 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
-import io.ktor.server.engine.applicationEnvironment
-import io.ktor.server.engine.connector
+import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import io.ktor.server.plugins.di.dependencies
+import io.ktor.server.plugins.calllogging.CallLogging
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
@@ -17,45 +19,34 @@ import io.ktor.server.routing.openapi.hide
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.utils.io.ExperimentalKtorApi
+import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
+import org.slf4j.LoggerFactory
 
 fun main() {
-    val config = loadApplicationConfig()
-    logbackConfigFile(config)?.let { System.setProperty("logback.configurationFile", it) }
-    embeddedServer(
-        Netty,
-        environment = applicationEnvironment { this.config = config },
-        configure = { connector { port = config.port("server.port") } },
-        module = Application::module,
-    ).start(wait = true)
-}
+    val config = AppConfig.load()
+    config.logbackConfigFile?.let { System.setProperty("logback.configurationFile", it) }
+    configurePidValidation(config.altinnEnvironment)
 
-fun Application.module() {
-    configureAccessLogging()
-    configureSerialization()
-    configureErrorHandling()
-    configureSyntheticPersons()
-    configurePdp()
-    configureRouting()
+    embeddedServer(Netty, port = config.port) {
+        module(pdpClient = pdpClient(config), accessLog = config.accessLog)
+    }.start(wait = true)
 }
 
 @OptIn(ExperimentalKtorApi::class)
-fun Application.configureRouting() {
-    val spec: String by lazy { openApiSpec() }
+fun Application.module(pdpClient: PdpClient, accessLog: Boolean = true) {
+    if (accessLog) install(CallLogging) { logger = LoggerFactory.getLogger("access") }
+    install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+    install(StatusPages) { errorResponses() }
+
+    val spec by lazy { openApiSpec() }
 
     routing {
-        get("/health/live") {
-            call.respond(HttpStatusCode.OK)
-        }.hide()
-
-        get("/openapi") {
-            call.respondText(spec, ContentType.Application.Json)
-        }.hide()
-
+        get("/health/live") { call.respond(HttpStatusCode.OK) }.hide()
+        get("/openapi") { call.respondText(spec, ContentType.Application.Json) }.hide()
         post("/authorize") {
-            val pdpClient: PdpClient by dependencies
             val request = call.receive<AuthorizeRequest>().parse()
             val authorization = pdpClient.authorize(
                 subject = request.subject,

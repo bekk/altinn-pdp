@@ -10,6 +10,7 @@ _How is the problem solved? Describe the changes._
 
 _To be done before it is marked ready for review._
 
-- [ ] README is updated where needed
+- [ ] README.md is updated where needed
+- [ ] AGENTS.md is updated where needed
 - [ ] Tests are added/updated where needed
 - [ ] Code in this PR was written using AI

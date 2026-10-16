@@ -2,12 +2,11 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.JsonConvertException
-import io.ktor.server.application.Application
-import io.ktor.server.application.install
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.log
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.ContentTransformationException
-import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.plugins.statuspages.StatusPagesConfig
 import io.ktor.server.response.respond
 import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 import no.kartverket.altinnpdp.client.exception.PdpException
@@ -16,27 +15,25 @@ import no.kartverket.altinnpdp.restserver.models.ErrorCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
 
-fun Application.configureErrorHandling() {
-    install(StatusPages) {
-        exception<JsonConvertException> { call, cause -> call.respondMalformedBody(cause) }
-        exception<ContentTransformationException> { call, cause -> call.respondMalformedBody(cause) }
-        exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
-        exception<PdpValidationException> { call, cause -> call.respondValidationFailed(cause) }
-        exception<AltinnPdpException> { call, cause ->
-            call.application.log.error("Call to Maskinporten or Altinn failed: statusCode=${cause.statusCode}", cause)
-            call.respondUpstream(cause)
-        }
-        exception<Throwable> { call, cause ->
-            call.application.log.error("Unhandled exception", cause)
-            call.respond(
-                HttpStatusCode.InternalServerError,
-                ErrorResponse("Internal server error", ErrorCode.INTERNAL_ERROR),
-            )
-        }
+internal fun StatusPagesConfig.errorResponses() {
+    exception<JsonConvertException> { call, cause -> call.respondMalformedBody(cause) }
+    exception<ContentTransformationException> { call, cause -> call.respondMalformedBody(cause) }
+    exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
+    exception<PdpValidationException> { call, cause -> call.respondValidationFailed(cause) }
+    exception<AltinnPdpException> { call, cause ->
+        call.application.log.error("Call to Maskinporten or Altinn failed: statusCode=${cause.statusCode}", cause)
+        call.respondUpstream(cause)
+    }
+    exception<Throwable> { call, cause ->
+        call.application.log.error("Unhandled exception", cause)
+        call.respond(
+            HttpStatusCode.InternalServerError,
+            ErrorResponse("Internal server error", ErrorCode.INTERNAL_ERROR),
+        )
     }
 }
 
-private suspend fun io.ktor.server.application.ApplicationCall.respondValidationFailed(cause: PdpValidationException) {
+private suspend fun ApplicationCall.respondValidationFailed(cause: PdpValidationException) {
     respond(
         HttpStatusCode.BadRequest,
         ErrorResponse(
@@ -47,13 +44,13 @@ private suspend fun io.ktor.server.application.ApplicationCall.respondValidation
     )
 }
 
-private suspend fun io.ktor.server.application.ApplicationCall.respondMalformedBody(cause: Throwable) {
+private suspend fun ApplicationCall.respondMalformedBody(cause: Throwable) {
     val causes = generateSequence(cause) { it.cause }.joinToString(" caused by ") { it.javaClass.name }
     application.log.warn("Malformed request body: $causes")
     respond(HttpStatusCode.BadRequest, ErrorResponse("Malformed request body", ErrorCode.MALFORMED_BODY))
 }
 
-private suspend fun io.ktor.server.application.ApplicationCall.respondUpstream(cause: AltinnPdpException) {
+private suspend fun ApplicationCall.respondUpstream(cause: AltinnPdpException) {
     if (cause is PdpException && cause.statusCode == 400) {
         respond(HttpStatusCode.BadRequest, ErrorResponse("Altinn rejected the request", ErrorCode.UPSTREAM_REJECTED))
     } else {
