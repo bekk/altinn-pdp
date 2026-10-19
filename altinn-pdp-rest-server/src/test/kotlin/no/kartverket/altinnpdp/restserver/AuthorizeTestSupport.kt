@@ -80,6 +80,7 @@ internal fun authorizeTest(
     exchangeStatus: Int = 200,
     failure: Exception? = null,
     sent: MutableList<PdpHttpRequest> = mutableListOf(),
+    decisionCache: PdpDecisionCache = NoPdpDecisionCache,
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = testApplication {
     val altinn = PdpHttpClient { request ->
@@ -94,7 +95,7 @@ internal fun authorizeTest(
     }
     configurePidValidation(altinnEnvironment)
     application {
-        module(testPdpClient(altinnEnvironment, altinn))
+        module(testPdpClient(altinnEnvironment, altinn), decisionCache = decisionCache)
     }
     block()
 }

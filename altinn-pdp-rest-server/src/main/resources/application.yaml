@@ -9,6 +9,11 @@ maskinporten:
   clientId: "$MASKINPORTEN_CLIENT_ID"
   clientJwk: "$MASKINPORTEN_CLIENT_JWK"
 
+decisionCache:
+  enabled: "$?DECISION_CACHE_ENABLED"
+  timeToLiveSeconds: "$?DECISION_CACHE_TIME_TO_LIVE_SECONDS"
+  maximumSize: "$?DECISION_CACHE_MAXIMUM_SIZE"
+
 accessLog:
   enabled: "$?ACCESS_LOG_ENABLED"
 

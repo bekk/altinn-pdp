@@ -14,6 +14,7 @@ internal class AppConfig(
     val altinnSubscriptionKey: String,
     val maskinportenClientId: String,
     val maskinportenKey: MaskinportenKey,
+    val decisionCache: PdpDecisionCache,
 ) {
     companion object {
         fun load(config: ApplicationConfig = loadApplicationConfig()): AppConfig = AppConfig(
@@ -24,6 +25,7 @@ internal class AppConfig(
             altinnSubscriptionKey = config.required("altinn.subscriptionKey"),
             maskinportenClientId = config.required("maskinporten.clientId"),
             maskinportenKey = MaskinportenKey.parse(config.required("maskinporten.clientJwk")),
+            decisionCache = config.decisionCache(),
         )
     }
 }
@@ -51,6 +53,12 @@ internal fun ApplicationConfig.boolean(path: String, default: Boolean): Boolean 
     val raw = optional(path) ?: return default
     return raw.toBooleanStrictOrNull()
         ?: error("$path must be true or false, but was \"$raw\" (see .env.example)")
+}
+
+internal fun ApplicationConfig.positiveLong(path: String, default: Long): Long {
+    val raw = optional(path) ?: return default
+    return raw.toLongOrNull()?.takeIf { it > 0 }
+        ?: error("$path must be a positive whole number, but was \"$raw\" (see .env.example)")
 }
 
 internal inline fun <reified T : Enum<T>> ApplicationConfig.enum(path: String): T {

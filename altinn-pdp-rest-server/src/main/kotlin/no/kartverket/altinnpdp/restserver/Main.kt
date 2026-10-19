@@ -31,12 +31,16 @@ fun main() {
     configurePidValidation(config.altinnEnvironment)
 
     embeddedServer(Netty, port = config.port) {
-        module(pdpClient = pdpClient(config), accessLog = config.accessLog)
+        module(pdpClient = pdpClient(config), accessLog = config.accessLog, decisionCache = config.decisionCache)
     }.start(wait = true)
 }
 
 @OptIn(ExperimentalKtorApi::class)
-fun Application.module(pdpClient: PdpClient, accessLog: Boolean = true) {
+fun Application.module(
+    pdpClient: PdpClient,
+    accessLog: Boolean = true,
+    decisionCache: PdpDecisionCache = NoPdpDecisionCache,
+) {
     if (accessLog) install(CallLogging) { logger = LoggerFactory.getLogger("access") }
     install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
     install(StatusPages) { errorResponses() }
@@ -48,12 +52,14 @@ fun Application.module(pdpClient: PdpClient, accessLog: Boolean = true) {
         get("/openapi") { call.respondText(spec, ContentType.Application.Json) }.hide()
         post("/authorize") {
             val request = call.receive<AuthorizeRequest>().parse()
-            val authorization = pdpClient.authorize(
-                subject = request.subject,
-                resourceId = request.resourceId,
-                customerOrganizationNumber = request.customerOrganizationNumber,
-                action = request.action,
-            )
+            val authorization = decisionCache.get(request) {
+                pdpClient.authorize(
+                    subject = request.subject,
+                    resourceId = request.resourceId,
+                    customerOrganizationNumber = request.customerOrganizationNumber,
+                    action = request.action,
+                )
+            }
 
             call.respond(
                 AuthorizeResponse(
