@@ -54,6 +54,13 @@ jobs:
             echo "tags=" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Login to dhi.io
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: dhi.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build and push with Jib
         env:
           JIB_TO_AUTH_USERNAME: ${{ github.actor }}
