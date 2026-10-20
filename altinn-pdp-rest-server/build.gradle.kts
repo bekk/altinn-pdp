@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.logback.classic)
     implementation(libs.nocommons)
+    implementation(libs.caffeine)
 
     testImplementation(ktorLibs.server.testHost)
     testImplementation(libs.nimbus.jose.jwt)

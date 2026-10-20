@@ -6,20 +6,24 @@ import ch.qos.logback.core.read.ListAppender
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import no.kartverket.altinnpdp.client.AltinnEnvironment
+import no.kartverket.altinnpdp.client.PdpAuthorization
 import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.http.PdpHttpRequest
 import no.kartverket.altinnpdp.client.validation.PdpValidationCode
+import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
 import org.slf4j.LoggerFactory
+import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -64,6 +68,61 @@ class ServerTest {
                 assertEquals(expectedResponse, response.authorizeResponse(), "for $decision")
             }
         }
+    }
+
+    @Test
+    fun `a repeated authorize is answered from the decision cache`() {
+        val sent = mutableListOf<PdpHttpRequest>()
+        authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
+            val first = postAuthorize().authorizeResponse()
+            val second = postAuthorize().authorizeResponse()
+
+            assertEquals(first, second)
+            assertEquals(1, sent.count { it.url.path == "/authorization/api/v1/authorize" })
+        }
+    }
+
+    @Test
+    fun `Cache-Control max-age=0 asks Altinn even when the decision is cached`() {
+        val sent = mutableListOf<PdpHttpRequest>()
+        authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
+            postAuthorize()
+            val response = postAuthorize(cacheControl = "max-age=0")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals(2, sent.count { it.url.path == "/authorization/api/v1/authorize" })
+        }
+    }
+
+    @Test
+    fun `an invalid max-age is rejected before Altinn is asked`() {
+        val sent = mutableListOf<PdpHttpRequest>()
+        authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
+            val response = postAuthorize(cacheControl = "max-age=-1")
+
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertEquals(ErrorCode.INVALID_CACHE_CONTROL, response.errorResponse().code)
+            assertEquals(emptyList(), sent)
+        }
+    }
+
+    @Test
+    fun `the Age header says how old the decision is, in whole seconds`() {
+        val cache = object : PdpDecisionCache {
+            override suspend fun get(
+                key: AuthorizeRequest.Parsed,
+                maxAge: Duration?,
+                load: suspend () -> PdpAuthorization,
+            ) = AuthorizationWithAge(load(), age = Duration.ofMillis(42_900))
+        }
+        authorizeTest(decisionCache = cache) {
+            assertEquals("42", postAuthorize().headers[HttpHeaders.Age])
+        }
+    }
+
+    @Test
+    fun `without a cache the Age header is 0`() = authorizeTest {
+        assertEquals("0", postAuthorize().headers[HttpHeaders.Age])
     }
 
     @Test
@@ -270,6 +329,9 @@ class ServerTest {
 
     private val malformedPersonBody = """{"pid":"$SAMPLE_PID","resourceId":"test-resource",""" +
         """"customerOrganizationNumber":923609016,"action":"read"}"""
+
+    private fun cacheForAMinute() =
+        InMemoryPdpDecisionCache(Duration.ofMinutes(1), defaultMaxAge = Duration.ofMinutes(1), maximumSize = 100)
 
     private data class ValidationCase(val why: String, val body: String, val errors: List<FieldError>)
 

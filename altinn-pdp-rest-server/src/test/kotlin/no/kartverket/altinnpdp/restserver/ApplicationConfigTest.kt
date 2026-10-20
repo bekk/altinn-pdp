@@ -4,6 +4,7 @@ import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.yaml.YamlConfig
 import kotlin.test.Test
 import kotlin.test.assertFails
+import kotlin.test.assertSame
 import kotlin.test.fail
 
 class ApplicationConfigTest {
@@ -16,6 +17,11 @@ class ApplicationConfigTest {
     @Test
     fun `the port default is a port number`() {
         loadConfig().port("server.port")
+    }
+
+    @Test
+    fun `the decision cache is off by default`() {
+        assertSame(NoPdpDecisionCache, loadConfig().decisionCache())
     }
 
     private fun loadConfig(without: String? = null): ApplicationConfig {

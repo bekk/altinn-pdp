@@ -7,6 +7,8 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
+import kotlin.test.assertSame
 
 class ConfigTest {
 
@@ -74,6 +76,51 @@ class ConfigTest {
         }
 
         assertContains(e.message!!, "/no/such/logback.xml")
+    }
+
+    @Test
+    fun `a number falls back to its default when absent`() {
+        assertEquals(60, MapApplicationConfig().long("seconds", default = 60, minimum = 1))
+        assertEquals(30, MapApplicationConfig("seconds" to "30").long("seconds", default = 60, minimum = 1))
+    }
+
+    @Test
+    fun `a number must be a whole number of at least the minimum`() {
+        assertEquals(0, MapApplicationConfig("seconds" to "0").long("seconds", default = 60, minimum = 0))
+        for (raw in listOf("ten", "-1", "1.5")) {
+            val e = assertFailsWith<IllegalStateException>(raw) {
+                MapApplicationConfig("seconds" to raw).long("seconds", default = 60, minimum = 0)
+            }
+
+            assertContains(e.message!!, "seconds must be a whole number of at least 0", message = raw)
+        }
+    }
+
+    @Test
+    fun `the decision cache is off unless enabled`() {
+        assertSame(NoPdpDecisionCache, MapApplicationConfig().decisionCache())
+        assertSame(NoPdpDecisionCache, MapApplicationConfig("decisionCache.enabled" to "false").decisionCache())
+        assertIs<InMemoryPdpDecisionCache>(MapApplicationConfig("decisionCache.enabled" to "true").decisionCache())
+    }
+
+    @Test
+    fun `the decision cache refuses invalid settings even when disabled`() {
+        for (path in listOf("decisionCache.timeToLiveSeconds", "decisionCache.maximumSize")) {
+            val config = MapApplicationConfig("decisionCache.enabled" to "false", path to "0")
+
+            val e = assertFailsWith<IllegalStateException>(path) { config.decisionCache() }
+
+            assertContains(e.message!!, path, message = path)
+        }
+    }
+
+    @Test
+    fun `an enabled decision cache refuses a negative default max age`() {
+        val config = MapApplicationConfig("decisionCache.enabled" to "true", "decisionCache.defaultMaxAgeSeconds" to "-1")
+
+        val e = assertFailsWith<IllegalStateException> { config.decisionCache() }
+
+        assertContains(e.message!!, "decisionCache.defaultMaxAgeSeconds")
     }
 
     @Test
