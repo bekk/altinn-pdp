@@ -3,6 +3,8 @@ package no.kartverket.altinnpdp.restserver
 import io.ktor.server.config.MapApplicationConfig
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import java.io.File
+import java.net.URI
+import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -38,6 +40,17 @@ class ConfigTest {
     }
 
     @Test
+    fun `seconds must be a whole number, 0 or more, and default when unset`() {
+        assertEquals(Duration.ofSeconds(30), MapApplicationConfig("key" to "30").seconds("key", default = Duration.ZERO))
+        assertEquals(Duration.ZERO, MapApplicationConfig("key" to "0").seconds("key", default = Duration.ofMinutes(1)))
+        assertEquals(Duration.ofMinutes(1), MapApplicationConfig().seconds("key", default = Duration.ofMinutes(1)))
+        for (raw in listOf("-1", "1.5", "1m")) {
+            val e = assertFailsWith<IllegalStateException>(raw) { MapApplicationConfig("key" to raw).seconds("key", default = Duration.ZERO) }
+            assertContains(e.message!!, "must be a whole number of seconds", message = raw)
+        }
+    }
+
+    @Test
     fun `a blank required value counts as missing`() {
         val e = assertFailsWith<IllegalStateException> { MapApplicationConfig("key" to "   ").required("key") }
 
@@ -52,6 +65,35 @@ class ConfigTest {
             }
 
             assertContains(e.message!!, "server.port", message = raw)
+        }
+    }
+
+    @Test
+    fun `a URL must be http or https and have a host`() {
+        for (raw in listOf("localhost:8080", "ftp://digdir.test", "https://", "not a url")) {
+            val e = assertFailsWith<IllegalStateException>(raw) {
+                MapApplicationConfig("externalFiltering.url" to raw).url("externalFiltering.url")
+            }
+
+            assertContains(e.message!!, "http or https URL", message = raw)
+        }
+    }
+
+    @Test
+    fun `a URL must not have a query or fragment`() {
+        for (raw in listOf("https://digdir.test?x=1", "https://digdir.test#top")) {
+            val e = assertFailsWith<IllegalStateException>(raw) {
+                MapApplicationConfig("externalFiltering.url" to raw).url("externalFiltering.url")
+            }
+
+            assertContains(e.message!!, "query or fragment", message = raw)
+        }
+    }
+
+    @Test
+    fun `an http or https URL is accepted as it is`() {
+        for (raw in listOf("http://localhost:8080", "https://api.samarbeid.digdir.no", "HTTPS://api.samarbeid.digdir.no")) {
+            assertEquals(URI(raw), MapApplicationConfig("externalFiltering.url" to raw).url("externalFiltering.url"))
         }
     }
 
