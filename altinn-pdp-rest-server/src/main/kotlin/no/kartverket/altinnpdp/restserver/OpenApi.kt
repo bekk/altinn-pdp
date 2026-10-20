@@ -82,8 +82,8 @@ private val apiInfo = OpenApiInfo(
         when you need Altinn's answer right now, for example before a write. Without the header, the server's default
         applies. The server also has an upper limit, and never answers with anything older, whatever `max-age` you send.
 
-        The `Age` header in the answer says how many seconds ago Altinn made the decision. It is `0` when this call
-        asked Altinn.
+        The `Age` header in the answer says how many seconds ago this API asked Altinn for the decision. It is
+        usually `0` when this call asked Altinn, and a little more when Altinn was slow to answer.
     """.trimIndent(),
 )
 
@@ -136,7 +136,8 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
             description = "Altinn answered. This includes answers that deny access, so check `permit`."
             headers {
                 header(HttpHeaders.Age) {
-                    description = "How many seconds ago Altinn made the decision. `0` when this call asked Altinn."
+                    description = "How many seconds ago this API asked Altinn for the decision. Usually `0` when " +
+                        "this call asked Altinn."
                     required = true
                     schema = JsonSchema(type = JsonType.INTEGER, minimum = 0.0)
                 }

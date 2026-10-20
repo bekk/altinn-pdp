@@ -46,11 +46,12 @@ that bears the risk, keeps an upper bound the server controls, and needs no new 
 - `DECISION_CACHE_TIME_TO_LIVE_SECONDS` (default 60) is the upper bound, whatever `max-age` a
   caller sends. **This is the accepted stale-`PERMIT` window: a revoked access can be answered
   `PERMIT` for at most this long after Altinn last said `PERMIT`.**
-- The response carries an `Age` header saying how old the decision is.
+- The response carries an `Age` header saying how old the decision is, counted from when the server
+  asked Altinn, since Altinn may have decided at any moment after that.
 - `INDETERMINATE` decisions and failed lookups are not cached.
-- Concurrent lookups of the same question share one call to Altinn. A lookup still in flight counts
-  as fresh, so a `max-age=0` request may wait for, and get, the answer to a call that started just
-  before it.
+- Concurrent lookups of the same question share one call to Altinn when that call started within
+  the caller's `max-age`. A `max-age=0` request therefore always makes its own call, and never gets
+  the answer to a call that started before it, which may predate a change in Altinn.
 
 ### Positive Consequences
 
