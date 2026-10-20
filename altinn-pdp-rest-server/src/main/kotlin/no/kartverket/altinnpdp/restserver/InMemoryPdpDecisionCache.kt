@@ -1,6 +1,6 @@
 package no.kartverket.altinnpdp.restserver
 
-import com.github.benmanes.caffeine.cache.AsyncCache
+import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.Ticker
 import kotlinx.coroutines.CoroutineScope
@@ -23,13 +23,14 @@ class InMemoryPdpDecisionCache internal constructor(
     constructor(timeToLive: Duration, defaultMaxAge: Duration, maximumSize: Long) :
         this(timeToLive, defaultMaxAge, maximumSize, Ticker.systemTicker())
 
-    private class Fetched(val authorization: PdpAuthorization, val fetchedAt: Long)
+    // Altinn may answer from any moment after the call starts, so the age counts from then.
+    private class Load(val startedAt: Long, val result: CompletableFuture<PdpAuthorization>)
 
-    private val cache: AsyncCache<AuthorizeRequest.Parsed, Fetched> = Caffeine.newBuilder()
+    private val cache: Cache<AuthorizeRequest.Parsed, Load> = Caffeine.newBuilder()
         .expireAfterWrite(timeToLive)
         .maximumSize(maximumSize)
         .ticker(ticker)
-        .buildAsync()
+        .build()
 
     private val loadScope = CoroutineScope(SupervisorJob())
 
@@ -41,26 +42,27 @@ class InMemoryPdpDecisionCache internal constructor(
         // Caffeine moves the expiry forward on every compute, so the time to live is enforced here instead.
         val acceptedAge = minOf(maxAge ?: defaultMaxAge, timeToLive)
         val pending = cache.asMap().compute(key) { _, cached ->
-            cached?.takeIf { it.isYoungerThan(acceptedAge) } ?: fetch(load)
+            cached?.takeIf { it.isYoungerThan(acceptedAge) } ?: start(load)
         }!!
-        val fetched = try {
-            pending.asDeferred().await()
+        val authorization = try {
+            pending.result.asDeferred().await()
         } catch (e: Exception) {
-            if (pending.isCompletedExceptionally) forget(key, pending)
+            if (pending.result.isCompletedExceptionally) forget(key, pending)
             throw e
         }
-        if (fetched.authorization.decision == PdpDecision.INDETERMINATE) forget(key, pending)
-        return AuthorizationWithAge(fetched.authorization, Duration.ofNanos(ticker.read() - fetched.fetchedAt))
+        if (authorization.decision == PdpDecision.INDETERMINATE) forget(key, pending)
+        return AuthorizationWithAge(authorization, pending.age())
     }
 
-    private fun fetch(load: suspend () -> PdpAuthorization): CompletableFuture<Fetched> =
-        loadScope.future { Fetched(load(), fetchedAt = ticker.read()) }
+    private fun start(load: suspend () -> PdpAuthorization): Load =
+        Load(startedAt = ticker.read(), result = loadScope.future { load() })
 
-    // A load still in flight is as fresh as a decision can be, so every lookup may wait for it.
-    private fun CompletableFuture<Fetched>.isYoungerThan(age: Duration): Boolean =
-        !isDone || (!isCompletedExceptionally && ticker.read() - join().fetchedAt < age.toNanos())
+    private fun Load.age(): Duration = Duration.ofNanos(ticker.read() - startedAt)
 
-    private fun forget(key: AuthorizeRequest.Parsed, pending: CompletableFuture<Fetched>) {
+    // A load still in flight is joined only if it started recently enough, so max-age=0 always asks Altinn anew.
+    private fun Load.isYoungerThan(age: Duration): Boolean = !result.isCompletedExceptionally && age() < age
+
+    private fun forget(key: AuthorizeRequest.Parsed, pending: Load) {
         cache.asMap().remove(key, pending)
     }
 }

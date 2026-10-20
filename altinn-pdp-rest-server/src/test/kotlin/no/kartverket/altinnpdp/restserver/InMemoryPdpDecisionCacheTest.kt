@@ -151,7 +151,7 @@ class InMemoryPdpDecisionCacheTest {
     }
 
     @Test
-    fun `a lookup with max age zero waits for the load already in flight`() = runBlocking {
+    fun `a lookup with max age zero does not wait for a load already in flight`() = runBlocking {
         val release = CompletableDeferred<Unit>()
         val inFlight = async(start = CoroutineStart.UNDISPATCHED) {
             lookup { loads.incrementAndGet(); release.await(); PdpAuthorization(PdpDecision.PERMIT) }
@@ -160,7 +160,33 @@ class InMemoryPdpDecisionCacheTest {
         release.complete(Unit)
         awaitAll(inFlight, fresh)
 
-        assertEquals(1, loads.get())
+        assertEquals(2, loads.get())
+    }
+
+    @Test
+    fun `a load in flight is as old as the time since it started`() = runBlocking {
+        val release = CompletableDeferred<Unit>()
+        val inFlight = async(start = CoroutineStart.UNDISPATCHED) {
+            lookup { loads.incrementAndGet(); release.await(); PdpAuthorization(PdpDecision.PERMIT) }
+        }
+        ticker.advance(Duration.ofSeconds(5))
+        val joined = async(start = CoroutineStart.UNDISPATCHED) { lookup(Duration.ofSeconds(10)) }
+        val tooOld = async(start = CoroutineStart.UNDISPATCHED) { lookup(Duration.ofSeconds(3)) }
+        release.complete(Unit)
+        awaitAll(inFlight, joined, tooOld)
+
+        assertEquals(2, loads.get(), "the 10 second lookup joins the load, the 3 second one starts its own")
+    }
+
+    @Test
+    fun `the age counts from when Altinn was asked, not from when it answered`() = runBlocking {
+        val slow = lookup {
+            loads.incrementAndGet()
+            ticker.advance(Duration.ofSeconds(2))
+            PdpAuthorization(PdpDecision.PERMIT)
+        }
+
+        assertEquals(Duration.ofSeconds(2), slow.age)
     }
 
     @Test
