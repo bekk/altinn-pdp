@@ -43,8 +43,20 @@ class CacheControlTest {
     }
 
     @Test
+    fun `reads a quoted max-age`() {
+        assertEquals(Duration.ofSeconds(30), cacheControl("max-age=\"30\"").maxAge())
+    }
+
+    @Test
+    fun `ignores commas and directives inside a quoted argument`() {
+        assertNull(cacheControl("foo=\"x,max-age=60,y\"").maxAge())
+        assertNull(cacheControl("foo=\"x\\\",max-age=60,y\"").maxAge())
+        assertEquals(Duration.ofSeconds(30), cacheControl("foo=\"x,max-age=60\", max-age=30").maxAge())
+    }
+
+    @Test
     fun `refuses a max-age that is not a whole number of seconds, 0 or more`() {
-        for (directive in listOf("max-age", "max-age=", "max-age=ten", "max-age=-1", "max-age=1.5", "max-age=\"30\"")) {
+        for (directive in listOf("max-age", "max-age=", "max-age=ten", "max-age=-1", "max-age=1.5", "max-age=\"30")) {
             assertFailsWith<InvalidCacheControlException>(directive) { cacheControl(directive).maxAge() }
         }
     }
