@@ -1,6 +1,8 @@
 name: Build image
 
-on: [push]
+on:
+  push:
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -19,6 +21,7 @@ jobs:
   build:
     name: Build, push and Pharos scan
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.repository_owner == 'kartverket'
 
     steps:
       - name: Checkout project sources
