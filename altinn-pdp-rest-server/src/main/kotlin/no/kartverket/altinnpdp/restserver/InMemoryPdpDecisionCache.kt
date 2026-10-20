@@ -60,7 +60,7 @@ class InMemoryPdpDecisionCache internal constructor(
     private fun Load.age(): Duration = Duration.ofNanos(ticker.read() - startedAt)
 
     // A load still in flight is joined only if it started recently enough, so max-age=0 always asks Altinn anew.
-    private fun Load.isYoungerThan(age: Duration): Boolean = !result.isCompletedExceptionally && age() < age
+    private fun Load.isYoungerThan(maxAge: Duration): Boolean = !result.isCompletedExceptionally && age() < maxAge
 
     private fun forget(key: AuthorizeRequest.Parsed, pending: Load) {
         cache.asMap().remove(key, pending)
