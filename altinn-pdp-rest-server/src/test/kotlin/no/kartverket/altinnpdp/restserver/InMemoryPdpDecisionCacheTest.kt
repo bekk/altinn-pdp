@@ -3,13 +3,7 @@ package no.kartverket.altinnpdp.restserver
 import com.github.benmanes.caffeine.cache.Ticker
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.PdpAuthorization
 import no.kartverket.altinnpdp.client.PdpDecision
@@ -134,48 +128,38 @@ class InMemoryPdpDecisionCacheTest {
     }
 
     @Test
-    fun `concurrent lookups of the same key share one load`() = runBlocking {
-        coroutineScope {
-            List(50) {
-                async(Dispatchers.Default) {
-                    lookup {
-                        loads.incrementAndGet()
-                        delay(20)
-                        PdpAuthorization(PdpDecision.PERMIT)
-                    }
-                }
-            }.awaitAll()
+    fun `a failed reload keeps the cached decision`() = runBlocking {
+        lookup()
+        ticker.advance(Duration.ofSeconds(10))
+        assertFailsWith<IllegalStateException> {
+            lookup(Duration.ZERO) { loads.incrementAndGet(); error("Altinn is down") }
         }
 
-        assertEquals(1, loads.get())
-    }
-
-    @Test
-    fun `a lookup with max age zero does not wait for a load already in flight`() = runBlocking {
-        val release = CompletableDeferred<Unit>()
-        val inFlight = async(start = CoroutineStart.UNDISPATCHED) {
-            lookup { loads.incrementAndGet(); release.await(); PdpAuthorization(PdpDecision.PERMIT) }
-        }
-        val fresh = async(start = CoroutineStart.UNDISPATCHED) { lookup(Duration.ZERO) }
-        release.complete(Unit)
-        awaitAll(inFlight, fresh)
-
+        assertEquals(Duration.ofSeconds(10), lookup().age)
         assertEquals(2, loads.get())
     }
 
     @Test
-    fun `a load in flight is as old as the time since it started`() = runBlocking {
-        val release = CompletableDeferred<Unit>()
-        val inFlight = async(start = CoroutineStart.UNDISPATCHED) {
-            lookup { loads.incrementAndGet(); release.await(); PdpAuthorization(PdpDecision.PERMIT) }
-        }
-        ticker.advance(Duration.ofSeconds(5))
-        val joined = async(start = CoroutineStart.UNDISPATCHED) { lookup(Duration.ofSeconds(10)) }
-        val tooOld = async(start = CoroutineStart.UNDISPATCHED) { lookup(Duration.ofSeconds(3)) }
-        release.complete(Unit)
-        awaitAll(inFlight, joined, tooOld)
+    fun `an indeterminate reload keeps the cached decision`() = runBlocking {
+        lookup()
+        lookup(Duration.ZERO) { loads.incrementAndGet(); PdpAuthorization(PdpDecision.INDETERMINATE) }
 
-        assertEquals(2, loads.get(), "the 10 second lookup joins the load, the 3 second one starts its own")
+        assertEquals(PdpDecision.PERMIT, lookup().authorization.decision)
+        assertEquals(2, loads.get())
+    }
+
+    @Test
+    fun `callers that accept the cached decision do not wait for a reload`() = runBlocking {
+        lookup()
+        val release = CompletableDeferred<Unit>()
+        val reload = async(start = CoroutineStart.UNDISPATCHED) {
+            lookup(Duration.ZERO) { loads.incrementAndGet(); release.await(); PdpAuthorization(PdpDecision.DENY) }
+        }
+
+        assertEquals(PdpDecision.PERMIT, lookup().authorization.decision)
+        release.complete(Unit)
+        reload.await()
+        assertEquals(PdpDecision.DENY, lookup().authorization.decision)
     }
 
     @Test
@@ -187,24 +171,6 @@ class InMemoryPdpDecisionCacheTest {
         }
 
         assertEquals(Duration.ofSeconds(2), slow.age)
-    }
-
-    @Test
-    fun `a cancelled lookup does not cancel the load others are waiting on`() = runBlocking {
-        val release = CompletableDeferred<Unit>()
-        val load: suspend () -> PdpAuthorization = {
-            loads.incrementAndGet()
-            release.await()
-            PdpAuthorization(PdpDecision.PERMIT)
-        }
-
-        val cancelled = launch(start = CoroutineStart.UNDISPATCHED) { lookup(load = load) }
-        val waiting = async(start = CoroutineStart.UNDISPATCHED) { lookup(load = load) }
-        cancelled.cancelAndJoin()
-        release.complete(Unit)
-
-        assertEquals(PdpDecision.PERMIT, waiting.await().authorization.decision)
-        assertEquals(1, loads.get())
     }
 
     private suspend fun lookup(
