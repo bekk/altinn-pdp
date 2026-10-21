@@ -1,15 +1,14 @@
 package no.kartverket.altinnpdp.client
 
-public enum class AltinnEnvironment(
-    internal val platformBaseUrl: String,
-    internal val maskinportenTokenUrl: String,
-) {
+import java.net.URI
+
+public enum class AltinnEnvironment(public val platformBaseUrl: URI, public val maskinportenTokenUrl: URI) {
     TT02(
-        platformBaseUrl = "https://platform.tt02.altinn.no",
-        maskinportenTokenUrl = "https://test.maskinporten.no/token",
+        platformBaseUrl = URI("https://platform.tt02.altinn.no"),
+        maskinportenTokenUrl = URI("https://test.maskinporten.no/token"),
     ),
     PROD(
-        platformBaseUrl = "https://platform.altinn.no",
-        maskinportenTokenUrl = "https://maskinporten.no/token",
+        platformBaseUrl = URI("https://platform.altinn.no"),
+        maskinportenTokenUrl = URI("https://maskinporten.no/token"),
     ),
 }

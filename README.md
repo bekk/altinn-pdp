@@ -98,6 +98,9 @@ val client = PdpClient(
 Build one client and reuse it. Both the Maskinporten token and the Altinn token are cached and
 fetched again shortly before they expire, and it is safe to call from several coroutines at once.
 
+To call other URLs than an environment's, give `platformBaseUrl` and `maskinportenTokenUrl`
+instead of `environment`.
+
 ### Asking the PDP
 
 ```kotlin

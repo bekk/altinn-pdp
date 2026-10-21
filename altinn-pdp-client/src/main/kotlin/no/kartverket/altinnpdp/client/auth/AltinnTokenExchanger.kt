@@ -1,7 +1,6 @@
 package no.kartverket.altinnpdp.client.auth
 
 import com.nimbusds.jwt.JWTParser
-import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.PdpHttpClient
@@ -15,11 +14,6 @@ internal class AltinnTokenExchanger(
     platformBaseUrl: String,
     private val httpClient: PdpHttpClient,
 ) {
-    constructor(
-        environment: AltinnEnvironment,
-        httpClient: PdpHttpClient,
-    ) : this(environment.platformBaseUrl, httpClient)
-
     private val exchangeUrl: URI = Http.url(platformBaseUrl, EXCHANGE_PATH)
 
     suspend fun exchange(maskinportenToken: MaskinportenToken): AltinnToken {

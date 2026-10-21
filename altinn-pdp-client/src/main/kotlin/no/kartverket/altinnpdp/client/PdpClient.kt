@@ -28,9 +28,25 @@ public class PdpClient internal constructor(
         httpClient: PdpHttpClient,
     ) : this(
         platformBaseUrl = environment.platformBaseUrl,
+        maskinportenTokenUrl = environment.maskinportenTokenUrl,
+        subscriptionKey = subscriptionKey,
+        maskinportenClientId = maskinportenClientId,
+        maskinportenKey = maskinportenKey,
+        httpClient = httpClient,
+    )
+
+    public constructor(
+        platformBaseUrl: URI,
+        maskinportenTokenUrl: URI,
+        subscriptionKey: String,
+        maskinportenClientId: String,
+        maskinportenKey: MaskinportenKey,
+        httpClient: PdpHttpClient,
+    ) : this(
+        platformBaseUrl = platformBaseUrl.toString(),
         tokenProvider = MaskinportenAltinnTokenProvider(
-            MaskinportenConfig(environment.maskinportenTokenUrl, maskinportenClientId, maskinportenKey),
-            environment,
+            MaskinportenConfig(maskinportenTokenUrl.toString(), maskinportenClientId, maskinportenKey),
+            platformBaseUrl.toString(),
             httpClient,
         ),
         subscriptionKey = subscriptionKey,
