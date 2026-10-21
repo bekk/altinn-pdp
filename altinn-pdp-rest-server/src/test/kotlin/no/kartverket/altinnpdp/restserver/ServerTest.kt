@@ -15,7 +15,7 @@ import kotlinx.serialization.json.jsonObject
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpAuthorization
 import no.kartverket.altinnpdp.client.PdpDecision
-import no.kartverket.altinnpdp.client.http.PdpHttpRequest
+import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import no.kartverket.altinnpdp.client.validation.PdpValidationCode
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
@@ -72,7 +72,7 @@ class ServerTest {
 
     @Test
     fun `a repeated authorize is answered from the decision cache`() {
-        val sent = mutableListOf<PdpHttpRequest>()
+        val sent = mutableListOf<OutgoingRequest>()
         authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
             val first = postAuthorize().authorizeResponse()
             val second = postAuthorize().authorizeResponse()
@@ -84,7 +84,7 @@ class ServerTest {
 
     @Test
     fun `Cache-Control max-age=0 asks Altinn even when the decision is cached`() {
-        val sent = mutableListOf<PdpHttpRequest>()
+        val sent = mutableListOf<OutgoingRequest>()
         authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
             postAuthorize()
             val response = postAuthorize(cacheControl = "max-age=0")
@@ -96,7 +96,7 @@ class ServerTest {
 
     @Test
     fun `an invalid max-age is rejected before Altinn is asked`() {
-        val sent = mutableListOf<PdpHttpRequest>()
+        val sent = mutableListOf<OutgoingRequest>()
         authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
             val response = postAuthorize(cacheControl = "max-age=-1")
 
@@ -133,11 +133,11 @@ class ServerTest {
                 """{"attributeId":"urn:altinn:person:identifier-no","value":"$SAMPLE_PID"}""",
         )
         for ((body, subject) in cases) {
-            val sent = mutableListOf<PdpHttpRequest>()
+            val sent = mutableListOf<OutgoingRequest>()
             authorizeTest(sent = sent) {
                 assertEquals(HttpStatusCode.OK, postAuthorize(body).status, "for $body")
             }
-            assertContains(sent.single { it.url.path == "/authorization/api/v1/authorize" }.body.orEmpty(), subject)
+            assertContains(sent.single { it.url.path == "/authorization/api/v1/authorize" }.body!!.decodeToString(), subject)
         }
     }
 

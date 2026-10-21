@@ -6,10 +6,10 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 
-public class JavaPdpHttpClient(
+public class JavaOutgoingHttpClient(
     private val httpClient: HttpClient,
     private val requestTimeout: Duration,
-) : PdpHttpClient {
+) : OutgoingHttpClient {
     init {
         require(httpClient.followRedirects() == HttpClient.Redirect.NEVER) {
             "httpClient must not follow redirects, or a redirect would hand our tokens to another host"
@@ -19,14 +19,18 @@ public class JavaPdpHttpClient(
         }
     }
 
-    override suspend fun send(request: PdpHttpRequest): PdpHttpResponse {
-        val body = request.body?.let { HttpRequest.BodyPublishers.ofString(it) } ?: HttpRequest.BodyPublishers.noBody()
+    override suspend fun send(request: OutgoingRequest): OutgoingResponse {
+        val body = request.body?.let(HttpRequest.BodyPublishers::ofByteArray) ?: HttpRequest.BodyPublishers.noBody()
         val builder = HttpRequest.newBuilder(request.url)
             .timeout(requestTimeout)
-            .method(request.method, body)
+            .method(request.method.name, body)
         request.headers.forEach { (name, value) -> builder.header(name, value) }
 
-        val response = httpClient.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofString()).await()
-        return PdpHttpResponse(response.statusCode(), response.body())
+        val response = httpClient.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray()).await()
+        return OutgoingResponse(
+            statusCode = response.statusCode(),
+            contentType = response.headers().firstValue("Content-Type").orElse(null),
+            body = response.body(),
+        )
     }
 }

@@ -11,8 +11,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.http.Http
-import no.kartverket.altinnpdp.client.http.PdpHttpClient
-import no.kartverket.altinnpdp.client.http.PdpHttpRequest
+import no.kartverket.altinnpdp.client.http.HttpMethod
+import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
+import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -23,7 +24,7 @@ import java.util.UUID
 
 internal class MaskinportenClient(
     private val config: MaskinportenConfig,
-    private val httpClient: PdpHttpClient,
+    private val httpClient: OutgoingHttpClient,
     private val clock: Clock = Clock.systemUTC(),
     refreshLeeway: Duration = TokenCache.DEFAULT_REFRESH_LEEWAY,
 ) {
@@ -58,15 +59,15 @@ internal class MaskinportenClient(
     private suspend fun fetchToken(): MaskinportenToken {
         val body = "grant_type=${urlEncode(GRANT_TYPE)}&assertion=${urlEncode(createClientAssertion())}"
 
-        val request = PdpHttpRequest(
-            method = "POST",
+        val request = OutgoingRequest(
+            method = HttpMethod.POST,
             url = URI.create(config.tokenUrl),
             headers = mapOf("Content-Type" to "application/x-www-form-urlencoded", "Accept" to "application/json"),
-            body = body,
+            body = body.encodeToByteArray(),
         )
 
         val response = Http.sendExpectingOk(httpClient, request, "Maskinporten", ::MaskinportenException)
-        return parseTokenResponse(response.body)
+        return parseTokenResponse(response.body.decodeToString())
     }
 
     private fun parseTokenResponse(body: String): MaskinportenToken {
