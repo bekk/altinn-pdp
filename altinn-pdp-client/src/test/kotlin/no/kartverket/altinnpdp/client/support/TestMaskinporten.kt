@@ -4,13 +4,10 @@ import no.kartverket.altinnpdp.client.auth.AltinnTokenExchanger
 import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenClient
 import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
-import no.kartverket.altinnpdp.client.auth.MaskinportenKey
 import java.time.Clock
 import java.time.Duration
 
 internal const val TOKEN_PATH = "/token"
-
-internal val testMaskinportenKey: MaskinportenKey = MaskinportenKey.parse(TestKeys.rsa.toJSONString())
 
 internal fun maskinportenConfig(
     tokenUrl: String = "https://test.maskinporten.no/token",

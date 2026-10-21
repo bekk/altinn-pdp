@@ -8,10 +8,6 @@ import no.kartverket.altinnpdp.client.ResourceId
 import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 
-internal const val SAMPLE_SYSTEMUSER_ID = "1725580f-70f4-4ace-a748-4f912497a0d7"
-
-internal const val SAMPLE_PID = "01817012309"
-
 internal fun testPdpClient(
     baseUrl: String,
     subscriptionKey: String = "subscription-key",

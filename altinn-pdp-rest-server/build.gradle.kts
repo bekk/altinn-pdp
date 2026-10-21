@@ -61,7 +61,7 @@ dependencies {
     implementation(libs.caffeine)
 
     testImplementation(ktorLibs.server.testHost)
-    testImplementation(libs.nimbus.jose.jwt)
+    testImplementation(testFixtures(project(":altinn-pdp-client")))
 }
 
 jib {

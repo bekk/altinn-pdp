@@ -1,6 +1,5 @@
 package no.kartverket.altinnpdp.restserver
 
-import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -14,24 +13,18 @@ import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
-import no.kartverket.altinnpdp.client.auth.MaskinportenKey
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
-import no.kartverket.altinnpdp.client.http.OutgoingResponse
+import no.kartverket.altinnpdp.client.support.SAMPLE_PID
+import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
+import no.kartverket.altinnpdp.client.support.response
+import no.kartverket.altinnpdp.client.support.testMaskinportenKey
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import java.time.Instant
 import java.util.Base64
 
 internal const val OK_STATUS = "urn:oasis:names:tc:xacml:1.0:status:ok"
-
-internal const val SAMPLE_SYSTEMUSER_ID = "1725580f-70f4-4ace-a748-4f912497a0d7"
-
-internal const val SAMPLE_PID = "01817012309"
-
-internal val testJwk: String = RSAKeyGenerator(2048).keyID("test-key").generate().toJSONString()
-
-private val testKey: MaskinportenKey = MaskinportenKey.parse(testJwk)
 
 internal fun testPdpClient(
     altinnEnvironment: AltinnEnvironment = AltinnEnvironment.TT02,
@@ -40,7 +33,7 @@ internal fun testPdpClient(
     environment = altinnEnvironment,
     subscriptionKey = "test-subscription-key",
     maskinportenClientId = "test-client",
-    maskinportenKey = testKey,
+    maskinportenKey = testMaskinportenKey,
     httpClient = httpClient,
 )
 
@@ -103,9 +96,6 @@ internal fun authorizeTest(
     }
     block()
 }
-
-private fun response(statusCode: Int, contentType: String, body: String) =
-    OutgoingResponse(statusCode, contentType, body.encodeToByteArray())
 
 private fun altinnToken(): String {
     val encoder = Base64.getUrlEncoder().withoutPadding()
