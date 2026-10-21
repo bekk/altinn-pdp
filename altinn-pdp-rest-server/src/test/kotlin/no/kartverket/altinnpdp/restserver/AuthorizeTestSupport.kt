@@ -9,32 +9,17 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.AltinnEnvironment
-import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.client.support.response
-import no.kartverket.altinnpdp.client.support.testMaskinportenKey
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
-import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import java.time.Instant
 import java.util.Base64
 
 internal const val OK_STATUS = "urn:oasis:names:tc:xacml:1.0:status:ok"
-
-internal fun testPdpClient(
-    altinnEnvironment: AltinnEnvironment = AltinnEnvironment.TT02,
-    httpClient: OutgoingHttpClient = OutgoingHttpClient { error("unexpected call to ${it.url}") },
-): PdpClient = PdpClient(
-    environment = altinnEnvironment,
-    subscriptionKey = "test-subscription-key",
-    maskinportenClientId = "test-client",
-    maskinportenKey = testMaskinportenKey,
-    httpClient = httpClient,
-)
 
 internal fun authorizeBody(
     systemuserId: String? = SAMPLE_SYSTEMUSER_ID,
@@ -64,9 +49,6 @@ internal suspend fun ApplicationTestBuilder.postAuthorize(
 internal suspend fun HttpResponse.authorizeResponse(): AuthorizeResponse =
     Json.decodeFromString(AuthorizeResponse.serializer(), bodyAsText())
 
-internal suspend fun HttpResponse.errorResponse(): ErrorResponse =
-    Json.decodeFromString(ErrorResponse.serializer(), bodyAsText())
-
 internal fun authorizeTest(
     altinnEnvironment: AltinnEnvironment = AltinnEnvironment.TT02,
     decision: String = "Permit",
@@ -78,7 +60,7 @@ internal fun authorizeTest(
     sent: MutableList<OutgoingRequest> = mutableListOf(),
     decisionCache: PdpDecisionCache = NoPdpDecisionCache,
     block: suspend ApplicationTestBuilder.() -> Unit,
-) = testApplication {
+) {
     val altinn = OutgoingHttpClient { request ->
         sent += request
         if (failure != null) throw failure
@@ -89,11 +71,7 @@ internal fun authorizeTest(
             else -> error("unexpected call to ${request.url}")
         }
     }
-    configurePidValidation(altinnEnvironment)
-    application {
-        module(testPdpClient(altinnEnvironment, altinn), decisionCache = decisionCache)
-    }
-    block()
+    testServer(altinn, altinnEnvironment, decisionCache, block)
 }
 
 private fun altinnToken(): String {

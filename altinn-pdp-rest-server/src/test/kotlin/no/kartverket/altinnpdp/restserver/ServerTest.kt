@@ -9,7 +9,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import no.kartverket.altinnpdp.client.AltinnEnvironment
@@ -35,18 +34,12 @@ import kotlin.test.assertTrue
 class ServerTest {
 
     @Test
-    fun `test health liveness endpoint`() = testApplication {
-        application {
-            module(testPdpClient())
-        }
+    fun `test health liveness endpoint`() = testServer {
         assertEquals(HttpStatusCode.OK, client.get("/health/live").status)
     }
 
     @Test
-    fun `openapi endpoint serves the generated spec as json`() = testApplication {
-        application {
-            module(testPdpClient())
-        }
+    fun `openapi endpoint serves the generated spec as json`() = testServer {
         val response = client.get("/openapi")
         assertEquals(HttpStatusCode.OK, response.status)
         assertEquals(ContentType.Application.Json, response.contentType()?.withoutParameters())
