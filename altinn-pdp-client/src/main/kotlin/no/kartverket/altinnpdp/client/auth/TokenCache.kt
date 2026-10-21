@@ -5,7 +5,7 @@ import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.time.Duration
 
-internal class TokenCache<T : AccessToken>(
+internal class TokenCache<T : ExpiringToken>(
     private val clock: Clock,
     private val refreshLeeway: Duration,
 ) {

@@ -6,6 +6,7 @@ import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.PersonId
 import no.kartverket.altinnpdp.client.ResourceId
 import no.kartverket.altinnpdp.client.SystemUserId
+import no.kartverket.altinnpdp.client.auth.AccessToken
 import no.kartverket.altinnpdp.client.http.PdpHttpClient
 
 internal const val SAMPLE_SYSTEMUSER_ID = "1725580f-70f4-4ace-a748-4f912497a0d7"
@@ -18,7 +19,7 @@ internal fun testPdpClient(
     httpClient: PdpHttpClient = testHttpClient,
 ) = PdpClient(
     platformBaseUrl = baseUrl,
-    tokenProvider = FakeTokenProvider(),
+    tokenProvider = { AccessToken.of("altinn-token") },
     subscriptionKey = subscriptionKey,
     httpClient = httpClient,
 )

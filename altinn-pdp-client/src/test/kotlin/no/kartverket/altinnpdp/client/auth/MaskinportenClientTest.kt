@@ -9,6 +9,7 @@ import no.kartverket.altinnpdp.client.support.TOKEN_PATH
 import no.kartverket.altinnpdp.client.support.TestHttpServer
 import no.kartverket.altinnpdp.client.support.TestKeys
 import no.kartverket.altinnpdp.client.support.TestResponse
+import no.kartverket.altinnpdp.client.support.assertNoTokenIn
 import no.kartverket.altinnpdp.client.support.fixedClock
 import no.kartverket.altinnpdp.client.support.maskinportenConfig
 import no.kartverket.altinnpdp.client.support.maskinportenTokenResponse
@@ -113,5 +114,14 @@ class MaskinportenClientTest {
 
             assertContains(e.message!!, expectedInMessage, message = "for $why")
         }
+    }
+
+    @Test
+    fun `keeps the token out of the error when the rest of the answer is unusable`() = runBlocking {
+        server.on(TOKEN_PATH) { TestResponse(body = """{"access_token":"secret-mp-token","expires_in":"soon"}""") }
+
+        val e = assertFailsWith<MaskinportenException> { client().getToken() }
+
+        assertNoTokenIn(e, "secret-mp-token")
     }
 }
