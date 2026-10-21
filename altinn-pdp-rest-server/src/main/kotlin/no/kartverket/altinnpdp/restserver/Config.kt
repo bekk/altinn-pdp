@@ -57,6 +57,12 @@ internal fun ApplicationConfig.boolean(path: String, default: Boolean): Boolean 
         ?: error("$path must be true or false, but was \"$raw\" (see .env.example)")
 }
 
+internal fun ApplicationConfig.long(path: String, default: Long, minimum: Long): Long {
+    val raw = optional(path) ?: return default
+    return raw.toLongOrNull()?.takeIf { it >= minimum }
+        ?: error("$path must be a whole number of at least $minimum, but was \"$raw\" (see .env.example)")
+}
+
 internal fun ApplicationConfig.seconds(path: String, default: Duration): Duration {
     val raw = optional(path) ?: return default
     return raw.toLongOrNull()?.takeIf { it >= 0 }?.let(Duration::ofSeconds)
