@@ -15,7 +15,6 @@ import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
-import no.kartverket.altinnpdp.client.support.SAMPLE_PID
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.client.support.response
 import no.kartverket.altinnpdp.client.support.testMaskinportenKey
