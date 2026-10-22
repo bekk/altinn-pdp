@@ -5,6 +5,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.openapi.ExampleObject
 import io.ktor.openapi.GenericElement
+import io.ktor.openapi.Headers
 import io.ktor.openapi.JsonSchema
 import io.ktor.openapi.JsonType
 import io.ktor.openapi.MediaType
@@ -104,6 +105,13 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
             schema = JsonSchema(type = JsonType.STRING)
             example = GenericElement("max-age=60")
         }
+        header(HttpHeaders.XRequestId) {
+            description = "An id to find this call by in this API's logs. Up to 128 ASCII letters, digits, `-`, `_`, " +
+                "`.` and `:`. Without it, or with any other value, this API makes a new one. Every response has the id " +
+                "in its `X-Request-Id` header."
+            schema = JsonSchema(type = JsonType.STRING)
+            example = GenericElement("3f2b8c1e-7d4a-4f0e-9b6a-2c5d8e1f4a7b")
+        }
     }
 
     requestBody {
@@ -141,6 +149,7 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                     required = true
                     schema = JsonSchema(type = JsonType.INTEGER, minimum = 0.0)
                 }
+                requestId()
             }
             ContentType.Application.Json {
                 schema = jsonSchema<AuthorizeResponse>()
@@ -170,6 +179,7 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
 
         HttpStatusCode.BadRequest {
             description = "The request was not accepted. `code` says why."
+            headers { requestId() }
             ContentType.Application.Json {
                 schema = jsonSchema<ErrorResponse>()
                 example(
@@ -221,6 +231,7 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
         HttpStatusCode.BadGateway {
             description = "This API could not get an answer from Altinn. Your request did not cause it. Treat it as " +
                 "no access."
+            headers { requestId() }
             ContentType.Application.Json {
                 schema = jsonSchema<ErrorResponse>()
                 example("UpstreamError", ErrorResponse("The call to Altinn failed", ErrorCode.UPSTREAM_ERROR))
@@ -229,12 +240,19 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
 
         HttpStatusCode.InternalServerError {
             description = "An unexpected error in this API. Treat it as no access."
+            headers { requestId() }
             ContentType.Application.Json {
                 schema = jsonSchema<ErrorResponse>()
                 example("InternalError", ErrorResponse("Internal server error", ErrorCode.INTERNAL_ERROR))
             }
         }
     }
+}
+
+private fun Headers.Builder.requestId() = header(HttpHeaders.XRequestId) {
+    description = "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one."
+    required = true
+    schema = JsonSchema(type = JsonType.STRING)
 }
 
 private inline fun <reified T : Any> MediaType.Builder.example(name: String, value: T) =

@@ -106,6 +106,10 @@ environment, so starting it any other way, like an IDE run configuration or
 | `GET /openapi`     | The OpenAPI spec as JSON                                        |
 | `GET /health/live` | Liveness probe for the platform, left out of the spec           |
 
+Every call gets a request id: the caller's `X-Request-Id` header, or a new UUID when it is missing
+or not safe to log. The server logs it on every line of the call as `request_id`, and sends it back
+in the response's `X-Request-Id` header, so a caller can tell us which call to look for.
+
 The OpenAPI spec documents every field, decision and error code, and how to act on the answer. The
 server serves it at `GET /openapi`, and the same spec is checked in as
 [`openapi.json`](altinn-pdp-rest-server/openapi.json). It names no `servers`, so a client uses the
@@ -244,7 +248,7 @@ needs every key the bundled one has.
 
 ## 📝 Logging
 
-The server logs to stdout through logback, set up by the bundled
+The server logs JSON to stdout through logback, set up by the bundled
 `altinn-pdp-rest-server/src/main/resources/logback.xml`. To replace it, point `LOGBACK_CONFIG_FILE`
 at your own file. The server refuses to start if that path is not a file.
 

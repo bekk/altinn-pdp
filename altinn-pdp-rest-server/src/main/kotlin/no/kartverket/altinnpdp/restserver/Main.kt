@@ -8,6 +8,8 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import io.ktor.server.plugins.callid.CallId
+import io.ktor.server.plugins.callid.callIdMdc
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
@@ -26,6 +28,7 @@ import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import org.slf4j.LoggerFactory
+import java.util.UUID
 
 fun main() {
     val config = AppConfig.load()
@@ -43,7 +46,19 @@ fun Application.module(
     accessLog: Boolean = true,
     decisionCache: PdpDecisionCache = NoPdpDecisionCache,
 ) {
-    if (accessLog) install(CallLogging) { logger = LoggerFactory.getLogger("access") }
+    install(CallId) {
+        header(HttpHeaders.XRequestId)
+        generate { UUID.randomUUID().toString() }
+        verify(::isSafeRequestId)
+    }
+    install(CallLogging) {
+        mdc("workload") { workloadFrom(it.request.headers[CLIENT_CERTIFICATE_HEADER]) }
+        callIdMdc("request_id")
+
+        logger = LoggerFactory.getLogger("access")
+        disableDefaultColors()
+        filter { accessLog }
+    }
     install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
     install(StatusPages) { errorResponses() }
 
