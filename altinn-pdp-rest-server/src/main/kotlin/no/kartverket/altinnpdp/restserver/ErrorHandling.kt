@@ -12,7 +12,7 @@ import io.ktor.server.response.respondText
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 import no.kartverket.altinnpdp.client.exception.PdpException
-import no.kartverket.altinnpdp.client.exception.PdpValidationException
+import no.kartverket.altinnpdp.client.exception.ValidationException
 import no.kartverket.altinnpdp.restserver.models.ErrorCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
@@ -21,7 +21,7 @@ internal fun StatusPagesConfig.errorResponses() {
     exception<JsonConvertException> { call, cause -> call.respondMalformedBody(cause) }
     exception<ContentTransformationException> { call, cause -> call.respondMalformedBody(cause) }
     exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
-    exception<PdpValidationException> { call, cause -> call.respondValidationFailed(cause) }
+    exception<ValidationException> { call, cause -> call.respondValidationFailed(cause) }
     exception<InvalidCacheControlException> { call, _ ->
         call.respondProblem(HttpStatusCode.BadRequest, "Invalid max-age in Cache-Control", ErrorCode.INVALID_CACHE_CONTROL)
     }
@@ -35,7 +35,7 @@ internal fun StatusPagesConfig.errorResponses() {
     }
 }
 
-private suspend fun ApplicationCall.respondValidationFailed(cause: PdpValidationException) {
+private suspend fun ApplicationCall.respondValidationFailed(cause: ValidationException) {
     respondProblem(
         HttpStatusCode.BadRequest,
         "Validation failed",

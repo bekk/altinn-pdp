@@ -22,7 +22,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import no.kartverket.altinnpdp.client.PdpDecision
-import no.kartverket.altinnpdp.client.validation.PdpValidationCode
+import no.kartverket.altinnpdp.client.validation.ValidationCode
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorCode
@@ -189,9 +189,9 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                         "Validation failed",
                         ErrorCode.VALIDATION_ERROR,
                         listOf(
-                            FieldError("systemuserId", PdpValidationCode.MISSING, "systemuserId or pid is required"),
-                            FieldError("pid", PdpValidationCode.MISSING, "systemuserId or pid is required"),
-                            FieldError("resourceId", PdpValidationCode.MISSING, "resourceId is required"),
+                            FieldError("systemuserId", ValidationCode.MISSING, "systemuserId or pid is required"),
+                            FieldError("pid", ValidationCode.MISSING, "systemuserId or pid is required"),
+                            FieldError("resourceId", ValidationCode.MISSING, "resourceId is required"),
                         ),
                     ),
                 )
@@ -202,8 +202,8 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                         "Validation failed",
                         ErrorCode.VALIDATION_ERROR,
                         listOf(
-                            FieldError("systemuserId", PdpValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
-                            FieldError("pid", PdpValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
+                            FieldError("systemuserId", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
+                            FieldError("pid", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
                         ),
                     ),
                 )
@@ -216,7 +216,7 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                         listOf(
                             FieldError(
                                 field = "customerOrganizationNumber",
-                                code = PdpValidationCode.INVALID_FORMAT,
+                                code = ValidationCode.INVALID_FORMAT,
                                 message = "customerOrganizationNumber must have a valid MOD11 check digit",
                             ),
                         ),

@@ -17,7 +17,7 @@ import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import no.kartverket.altinnpdp.client.support.SAMPLE_PID
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
-import no.kartverket.altinnpdp.client.validation.PdpValidationCode
+import no.kartverket.altinnpdp.client.validation.ValidationCode
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorCode
@@ -150,7 +150,7 @@ class ServerTest {
             val response = postAuthorize(synthetic)
             assertEquals(HttpStatusCode.BadRequest, response.status)
             assertEquals(
-                listOf(FieldError("pid", PdpValidationCode.INVALID_FORMAT, "pid must be a valid fødselsnummer or D number")),
+                listOf(FieldError("pid", ValidationCode.INVALID_FORMAT, "pid must be a valid fødselsnummer or D number")),
                 response.errorResponse().errors,
             )
         }
@@ -187,47 +187,47 @@ class ServerTest {
                 why = "neither systemuserId nor pid",
                 body = authorizeBody(systemuserId = null),
                 errors = listOf(
-                    FieldError("systemuserId", PdpValidationCode.MISSING, "systemuserId or pid is required"),
-                    FieldError("pid", PdpValidationCode.MISSING, "systemuserId or pid is required"),
+                    FieldError("systemuserId", ValidationCode.MISSING, "systemuserId or pid is required"),
+                    FieldError("pid", ValidationCode.MISSING, "systemuserId or pid is required"),
                 ),
             ),
             ValidationCase(
                 why = "both systemuserId and pid",
                 body = authorizeBody(pid = SAMPLE_PID),
                 errors = listOf(
-                    FieldError("systemuserId", PdpValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
-                    FieldError("pid", PdpValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
+                    FieldError("systemuserId", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
+                    FieldError("pid", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
                 ),
             ),
             ValidationCase(
                 why = "a pid with a bad check digit",
                 body = authorizeBody(systemuserId = null, pid = "31827012312"),
-                errors = listOf(FieldError("pid", PdpValidationCode.INVALID_FORMAT, "pid must be a valid fødselsnummer or D number")),
+                errors = listOf(FieldError("pid", ValidationCode.INVALID_FORMAT, "pid must be a valid fødselsnummer or D number")),
             ),
             ValidationCase(
                 why = "an explicit null",
                 body = """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
                     """"customerOrganizationNumber":null,"action":"read"}""",
                 errors = listOf(
-                    FieldError("customerOrganizationNumber", PdpValidationCode.MISSING, "customerOrganizationNumber is required"),
+                    FieldError("customerOrganizationNumber", ValidationCode.MISSING, "customerOrganizationNumber is required"),
                 ),
             ),
             ValidationCase(
                 why = "every field at once",
                 body = """{"systemuserId":"nope","resourceId":"ab","customerOrganizationNumber":"12345"}""",
                 errors = listOf(
-                    FieldError("systemuserId", PdpValidationCode.INVALID_FORMAT, "systemuserId must be a UUID"),
+                    FieldError("systemuserId", ValidationCode.INVALID_FORMAT, "systemuserId must be a UUID"),
                     FieldError(
                         "resourceId",
-                        PdpValidationCode.INVALID_FORMAT,
+                        ValidationCode.INVALID_FORMAT,
                         "resourceId must be at least 4 characters of lowercase letters, digits, underscore or hyphen",
                     ),
                     FieldError(
                         "customerOrganizationNumber",
-                        PdpValidationCode.INVALID_FORMAT,
+                        ValidationCode.INVALID_FORMAT,
                         "customerOrganizationNumber must be exactly 9 digits",
                     ),
-                    FieldError("action", PdpValidationCode.MISSING, "action is required"),
+                    FieldError("action", ValidationCode.MISSING, "action is required"),
                 ),
             ),
         )

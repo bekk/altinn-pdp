@@ -2,7 +2,7 @@ package no.kartverket.altinnpdp.restserver.models
 
 import io.ktor.openapi.JsonSchema
 import kotlinx.serialization.Serializable
-import no.kartverket.altinnpdp.client.validation.PdpValidationCode
+import no.kartverket.altinnpdp.client.validation.ValidationCode
 
 @Serializable
 data class FieldError(
@@ -15,7 +15,7 @@ data class FieldError(
 - `INVALID_FORMAT`: the field is present but not valid.
 - `CONFLICTING`: both `systemuserId` and `pid` were sent. Both are listed.""",
     )
-    val code: PdpValidationCode,
+    val code: ValidationCode,
 
     @JsonSchema.Description("What is wrong, for people to read. The wording may change.")
     val message: String,
