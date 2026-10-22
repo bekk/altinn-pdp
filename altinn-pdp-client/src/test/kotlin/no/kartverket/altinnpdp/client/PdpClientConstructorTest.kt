@@ -2,8 +2,8 @@ package no.kartverket.altinnpdp.client
 
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.auth.AltinnTokenExchanger
-import no.kartverket.altinnpdp.client.http.PdpHttpClient
-import no.kartverket.altinnpdp.client.http.PdpHttpResponse
+import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
+import no.kartverket.altinnpdp.client.http.OutgoingResponse
 import no.kartverket.altinnpdp.client.support.authorizeSample
 import no.kartverket.altinnpdp.client.support.maskinportenTokenResponse
 import no.kartverket.altinnpdp.client.support.pdpDecisionResponse
@@ -18,12 +18,12 @@ class PdpClientConstructorTest {
 
     private val urls = mutableListOf<String>()
 
-    private val http = PdpHttpClient { request ->
+    private val http = OutgoingHttpClient { request ->
         urls += request.url.toString()
         when (request.url.path) {
-            "/token" -> PdpHttpResponse(200, maskinportenTokenResponse())
-            AltinnTokenExchanger.EXCHANGE_PATH -> PdpHttpResponse(200, signedJwt(Instant.now().plusSeconds(300)))
-            else -> PdpHttpResponse(200, pdpDecisionResponse())
+            "/token" -> ok("application/json", maskinportenTokenResponse())
+            AltinnTokenExchanger.EXCHANGE_PATH -> ok("text/plain", signedJwt(Instant.now().plusSeconds(300)))
+            else -> ok("application/json", pdpDecisionResponse())
         }
     }
 
@@ -76,4 +76,6 @@ class PdpClientConstructorTest {
             )
         }
     }
+
+    private fun ok(contentType: String, body: String) = OutgoingResponse(200, contentType, body.encodeToByteArray())
 }

@@ -123,7 +123,7 @@ val client = PdpClient(
     subscriptionKey = "<subscription key>",
     maskinportenClientId = "<client id>",
     maskinportenKey = MaskinportenKey.parse(jwkJson),
-    httpClient = JavaPdpHttpClient(HttpClient.newHttpClient(), requestTimeout = Duration.ofSeconds(3)),
+    httpClient = JavaOutgoingHttpClient(HttpClient.newHttpClient(), requestTimeout = Duration.ofSeconds(3)),
 )
 ```
 
@@ -187,18 +187,20 @@ The answer is a `PdpAuthorization`:
 
 ### HTTP client
 
-`httpClient` takes a `PdpHttpClient`, and timeouts, proxy and so on are set on it. Implement it
-on the HTTP client you already use, or use `JavaPdpHttpClient`:
+`httpClient` takes an `OutgoingHttpClient`, and timeouts, proxy and so on are set on it. Implement
+it on the HTTP client you already use, or use `JavaOutgoingHttpClient`. Bodies are passed as
+bytes, and an implementation should fill in `contentType` from the response's `Content-Type`
+header:
 
 ```kotlin
-JavaPdpHttpClient(
+JavaOutgoingHttpClient(
     HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build(),
     requestTimeout = Duration.ofSeconds(3),
 )
 ```
 
 > [!IMPORTANT]
-> A `PdpHttpClient` must not follow redirects, since the calls carry tokens, and must throw an
+> An `OutgoingHttpClient` must not follow redirects, since the calls carry tokens, and must throw an
 > `IOException` when a call fails. OkHttp and Ktor client follow redirects by default, so turn
 > that off if you build on one of them.
 
