@@ -13,9 +13,9 @@ import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.exception.ValidationException
-import no.kartverket.altinnpdp.restserver.models.ErrorCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
+import no.kartverket.altinnpdp.restserver.models.ProblemType
 
 internal fun StatusPagesConfig.errorResponses() {
     exception<JsonConvertException> { call, cause -> call.respondMalformedBody(cause) }
@@ -23,7 +23,7 @@ internal fun StatusPagesConfig.errorResponses() {
     exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
     exception<ValidationException> { call, cause -> call.respondValidationFailed(cause) }
     exception<InvalidCacheControlException> { call, _ ->
-        call.respondProblem(HttpStatusCode.BadRequest, "Invalid max-age in Cache-Control", ErrorCode.INVALID_CACHE_CONTROL)
+        call.respondProblem(ProblemType.INVALID_CACHE_CONTROL, HttpStatusCode.BadRequest, "Invalid max-age in Cache-Control")
     }
     exception<AltinnPdpException> { call, cause ->
         call.application.log.error("Call to Maskinporten or Altinn failed: statusCode=${cause.statusCode}", cause)
@@ -31,46 +31,45 @@ internal fun StatusPagesConfig.errorResponses() {
     }
     exception<Throwable> { call, cause ->
         call.application.log.error("Unhandled exception", cause)
-        call.respondProblem(HttpStatusCode.InternalServerError, "Internal server error", ErrorCode.INTERNAL_ERROR)
+        call.respondProblem(ProblemType.INTERNAL_ERROR, HttpStatusCode.InternalServerError)
     }
     status(HttpStatusCode.NotFound) { call, status ->
-        call.respondProblem(status, "There is no endpoint at this path", ErrorCode.NOT_FOUND)
+        call.respondProblem(ProblemType.NOT_FOUND, status, "There is no endpoint at this path")
     }
     status(HttpStatusCode.MethodNotAllowed) { call, status ->
-        call.respondProblem(status, "The endpoint at this path does not accept this method", ErrorCode.METHOD_NOT_ALLOWED)
+        call.respondProblem(ProblemType.METHOD_NOT_ALLOWED, status, "The endpoint at this path does not accept this method")
     }
 }
 
 private suspend fun ApplicationCall.respondValidationFailed(cause: ValidationException) {
     respondProblem(
+        ProblemType.VALIDATION_ERROR,
         HttpStatusCode.BadRequest,
-        "Validation failed",
-        ErrorCode.VALIDATION_ERROR,
-        cause.errors.map { FieldError(it.field, it.code, it.message) },
+        errors = cause.errors.map { FieldError(it.field, it.code, it.message) },
     )
 }
 
 private suspend fun ApplicationCall.respondMalformedBody(cause: Throwable) {
     val causes = generateSequence(cause) { it.cause }.joinToString(" caused by ") { it.javaClass.name }
     application.log.warn("Malformed request body: $causes")
-    respondProblem(HttpStatusCode.BadRequest, "Malformed request body", ErrorCode.MALFORMED_REQUEST)
+    respondProblem(ProblemType.MALFORMED_REQUEST, HttpStatusCode.BadRequest, "Malformed request body")
 }
 
 private suspend fun ApplicationCall.respondUpstream(cause: AltinnPdpException) {
     if (cause is PdpException && cause.statusCode == 400) {
-        respondProblem(HttpStatusCode.BadRequest, "Altinn rejected the request", ErrorCode.UPSTREAM_REJECTED)
+        respondProblem(ProblemType.UPSTREAM_REJECTED, HttpStatusCode.BadRequest, "Altinn rejected the request")
     } else {
-        respondProblem(HttpStatusCode.BadGateway, "The call to Altinn failed", ErrorCode.UPSTREAM_ERROR)
+        respondProblem(ProblemType.UPSTREAM_ERROR, HttpStatusCode.BadGateway, "The call to Altinn failed")
     }
 }
 
 private suspend fun ApplicationCall.respondProblem(
+    type: ProblemType,
     status: HttpStatusCode,
-    detail: String,
-    code: ErrorCode,
+    detail: String? = null,
     errors: List<FieldError>? = null,
 ) = respondText(
-    Json.encodeToString(ErrorResponse.serializer(), ErrorResponse.of(status, detail, code, errors)),
+    Json.encodeToString(ErrorResponse.serializer(), ErrorResponse.of(type, status, detail, errors)),
     ContentType.Application.ProblemJson,
     status,
 )

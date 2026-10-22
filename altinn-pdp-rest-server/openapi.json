@@ -111,7 +111,7 @@
                         }
                     },
                     "400": {
-                        "description": "The request was not accepted. `code` says why.",
+                        "description": "The request was not accepted. `type` says why.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -129,11 +129,9 @@
                                 "examples": {
                                     "MissingFields": {
                                         "value": {
-                                            "type": "about:blank",
-                                            "title": "Bad Request",
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
                                             "status": 400,
-                                            "detail": "Validation failed",
-                                            "code": "VALIDATION_ERROR",
                                             "errors": [
                                                 {
                                                     "field": "systemuserId",
@@ -155,11 +153,9 @@
                                     },
                                     "BothSystemuserIdAndPid": {
                                         "value": {
-                                            "type": "about:blank",
-                                            "title": "Bad Request",
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
                                             "status": 400,
-                                            "detail": "Validation failed",
-                                            "code": "VALIDATION_ERROR",
                                             "errors": [
                                                 {
                                                     "field": "systemuserId",
@@ -176,11 +172,9 @@
                                     },
                                     "InvalidCustomerOrganizationNumber": {
                                         "value": {
-                                            "type": "about:blank",
-                                            "title": "Bad Request",
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
                                             "status": 400,
-                                            "detail": "Validation failed",
-                                            "code": "VALIDATION_ERROR",
                                             "errors": [
                                                 {
                                                     "field": "customerOrganizationNumber",
@@ -192,29 +186,26 @@
                                     },
                                     "MalformedBody": {
                                         "value": {
-                                            "type": "about:blank",
-                                            "title": "Bad Request",
+                                            "type": "tag:kartverket.no,2026:malformed-request",
+                                            "title": "Malformed request",
                                             "status": 400,
-                                            "detail": "Malformed request body",
-                                            "code": "MALFORMED_REQUEST"
+                                            "detail": "Malformed request body"
                                         }
                                     },
                                     "InvalidCacheControl": {
                                         "value": {
-                                            "type": "about:blank",
-                                            "title": "Bad Request",
+                                            "type": "tag:kartverket.no,2026:invalid-cache-control",
+                                            "title": "Invalid Cache-Control header",
                                             "status": 400,
-                                            "detail": "Invalid max-age in Cache-Control",
-                                            "code": "INVALID_CACHE_CONTROL"
+                                            "detail": "Invalid max-age in Cache-Control"
                                         }
                                     },
                                     "AltinnRejected": {
                                         "value": {
-                                            "type": "about:blank",
-                                            "title": "Bad Request",
+                                            "type": "tag:kartverket.no,2026:upstream-rejected",
+                                            "title": "A service this API depends on rejected the request",
                                             "status": 400,
-                                            "detail": "Altinn rejected the request",
-                                            "code": "UPSTREAM_REJECTED"
+                                            "detail": "Altinn rejected the request"
                                         }
                                     }
                                 }
@@ -240,11 +231,10 @@
                                 "examples": {
                                     "UpstreamError": {
                                         "value": {
-                                            "type": "about:blank",
-                                            "title": "Bad Gateway",
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
                                             "status": 502,
-                                            "detail": "The call to Altinn failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "detail": "The call to Altinn failed"
                                         }
                                     }
                                 }
@@ -270,11 +260,9 @@
                                 "examples": {
                                     "InternalError": {
                                         "value": {
-                                            "type": "about:blank",
-                                            "title": "Internal Server Error",
-                                            "status": 500,
-                                            "detail": "Internal server error",
-                                            "code": "INTERNAL_ERROR"
+                                            "type": "tag:kartverket.no,2026:internal-error",
+                                            "title": "Internal error",
+                                            "status": 500
                                         }
                                     }
                                 }
@@ -388,44 +376,31 @@
                 "required": [
                     "type",
                     "title",
-                    "status",
-                    "detail",
-                    "code"
+                    "status"
                 ],
                 "properties": {
                     "type": {
                         "type": "string",
-                        "description": "Always `about:blank`. `code` says what went wrong."
+                        "description": "What went wrong, as a name that does not change, so your code can rely on it.\n\n- `tag:kartverket.no,2026:validation-error` (400): one or more fields are missing or invalid. `errors` lists all of\n  them.\n- `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a body that is not\n  valid JSON or a field with the wrong type.\n- `tag:kartverket.no,2026:invalid-cache-control` (400): `max-age` in the `Cache-Control` header is not a whole number\n  of seconds, 0 or more.\n- `tag:kartverket.no,2026:upstream-rejected` (400): the values passed this API's checks, but Altinn rejected them.\n- `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.\n- `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.\n- `tag:kartverket.no,2026:upstream-error` (502): this API could not get an answer from Altinn. Your request did not\n  cause it.\n- `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API."
                     },
                     "title": {
                         "type": "string",
-                        "description": "The HTTP status text, for example `Bad Request`."
+                        "description": "A short name for the `type`, the same every time."
                     },
                     "status": {
                         "type": "integer",
                         "description": "The HTTP status code, the same as the response's."
                     },
                     "detail": {
-                        "type": "string",
-                        "description": "What went wrong, for people to read. The wording may change, so check `code` in your code."
-                    },
-                    "code": {
-                        "type": "string",
-                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `VALIDATION_ERROR` (400): one or more fields are missing or invalid. `errors` lists all of them.\n- `MALFORMED_REQUEST` (400): the request could not be read, for example a body that is not valid JSON or a field\n  with the wrong type.\n- `INVALID_CACHE_CONTROL` (400): `max-age` in the `Cache-Control` header is not a whole number of seconds, 0 or more.\n- `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.\n- `NOT_FOUND` (404): there is no endpoint at this path.\n- `METHOD_NOT_ALLOWED` (405): the endpoint at this path does not accept this HTTP method.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause\n  it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
-                        "enum": [
-                            "VALIDATION_ERROR",
-                            "MALFORMED_REQUEST",
-                            "INVALID_CACHE_CONTROL",
-                            "UPSTREAM_REJECTED",
-                            "NOT_FOUND",
-                            "METHOD_NOT_ALLOWED",
-                            "UPSTREAM_ERROR",
-                            "INTERNAL_ERROR"
-                        ]
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "What went wrong this time, for people to read. Left out when `title` says it all. The wording may change, so check `type` in your code."
                     },
                     "errors": {
                         "type": "array",
-                        "description": "Only with `VALIDATION_ERROR`: every field that failed, so you can fix them all at once.",
+                        "description": "Only with `tag:kartverket.no,2026:validation-error`: every field that failed, so you can fix them all at once.",
                         "items": {
                             "$ref": "#/components/schemas/FieldError"
                         }

@@ -27,8 +27,9 @@ person has access to a resource. See [README.md](README.md) for the background, 
 - The OpenAPI spec is generated from the routes, the `@JsonSchema` annotations on the models, and `OpenApi.kt`. A
   test fails if the checked-in `openapi.json` is out of date.
 - Errors follow Problem Details (RFC 9457), as `application/problem+json`. Build them with `ErrorResponse.of(...)`:
-  `type` is `about:blank`, `title` and `status` come from the HTTP status, and `code` says what went wrong.
-- The error `code` values and the response fields are a contract with callers. Change them only on purpose.
+  `type` is a `tag:kartverket.no,2026:` name for each kind of error, from `ProblemType`, and `title` comes from the
+  type. Leave out `detail` when the title says it all.
+- The `type` names and the response fields are a contract with callers. Change them only on purpose.
 - Never log request bodies, national identity numbers or tokens.
 
 ## Decisions (ADRs)

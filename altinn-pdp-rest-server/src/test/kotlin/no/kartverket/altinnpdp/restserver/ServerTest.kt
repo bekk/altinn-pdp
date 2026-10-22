@@ -20,9 +20,9 @@ import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.client.validation.ValidationCode
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
-import no.kartverket.altinnpdp.restserver.models.ErrorCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
+import no.kartverket.altinnpdp.restserver.models.ProblemType
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import kotlin.test.Test
@@ -96,7 +96,7 @@ class ServerTest {
             val response = postAuthorize(cacheControl = "max-age=-1")
 
             assertEquals(HttpStatusCode.BadRequest, response.status)
-            assertEquals(ErrorCode.INVALID_CACHE_CONTROL, response.errorResponse().code)
+            assertEquals(ProblemType.INVALID_CACHE_CONTROL.uri, response.errorResponse().type)
             assertEquals(emptyList(), sent)
         }
     }
@@ -241,26 +241,26 @@ class ServerTest {
     }
 
     @Test
-    fun `a path with no endpoint gives 404 with NOT_FOUND`() = testServer {
+    fun `a path with no endpoint gives 404, of type not-found`() = testServer {
         val response = client.get("/authorise")
 
         assertEquals(HttpStatusCode.NotFound, response.status)
         assertEquals(
-            ErrorResponse.of(HttpStatusCode.NotFound, "There is no endpoint at this path", ErrorCode.NOT_FOUND),
+            ErrorResponse.of(ProblemType.NOT_FOUND, HttpStatusCode.NotFound, "There is no endpoint at this path"),
             response.errorResponse(),
         )
     }
 
     @Test
-    fun `a method the endpoint does not accept gives 405 with METHOD_NOT_ALLOWED`() = testServer {
+    fun `a method the endpoint does not accept gives 405, of type method-not-allowed`() = testServer {
         val response = client.get("/authorize")
 
         assertEquals(HttpStatusCode.MethodNotAllowed, response.status)
         assertEquals(
             ErrorResponse.of(
+                ProblemType.METHOD_NOT_ALLOWED,
                 HttpStatusCode.MethodNotAllowed,
                 "The endpoint at this path does not accept this method",
-                ErrorCode.METHOD_NOT_ALLOWED,
             ),
             response.errorResponse(),
         )
@@ -288,7 +288,7 @@ class ServerTest {
         assertEquals(HttpStatusCode.BadRequest, response.status)
         val text = response.bodyAsText()
         assertEquals(
-            ErrorResponse.of(HttpStatusCode.BadRequest, "Malformed request body", ErrorCode.MALFORMED_REQUEST),
+            ErrorResponse.of(ProblemType.MALFORMED_REQUEST, HttpStatusCode.BadRequest, "Malformed request body"),
             Json.decodeFromString(ErrorResponse.serializer(), text),
         )
         assertFalse(text.contains("coerceInputValues"), "leaks kotlinx advice: $text")
@@ -322,8 +322,8 @@ class ServerTest {
     @Test
     fun `the upstream status decides whether the caller or Altinn is to blame`() {
         val cases = listOf(
-            UpstreamCase(400, HttpStatusCode.BadRequest, ErrorCode.UPSTREAM_REJECTED, "only Altinn's own 400 is the caller's fault"),
-            UpstreamCase(500, HttpStatusCode.BadGateway, ErrorCode.UPSTREAM_ERROR, "anything else is not the caller's fault"),
+            UpstreamCase(400, HttpStatusCode.BadRequest, ProblemType.UPSTREAM_REJECTED, "only Altinn's own 400 is the caller's fault"),
+            UpstreamCase(500, HttpStatusCode.BadGateway, ProblemType.UPSTREAM_ERROR, "anything else is not the caller's fault"),
         )
 
         for (case in cases) {
@@ -331,7 +331,7 @@ class ServerTest {
                 val response = postAuthorize()
 
                 assertEquals(case.expected, response.status, case.describe())
-                assertEquals(case.expectedCode, response.errorResponse().code, case.describe())
+                assertEquals(case.expectedType.uri, response.errorResponse().type, case.describe())
             }
         }
     }
@@ -346,7 +346,7 @@ class ServerTest {
                 val response = postAuthorize()
 
                 assertEquals(HttpStatusCode.BadGateway, response.status, "for $where")
-                assertEquals(ErrorCode.UPSTREAM_ERROR, response.errorResponse().code, "for $where")
+                assertEquals(ProblemType.UPSTREAM_ERROR.uri, response.errorResponse().type, "for $where")
             }
         }
     }
@@ -358,8 +358,8 @@ class ServerTest {
 
             assertEquals(HttpStatusCode.InternalServerError, response.status)
             assertEquals(
-                ErrorResponse.of(HttpStatusCode.InternalServerError, "Internal server error", ErrorCode.INTERNAL_ERROR),
-                response.errorResponse(),
+                """{"type":"tag:kartverket.no,2026:internal-error","title":"Internal error","status":500}""",
+                response.bodyAsText(),
             )
         }
 
@@ -377,7 +377,7 @@ class ServerTest {
     private data class UpstreamCase(
         val upstream: Int,
         val expected: HttpStatusCode,
-        val expectedCode: ErrorCode,
+        val expectedType: ProblemType,
         val why: String,
     ) {
         fun describe() = "upstream $upstream: $why"
@@ -390,7 +390,7 @@ class ServerTest {
 
                 assertEquals(HttpStatusCode.BadRequest, response.status, "for ${case.why}")
                 assertEquals(
-                    ErrorResponse.of(HttpStatusCode.BadRequest, "Validation failed", ErrorCode.VALIDATION_ERROR, case.errors),
+                    ErrorResponse.of(ProblemType.VALIDATION_ERROR, HttpStatusCode.BadRequest, errors = case.errors),
                     response.errorResponse(),
                     "for ${case.why}",
                 )

@@ -25,9 +25,9 @@ import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.validation.ValidationCode
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
-import no.kartverket.altinnpdp.restserver.models.ErrorCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
+import no.kartverket.altinnpdp.restserver.models.ProblemType
 
 private val openApiJson = Json { prettyPrint = true }
 
@@ -178,17 +178,16 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
         }
 
         HttpStatusCode.BadRequest {
-            description = "The request was not accepted. `code` says why."
+            description = "The request was not accepted. `type` says why."
             headers { requestId() }
             ContentType.Application.ProblemJson {
                 schema = jsonSchema<ErrorResponse>()
                 example(
                     "MissingFields",
                     ErrorResponse.of(
+                        ProblemType.VALIDATION_ERROR,
                         HttpStatusCode.BadRequest,
-                        "Validation failed",
-                        ErrorCode.VALIDATION_ERROR,
-                        listOf(
+                        errors = listOf(
                             FieldError("systemuserId", ValidationCode.MISSING, "systemuserId or pid is required"),
                             FieldError("pid", ValidationCode.MISSING, "systemuserId or pid is required"),
                             FieldError("resourceId", ValidationCode.MISSING, "resourceId is required"),
@@ -198,10 +197,9 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                 example(
                     "BothSystemuserIdAndPid",
                     ErrorResponse.of(
+                        ProblemType.VALIDATION_ERROR,
                         HttpStatusCode.BadRequest,
-                        "Validation failed",
-                        ErrorCode.VALIDATION_ERROR,
-                        listOf(
+                        errors = listOf(
                             FieldError("systemuserId", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
                             FieldError("pid", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
                         ),
@@ -210,10 +208,9 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                 example(
                     "InvalidCustomerOrganizationNumber",
                     ErrorResponse.of(
+                        ProblemType.VALIDATION_ERROR,
                         HttpStatusCode.BadRequest,
-                        "Validation failed",
-                        ErrorCode.VALIDATION_ERROR,
-                        listOf(
+                        errors = listOf(
                             FieldError(
                                 field = "customerOrganizationNumber",
                                 code = ValidationCode.INVALID_FORMAT,
@@ -222,12 +219,12 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                         ),
                     ),
                 )
-                example("MalformedBody", ErrorResponse.of(HttpStatusCode.BadRequest, "Malformed request body", ErrorCode.MALFORMED_REQUEST))
+                example("MalformedBody", ErrorResponse.of(ProblemType.MALFORMED_REQUEST, HttpStatusCode.BadRequest, "Malformed request body"))
                 example(
                     "InvalidCacheControl",
-                    ErrorResponse.of(HttpStatusCode.BadRequest, "Invalid max-age in Cache-Control", ErrorCode.INVALID_CACHE_CONTROL),
+                    ErrorResponse.of(ProblemType.INVALID_CACHE_CONTROL, HttpStatusCode.BadRequest, "Invalid max-age in Cache-Control"),
                 )
-                example("AltinnRejected", ErrorResponse.of(HttpStatusCode.BadRequest, "Altinn rejected the request", ErrorCode.UPSTREAM_REJECTED))
+                example("AltinnRejected", ErrorResponse.of(ProblemType.UPSTREAM_REJECTED, HttpStatusCode.BadRequest, "Altinn rejected the request"))
             }
         }
 
@@ -237,7 +234,7 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
             headers { requestId() }
             ContentType.Application.ProblemJson {
                 schema = jsonSchema<ErrorResponse>()
-                example("UpstreamError", ErrorResponse.of(HttpStatusCode.BadGateway, "The call to Altinn failed", ErrorCode.UPSTREAM_ERROR))
+                example("UpstreamError", ErrorResponse.of(ProblemType.UPSTREAM_ERROR, HttpStatusCode.BadGateway, "The call to Altinn failed"))
             }
         }
 
@@ -246,7 +243,7 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
             headers { requestId() }
             ContentType.Application.ProblemJson {
                 schema = jsonSchema<ErrorResponse>()
-                example("InternalError", ErrorResponse.of(HttpStatusCode.InternalServerError, "Internal server error", ErrorCode.INTERNAL_ERROR))
+                example("InternalError", ErrorResponse.of(ProblemType.INTERNAL_ERROR, HttpStatusCode.InternalServerError))
             }
         }
     }
