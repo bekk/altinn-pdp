@@ -23,14 +23,14 @@
 - [🧩 Modules](#-modules)
 - [📦 Prerequisites](#-prerequisites)
 - [🚀 Getting started](#-getting-started)
+- [🔌 API](#-api)
+- [📚 Using the client](#-using-the-client)
   - [Building the client](#building-the-client)
   - [Asking the PDP](#asking-the-pdp)
   - [HTTP client](#http-client)
-  - [Running the server](#running-the-server)
-- [🔌 API](#-api)
+  - [Environments](#environments)
 - [🔑 Environment variables](#-environment-variables)
 - [📝 Logging](#-logging)
-- [🌍 Environments](#-environments)
 - [🧪 Testing](#-testing)
 - [🔗 Useful links](#-useful-links)
 
@@ -78,10 +78,42 @@ this project is for.
 ## 🚀 Getting started
 
 ```bash
-./gradlew build
+./gradlew build                      # compile, ktlint and tests
+cp .env.example .env                 # then fill in the four required variables
+scripts/dev.sh                       # run the server on http://localhost:8080
+curl -i localhost:8080/health/live
 ```
 
-Builds and tests every module. This is also what CI runs.
+There is no mock of Altinn, so `.env` needs a real Maskinporten client and subscription key, see
+[Prerequisites](#-prerequisites). With them, ask the PDP about a system user in TT02:
+
+```bash
+curl -i localhost:8080/authorize -H 'Content-Type: application/json' \
+  -d '{"systemuserId":"<system user uuid>","resourceId":"<resource id>","customerOrganizationNumber":"<org number>","action":"read"}'
+```
+
+`dev.sh` is what turns `.env` into real environment variables. The server itself only reads the
+environment, so starting it any other way, like an IDE run configuration or
+`./gradlew :altinn-pdp-rest-server:run`, means setting them yourself.
+
+---
+
+## 🔌 API
+
+| Endpoint           | What it is                                                      |
+| :----------------- | :-------------------------------------------------------------- |
+| `POST /authorize`  | Asks whether a system user or a person has access to a resource |
+| `GET /openapi`     | The OpenAPI spec as JSON                                        |
+| `GET /health/live` | Liveness probe for the platform, left out of the spec           |
+
+The OpenAPI spec documents every field, decision and error code, and how to act on the answer. The
+server serves it at `GET /openapi`, and the same spec is checked in as
+[`openapi.json`](altinn-pdp-rest-server/openapi.json). It names no `servers`, so a client uses the
+host it fetched the spec from.
+
+---
+
+## 📚 Using the client
 
 ### Building the client
 
@@ -91,12 +123,15 @@ val client = PdpClient(
     subscriptionKey = "<subscription key>",
     maskinportenClientId = "<client id>",
     maskinportenKey = MaskinportenKey.parse(jwkJson),
-    httpClient = JavaPdpHttpClient(HttpClient.newHttpClient(), requestTimeout = Duration.ofSeconds(3)),
+    httpClient = JavaOutgoingHttpClient(HttpClient.newHttpClient(), requestTimeout = Duration.ofSeconds(3)),
 )
 ```
 
 Build one client and reuse it. Both the Maskinporten token and the Altinn token are cached and
 fetched again shortly before they expire, and it is safe to call from several coroutines at once.
+
+To call other URLs than an environment's, give `platformBaseUrl` and `maskinportenTokenUrl`
+instead of `environment`.
 
 ### Asking the PDP
 
@@ -152,114 +187,27 @@ The answer is a `PdpAuthorization`:
 
 ### HTTP client
 
-`httpClient` takes a `PdpHttpClient`, and timeouts, proxy and so on are set on it. Implement it
-on the HTTP client you already use, or use `JavaPdpHttpClient`:
+`httpClient` takes an `OutgoingHttpClient`, and timeouts, proxy and so on are set on it. Implement
+it on the HTTP client you already use, or use `JavaOutgoingHttpClient`. Bodies are passed as
+bytes, and an implementation should fill in `contentType` from the response's `Content-Type`
+header:
 
 ```kotlin
-JavaPdpHttpClient(
+JavaOutgoingHttpClient(
     HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build(),
     requestTimeout = Duration.ofSeconds(3),
 )
 ```
 
 > [!IMPORTANT]
-> A `PdpHttpClient` must not follow redirects, since the calls carry tokens, and must throw an
+> An `OutgoingHttpClient` must not follow redirects, since the calls carry tokens, and must throw an
 > `IOException` when a call fails. OkHttp and Ktor client follow redirects by default, so turn
 > that off if you build on one of them.
 
 The server connects within 2 s and waits at most 3 s per call. A lookup makes at most three
 calls, so callers of `POST /authorize` should allow 10 s.
 
-### Running the server
-
-Create the ignored local secrets file from the committed template, then start Ktor:
-
-```bash
-cp .env.example .env
-./scripts/dev.sh
-```
-
-The server runs on <http://localhost:8080>, or on the port in `PORT`. `dev.sh` is what turns
-`.env` into real environment variables - the server itself only ever reads the environment, so
-starting it any other way (an IDE run configuration, `./gradlew :altinn-pdp-rest-server:run`)
-means setting them yourself.
-
----
-
-## 🔌 API
-
-The REST server's API is documented in its OpenAPI spec. It covers every field, decision and
-error code, and how to act on the answer.
-
-| Endpoint           | What it is                                                      |
-| :----------------- | :-------------------------------------------------------------- |
-| `POST /authorize`  | Asks whether a system user or a person has access to a resource |
-| `GET /openapi`     | The OpenAPI spec as JSON                                        |
-| `GET /health/live` | Liveness probe for the platform, left out of the spec           |
-
-The spec is built from the routes themselves, so it cannot describe an API the server does not
-serve. It names no `servers`, so a client uses the host it fetched the spec from. The same spec is
-checked in as [`altinn-pdp-rest-server/openapi.json`](altinn-pdp-rest-server/openapi.json).
-Regenerate it after changing the API:
-
-```bash
-./gradlew :altinn-pdp-rest-server:generateOpenApiSpec
-```
-
-The build fails if the checked-in file is stale, so there is no way to forget.
-
----
-
-## 🔑 Environment variables
-
-| Variable                                 | Required | Default |
-| :--------------------------------------- | :------- | :------ |
-| `MASKINPORTEN_CLIENT_ID`                 | yes      | -       |
-| `MASKINPORTEN_CLIENT_JWK`                | yes      | -       |
-| `ALTINN_ENVIRONMENT`                     | yes      | -       |
-| `ALTINN_SUBSCRIPTION_KEY`                | yes      | -       |
-| `ACCESS_LOG_ENABLED`                     | no       | `true`  |
-| `DECISION_CACHE_ENABLED`                 | no       | `false` |
-| `DECISION_CACHE_TIME_TO_LIVE_SECONDS`    | no       | `60`    |
-| `DECISION_CACHE_DEFAULT_MAX_AGE_SECONDS` | no       | `0`     |
-| `DECISION_CACHE_MAXIMUM_SIZE`            | no       | `10000` |
-| `LOGBACK_CONFIG_FILE`                    | no       | -       |
-| `APPLICATION_CONFIG_FILE`                | no       | -       |
-| `PORT`                                   | no       | `8080`  |
-
-See `.env.example` for what each variable is and where to get it.
-
-`altinn-pdp-rest-server/src/main/resources/application.yaml` maps each one onto a configuration
-key via Ktor's `$ENV_VAR` substitution, so a missing required variable stops the server at
-startup rather than at the first request. A JVM system property of the same name works too, which
-is occasionally handier than an environment variable in an IDE.
-
-To replace the bundled `application.yaml` altogether, point `APPLICATION_CONFIG_FILE` at your own
-`.yaml` or `.yml` file. It replaces the bundled one rather than merging with it, so it needs every
-key the bundled one has. The server refuses to start if that path is not a file.
-
-Never commit `.env`, and never print secrets in logs.
-
----
-
-## 📝 Logging
-
-The server logs to stdout through logback, set up by the bundled
-`altinn-pdp-rest-server/src/main/resources/logback.xml`. To replace it, mount your own file and
-point `LOGBACK_CONFIG_FILE` at it. The server refuses to start if that path is not a file.
-
-Access log lines use the logger `access`, so your own file can send them somewhere else, or format
-them differently, from the rest:
-
-```xml
-<logger name="access" additivity="false">
-    <appender-ref ref="ACCESS"/>
-</logger>
-```
-
----
-
-## 🌍 Environments
+### Environments
 
 `environment` decides which Altinn and Maskinporten the client talks to:
 
@@ -268,18 +216,59 @@ them differently, from the rest:
 | `TT02`      | `https://platform.tt02.altinn.no` | `https://test.maskinporten.no/token` |
 | `PROD`      | `https://platform.altinn.no`      | `https://maskinporten.no/token`      |
 
-The REST server accepts a synthetic `pid`, such as a Tenor test person, only when
-`ALTINN_ENVIRONMENT` is `TT02`. In `PROD`, only real persons pass.
+The server picks one with `ALTINN_ENVIRONMENT`. It accepts a synthetic `pid`, such as a Tenor test
+person, only in `TT02`. In `PROD`, only real persons pass.
+
+---
+
+## 🔑 Environment variables
+
+| Variable                                 | Required | Default | What it is                                                                           |
+| :--------------------------------------- | :------- | :------ | :----------------------------------------------------------------------------------- |
+| `MASKINPORTEN_CLIENT_ID`                 | yes      | -       | Our Maskinporten client                                                              |
+| `MASKINPORTEN_CLIENT_JWK`                | yes      | -       | The client's private key, as JWK on one line                                         |
+| `ALTINN_ENVIRONMENT`                     | yes      | -       | Which Altinn and Maskinporten to call: `TT02` or `PROD`                              |
+| `ALTINN_SUBSCRIPTION_KEY`                | yes      | -       | The subscription key for Altinn's API gateway                                        |
+| `PORT`                                   | no       | `8080`  | The port the server listens on                                                       |
+| `ACCESS_LOG_ENABLED`                     | no       | `true`  | Whether the server logs one line per call                                            |
+| `DECISION_CACHE_ENABLED`                 | no       | `false` | Whether the server caches decisions in memory                                        |
+| `DECISION_CACHE_TIME_TO_LIVE_SECONDS`    | no       | `60`    | How long a cached decision is kept                                                   |
+| `DECISION_CACHE_DEFAULT_MAX_AGE_SECONDS` | no       | `0`     | How old a cached decision may be for a caller that sends no `Cache-Control: max-age` |
+| `DECISION_CACHE_MAXIMUM_SIZE`            | no       | `10000` | How many decisions the cache holds                                                   |
+| `LOGBACK_CONFIG_FILE`                    | no       | -       | A `logback.xml` that replaces the bundled one                                        |
+| `APPLICATION_CONFIG_FILE`                | no       | -       | An `application.yaml` that replaces the bundled one                                  |
+
+See [`.env.example`](.env.example) for more about each variable and where to get it.
+
+`altinn-pdp-rest-server/src/main/resources/application.yaml` maps each one onto a configuration
+key, so a missing required variable stops the server at startup rather than at the first request.
+A file in `APPLICATION_CONFIG_FILE` replaces the bundled one rather than merging with it, so it
+needs every key the bundled one has.
+
+---
+
+## 📝 Logging
+
+The server logs to stdout through logback, set up by the bundled
+`altinn-pdp-rest-server/src/main/resources/logback.xml`. To replace it, point `LOGBACK_CONFIG_FILE`
+at your own file. The server refuses to start if that path is not a file.
 
 ---
 
 ## 🧪 Testing
 
 ```bash
-./gradlew test
+./gradlew build                 # compile, ktlint and tests
+./gradlew test                  # only the tests
 ```
 
-`./gradlew build` runs the tests as part of the build, and CI runs it on every pull request.
+CI runs `./gradlew build` on every pull request.
+
+The build fails if the checked-in `openapi.json` is stale. Regenerate it after changing the API:
+
+```bash
+./gradlew :altinn-pdp-rest-server:generateOpenApiSpec
+```
 
 ---
 

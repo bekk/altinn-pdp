@@ -4,7 +4,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import no.kartverket.altinnpdp.client.exception.PdpException
-import no.kartverket.altinnpdp.client.http.JavaPdpHttpClient
+import no.kartverket.altinnpdp.client.http.JavaOutgoingHttpClient
 import no.kartverket.altinnpdp.client.support.TestHttpServer
 import no.kartverket.altinnpdp.client.support.TestResponse
 import no.kartverket.altinnpdp.client.support.authorizeSample
@@ -40,7 +40,7 @@ class PdpClientTimeoutTest {
         server.on(authorizePath, slowly(400, TestResponse(body = pdpDecisionResponse())))
         val client = testPdpClient(
             server.baseUrl,
-            httpClient = JavaPdpHttpClient(HttpClient.newHttpClient(), Duration.ofMillis(100)),
+            httpClient = JavaOutgoingHttpClient(HttpClient.newHttpClient(), Duration.ofMillis(100)),
         )
 
         val e = assertFailsWith<PdpException> { client.authorizeSample() }

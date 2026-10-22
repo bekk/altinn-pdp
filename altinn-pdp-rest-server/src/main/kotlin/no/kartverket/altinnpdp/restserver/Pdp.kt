@@ -4,7 +4,7 @@ import io.ktor.server.config.ApplicationConfig
 import no.bekk.bekkopen.person.FodselsnummerValidator
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
-import no.kartverket.altinnpdp.client.http.JavaPdpHttpClient
+import no.kartverket.altinnpdp.client.http.JavaOutgoingHttpClient
 import java.net.http.HttpClient
 import java.time.Duration
 
@@ -13,7 +13,7 @@ internal fun pdpClient(config: AppConfig): PdpClient = PdpClient(
     subscriptionKey = config.altinnSubscriptionKey,
     maskinportenClientId = config.maskinportenClientId,
     maskinportenKey = config.maskinportenKey,
-    httpClient = JavaPdpHttpClient(
+    httpClient = JavaOutgoingHttpClient(
         HttpClient.newBuilder()
             .connectTimeout(CONNECT_TIMEOUT)
             .followRedirects(HttpClient.Redirect.NEVER)

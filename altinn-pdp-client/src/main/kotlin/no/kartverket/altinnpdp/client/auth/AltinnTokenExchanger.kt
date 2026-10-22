@@ -1,11 +1,11 @@
 package no.kartverket.altinnpdp.client.auth
 
 import com.nimbusds.jwt.JWTParser
-import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.http.Http
-import no.kartverket.altinnpdp.client.http.PdpHttpClient
-import no.kartverket.altinnpdp.client.http.PdpHttpRequest
+import no.kartverket.altinnpdp.client.http.HttpMethod
+import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
+import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import java.net.URI
 import java.text.ParseException
 import java.time.Instant
@@ -13,25 +13,21 @@ import java.time.Instant
 /**  Altinn's APIs do not accept Maskinporten tokens, so one has to be traded for an Altinn token. */
 internal class AltinnTokenExchanger(
     platformBaseUrl: String,
-    private val httpClient: PdpHttpClient,
+    private val httpClient: OutgoingHttpClient,
 ) {
-    constructor(
-        environment: AltinnEnvironment,
-        httpClient: PdpHttpClient,
-    ) : this(environment.platformBaseUrl, httpClient)
-
     private val exchangeUrl: URI = Http.url(platformBaseUrl, EXCHANGE_PATH)
 
     suspend fun exchange(maskinportenToken: MaskinportenToken): AltinnToken {
-        val request = PdpHttpRequest("GET", exchangeUrl, mapOf("Authorization" to "Bearer ${maskinportenToken.value}"))
+        val request = OutgoingRequest(HttpMethod.GET, exchangeUrl, mapOf("Authorization" to "Bearer ${maskinportenToken.value}"))
 
         val response = Http.sendExpectingOk(httpClient, request, "Altinn token exchange", ::AltinnException)
-        val token = response.body.trim()
+        val body = response.body.decodeToString()
+        val token = body.trim()
         if (token.isEmpty()) {
             throw AltinnException(
                 "Altinn returned an empty token",
                 statusCode = response.statusCode,
-                responseBody = response.body,
+                responseBody = body,
             )
         }
         return AltinnToken(token, expiresAt(token))

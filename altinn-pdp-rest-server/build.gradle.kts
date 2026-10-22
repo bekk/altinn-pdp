@@ -29,6 +29,10 @@ tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
 }
 
+tasks.test {
+    inputs.file("openapi.json")
+}
+
 tasks.register<Test>("generateOpenApiSpec") {
     group = "build"
     description = "Writes openapi.json from the spec the running server serves."

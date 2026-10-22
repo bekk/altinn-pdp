@@ -9,21 +9,21 @@ internal object Http {
 
     val json = Json { ignoreUnknownKeys = true }
 
-    fun url(baseUrl: String, path: String): URI = URI.create(baseUrl + path)
+    fun url(baseUrl: String, path: String): URI = URI.create(baseUrl.trimEnd('/') + path)
 
     suspend fun sendExpectingOk(
-        httpClient: PdpHttpClient,
-        request: PdpHttpRequest,
+        httpClient: OutgoingHttpClient,
+        request: OutgoingRequest,
         target: String,
         exception: (message: String, statusCode: Int?, responseBody: String?, cause: Throwable?) -> AltinnPdpException,
-    ): PdpHttpResponse {
+    ): OutgoingResponse {
         val response = try {
             httpClient.send(request)
         } catch (e: IOException) {
             throw exception("Call to $target failed: ${e.message}", null, null, e)
         }
         if (response.statusCode != 200) {
-            throw exception("$target responded ${response.statusCode}", response.statusCode, response.body, null)
+            throw exception("$target responded ${response.statusCode}", response.statusCode, response.body.decodeToString(), null)
         }
         return response
     }

@@ -1,7 +1,6 @@
 package no.kartverket.altinnpdp.client.auth
 
-import no.kartverket.altinnpdp.client.AltinnEnvironment
-import no.kartverket.altinnpdp.client.http.PdpHttpClient
+import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import java.time.Clock
 import java.time.Duration
 
@@ -14,13 +13,13 @@ internal class MaskinportenAltinnTokenProvider(
 
     constructor(
         maskinportenConfig: MaskinportenConfig,
-        environment: AltinnEnvironment,
-        httpClient: PdpHttpClient,
+        platformBaseUrl: String,
+        httpClient: OutgoingHttpClient,
         clock: Clock = Clock.systemUTC(),
         refreshLeeway: Duration = TokenCache.DEFAULT_REFRESH_LEEWAY,
     ) : this(
         MaskinportenClient(maskinportenConfig, httpClient, clock, refreshLeeway),
-        AltinnTokenExchanger(environment, httpClient),
+        AltinnTokenExchanger(platformBaseUrl, httpClient),
         clock,
         refreshLeeway,
     )

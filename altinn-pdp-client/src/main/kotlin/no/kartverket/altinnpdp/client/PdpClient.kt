@@ -7,9 +7,10 @@ import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
 import no.kartverket.altinnpdp.client.auth.MaskinportenKey
 import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.http.Http
-import no.kartverket.altinnpdp.client.http.PdpHttpClient
-import no.kartverket.altinnpdp.client.http.PdpHttpRequest
-import no.kartverket.altinnpdp.client.http.PdpHttpResponse
+import no.kartverket.altinnpdp.client.http.HttpMethod
+import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
+import no.kartverket.altinnpdp.client.http.OutgoingRequest
+import no.kartverket.altinnpdp.client.http.OutgoingResponse
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
 import java.net.URI
@@ -18,19 +19,35 @@ public class PdpClient internal constructor(
     platformBaseUrl: String,
     private val tokenProvider: AccessTokenProvider,
     private val subscriptionKey: String,
-    private val httpClient: PdpHttpClient,
+    private val httpClient: OutgoingHttpClient,
 ) {
     public constructor(
         environment: AltinnEnvironment,
         subscriptionKey: String,
         maskinportenClientId: String,
         maskinportenKey: MaskinportenKey,
-        httpClient: PdpHttpClient,
+        httpClient: OutgoingHttpClient,
     ) : this(
         platformBaseUrl = environment.platformBaseUrl,
+        maskinportenTokenUrl = environment.maskinportenTokenUrl,
+        subscriptionKey = subscriptionKey,
+        maskinportenClientId = maskinportenClientId,
+        maskinportenKey = maskinportenKey,
+        httpClient = httpClient,
+    )
+
+    public constructor(
+        platformBaseUrl: URI,
+        maskinportenTokenUrl: URI,
+        subscriptionKey: String,
+        maskinportenClientId: String,
+        maskinportenKey: MaskinportenKey,
+        httpClient: OutgoingHttpClient,
+    ) : this(
+        platformBaseUrl = platformBaseUrl.toString(),
         tokenProvider = MaskinportenAltinnTokenProvider(
-            MaskinportenConfig(environment.maskinportenTokenUrl, maskinportenClientId, maskinportenKey),
-            environment,
+            MaskinportenConfig(maskinportenTokenUrl.toString(), maskinportenClientId, maskinportenKey),
+            platformBaseUrl.toString(),
             httpClient,
         ),
         subscriptionKey = subscriptionKey,
@@ -49,9 +66,9 @@ public class PdpClient internal constructor(
         val body = Http.json.encodeToString(
             XacmlAuthorizationRequest.serializer(),
             XacmlAuthorizationRequest.of(subject, resourceId, customerOrganizationNumber, action),
-        )
-        val request = PdpHttpRequest(
-            method = "POST",
+        ).encodeToByteArray()
+        val request = OutgoingRequest(
+            method = HttpMethod.POST,
             url = authorizeUrl,
             headers = mapOf(
                 "Authorization" to "Bearer ${token.value}",
@@ -66,12 +83,14 @@ public class PdpClient internal constructor(
         return authorizationOf(response)
     }
 
-    private fun authorizationOf(response: PdpHttpResponse): PdpAuthorization {
+    private fun authorizationOf(response: OutgoingResponse): PdpAuthorization {
+        val body = response.body.decodeToString()
+
         fun unusable(message: String, cause: Throwable? = null) =
-            PdpException(message, response.statusCode, response.body, cause)
+            PdpException(message, response.statusCode, body, cause)
 
         val parsed = try {
-            Http.json.decodeFromString(XacmlAuthorizationResponse.serializer(), response.body)
+            Http.json.decodeFromString(XacmlAuthorizationResponse.serializer(), body)
         } catch (e: SerializationException) {
             throw unusable("Failed to parse the PDP response: ${e.message}", e)
         }

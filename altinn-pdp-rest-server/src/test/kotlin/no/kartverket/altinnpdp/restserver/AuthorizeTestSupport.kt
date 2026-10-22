@@ -15,9 +15,9 @@ import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.auth.MaskinportenKey
-import no.kartverket.altinnpdp.client.http.PdpHttpClient
-import no.kartverket.altinnpdp.client.http.PdpHttpRequest
-import no.kartverket.altinnpdp.client.http.PdpHttpResponse
+import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
+import no.kartverket.altinnpdp.client.http.OutgoingRequest
+import no.kartverket.altinnpdp.client.http.OutgoingResponse
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import java.time.Instant
@@ -35,7 +35,7 @@ private val testKey: MaskinportenKey = MaskinportenKey.parse(testJwk)
 
 internal fun testPdpClient(
     altinnEnvironment: AltinnEnvironment = AltinnEnvironment.TT02,
-    httpClient: PdpHttpClient = PdpHttpClient { error("unexpected call to ${it.url}") },
+    httpClient: OutgoingHttpClient = OutgoingHttpClient { error("unexpected call to ${it.url}") },
 ): PdpClient = PdpClient(
     environment = altinnEnvironment,
     subscriptionKey = "test-subscription-key",
@@ -83,17 +83,17 @@ internal fun authorizeTest(
     maskinportenStatus: Int = 200,
     exchangeStatus: Int = 200,
     failure: Exception? = null,
-    sent: MutableList<PdpHttpRequest> = mutableListOf(),
+    sent: MutableList<OutgoingRequest> = mutableListOf(),
     decisionCache: PdpDecisionCache = NoPdpDecisionCache,
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = testApplication {
-    val altinn = PdpHttpClient { request ->
+    val altinn = OutgoingHttpClient { request ->
         sent += request
         if (failure != null) throw failure
         when (request.url.path) {
-            "/token" -> PdpHttpResponse(maskinportenStatus, """{"access_token":"mp-token","expires_in":3600}""")
-            "/authentication/api/v1/exchange/maskinporten" -> PdpHttpResponse(exchangeStatus, altinnToken())
-            "/authorization/api/v1/authorize" -> PdpHttpResponse(statusCode, pdpBody(decision, obligations))
+            "/token" -> response(maskinportenStatus, "application/json", """{"access_token":"mp-token","expires_in":3600}""")
+            "/authentication/api/v1/exchange/maskinporten" -> response(exchangeStatus, "text/plain", altinnToken())
+            "/authorization/api/v1/authorize" -> response(statusCode, "application/json", pdpBody(decision, obligations))
             else -> error("unexpected call to ${request.url}")
         }
     }
@@ -103,6 +103,9 @@ internal fun authorizeTest(
     }
     block()
 }
+
+private fun response(statusCode: Int, contentType: String, body: String) =
+    OutgoingResponse(statusCode, contentType, body.encodeToByteArray())
 
 private fun altinnToken(): String {
     val encoder = Base64.getUrlEncoder().withoutPadding()
