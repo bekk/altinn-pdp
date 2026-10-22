@@ -52,11 +52,13 @@ dependencies {
     implementation(ktorLibs.server.contentNegotiation)
     implementation(ktorLibs.server.statusPages)
     implementation(ktorLibs.server.callLogging)
+    implementation(ktorLibs.server.callId)
     implementation(ktorLibs.server.di)
     implementation(ktorLibs.server.routingOpenapi)
     implementation(ktorLibs.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.logback.classic)
+    implementation(libs.logstash.logback.encoder)
     implementation(libs.nocommons)
     implementation(libs.caffeine)
 
