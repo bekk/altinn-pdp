@@ -1,7 +1,7 @@
 package no.kartverket.altinnpdp.client
 
 import kotlinx.serialization.SerializationException
-import no.kartverket.altinnpdp.client.auth.AltinnTokenProvider
+import no.kartverket.altinnpdp.client.auth.AccessTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
 import no.kartverket.altinnpdp.client.auth.MaskinportenKey
@@ -17,7 +17,7 @@ import java.net.URI
 
 public class PdpClient internal constructor(
     platformBaseUrl: String,
-    private val tokenProvider: AltinnTokenProvider,
+    private val tokenProvider: AccessTokenProvider,
     private val subscriptionKey: String,
     private val httpClient: OutgoingHttpClient,
 ) {
@@ -62,7 +62,7 @@ public class PdpClient internal constructor(
         customerOrganizationNumber: OrganizationNumber,
         action: ActionId,
     ): PdpAuthorization {
-        val token = tokenProvider.getAltinnToken()
+        val token = tokenProvider.accessToken()
         val body = Http.json.encodeToString(
             XacmlAuthorizationRequest.serializer(),
             XacmlAuthorizationRequest.of(subject, resourceId, customerOrganizationNumber, action),

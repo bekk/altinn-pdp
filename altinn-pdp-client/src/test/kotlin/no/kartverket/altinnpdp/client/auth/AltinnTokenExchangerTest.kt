@@ -5,6 +5,7 @@ import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.support.NOW
 import no.kartverket.altinnpdp.client.support.TestHttpServer
 import no.kartverket.altinnpdp.client.support.TestResponse
+import no.kartverket.altinnpdp.client.support.assertNoTokenIn
 import no.kartverket.altinnpdp.client.support.signedJwt
 import no.kartverket.altinnpdp.client.support.testHttpClient
 import kotlin.test.AfterTest
@@ -76,5 +77,24 @@ class AltinnTokenExchangerTest {
 
             assertContains(e.message!!, expectedInMessage, message = "for $why")
         }
+    }
+
+    @Test
+    fun `keeps the token out of the error when it has no usable expiry`() = runBlocking {
+        val jwt = signedJwt(expiresAt = null)
+        server.on(path) { TestResponse(body = jwt) }
+
+        val e = assertFailsWith<AltinnException> { exchanger().exchange(maskinportenToken) }
+
+        assertNoTokenIn(e, jwt)
+    }
+
+    @Test
+    fun `keeps the token out of the error when it is not a JWT`() = runBlocking {
+        server.on(path) { TestResponse(body = "secret.altinn.token") }
+
+        val e = assertFailsWith<AltinnException> { exchanger().exchange(maskinportenToken) }
+
+        assertNoTokenIn(e, "secret.altinn.token")
     }
 }

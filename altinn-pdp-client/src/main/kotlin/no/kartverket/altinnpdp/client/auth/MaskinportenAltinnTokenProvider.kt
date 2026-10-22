@@ -9,7 +9,7 @@ internal class MaskinportenAltinnTokenProvider(
     private val exchanger: AltinnTokenExchanger,
     clock: Clock = Clock.systemUTC(),
     refreshLeeway: Duration = TokenCache.DEFAULT_REFRESH_LEEWAY,
-) : AltinnTokenProvider {
+) : AccessTokenProvider {
 
     constructor(
         maskinportenConfig: MaskinportenConfig,
@@ -26,6 +26,7 @@ internal class MaskinportenAltinnTokenProvider(
 
     private val cache = TokenCache<AltinnToken>(clock, refreshLeeway)
 
-    override suspend fun getAltinnToken(): AltinnToken =
-        cache.get { exchanger.exchange(maskinportenClient.getToken()) }
+    override suspend fun accessToken(): AccessToken = AccessToken.of(
+        cache.get { exchanger.exchange(maskinportenClient.getToken()) }.value,
+    )
 }

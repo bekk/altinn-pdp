@@ -73,11 +73,8 @@ internal class MaskinportenClient(
     private fun parseTokenResponse(body: String): MaskinportenToken {
         val parsed = try {
             Http.json.decodeFromString(MaskinportenTokenResponse.serializer(), body)
-        } catch (e: SerializationException) {
-            throw MaskinportenException(
-                "Failed to parse the response from Maskinporten as JSON: ${e.message}",
-                cause = e,
-            )
+        } catch (_: SerializationException) {
+            throw MaskinportenException("Failed to parse the response from Maskinporten as JSON")
         }
         if (parsed.accessToken.isBlank()) {
             throw MaskinportenException("The response from Maskinporten had no access_token")
