@@ -33,6 +33,12 @@ internal fun StatusPagesConfig.errorResponses() {
         call.application.log.error("Unhandled exception", cause)
         call.respondProblem(HttpStatusCode.InternalServerError, "Internal server error", ErrorCode.INTERNAL_ERROR)
     }
+    status(HttpStatusCode.NotFound) { call, status ->
+        call.respondProblem(status, "There is no endpoint at this path", ErrorCode.NOT_FOUND)
+    }
+    status(HttpStatusCode.MethodNotAllowed) { call, status ->
+        call.respondProblem(status, "The endpoint at this path does not accept this method", ErrorCode.METHOD_NOT_ALLOWED)
+    }
 }
 
 private suspend fun ApplicationCall.respondValidationFailed(cause: ValidationException) {

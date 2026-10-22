@@ -411,12 +411,14 @@
                     },
                     "code": {
                         "type": "string",
-                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `VALIDATION_ERROR` (400): one or more fields are missing or invalid. `errors` lists all of them.\n- `MALFORMED_REQUEST` (400): the request could not be read, for example a body that is not valid JSON or a field\n  with the wrong type.\n- `INVALID_CACHE_CONTROL` (400): `max-age` in the `Cache-Control` header is not a whole number of seconds, 0 or more.\n- `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause\n  it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
+                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `VALIDATION_ERROR` (400): one or more fields are missing or invalid. `errors` lists all of them.\n- `MALFORMED_REQUEST` (400): the request could not be read, for example a body that is not valid JSON or a field\n  with the wrong type.\n- `INVALID_CACHE_CONTROL` (400): `max-age` in the `Cache-Control` header is not a whole number of seconds, 0 or more.\n- `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.\n- `NOT_FOUND` (404): there is no endpoint at this path.\n- `METHOD_NOT_ALLOWED` (405): the endpoint at this path does not accept this HTTP method.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause\n  it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
                         "enum": [
                             "VALIDATION_ERROR",
                             "MALFORMED_REQUEST",
                             "INVALID_CACHE_CONTROL",
                             "UPSTREAM_REJECTED",
+                            "NOT_FOUND",
+                            "METHOD_NOT_ALLOWED",
                             "UPSTREAM_ERROR",
                             "INTERNAL_ERROR"
                         ]

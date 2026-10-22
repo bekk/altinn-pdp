@@ -241,12 +241,43 @@ class ServerTest {
     }
 
     @Test
+    fun `a path with no endpoint gives 404 with NOT_FOUND`() = testServer {
+        val response = client.get("/authorise")
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+        assertEquals(
+            ErrorResponse.of(HttpStatusCode.NotFound, "There is no endpoint at this path", ErrorCode.NOT_FOUND),
+            response.errorResponse(),
+        )
+    }
+
+    @Test
+    fun `a method the endpoint does not accept gives 405 with METHOD_NOT_ALLOWED`() = testServer {
+        val response = client.get("/authorize")
+
+        assertEquals(HttpStatusCode.MethodNotAllowed, response.status)
+        assertEquals(
+            ErrorResponse.of(
+                HttpStatusCode.MethodNotAllowed,
+                "The endpoint at this path does not accept this method",
+                ErrorCode.METHOD_NOT_ALLOWED,
+            ),
+            response.errorResponse(),
+        )
+    }
+
+    @Test
     fun `every error is sent as application problem+json`() {
         authorizeTest {
             assertEquals(ContentType.Application.ProblemJson, postAuthorize(malformedBody).contentType()?.withoutParameters())
         }
         authorizeTest(statusCode = 500) {
             assertEquals(ContentType.Application.ProblemJson, postAuthorize().contentType()?.withoutParameters())
+        }
+        testServer {
+            for (response in listOf(client.get("/authorise"), client.get("/authorize"))) {
+                assertEquals(ContentType.Application.ProblemJson, response.contentType()?.withoutParameters(), "${response.status}")
+            }
         }
     }
 

@@ -29,6 +29,8 @@ data class ErrorResponse(
   with the wrong type.
 - `INVALID_CACHE_CONTROL` (400): `max-age` in the `Cache-Control` header is not a whole number of seconds, 0 or more.
 - `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.
+- `NOT_FOUND` (404): there is no endpoint at this path.
+- `METHOD_NOT_ALLOWED` (405): the endpoint at this path does not accept this HTTP method.
 - `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause
   it.
 - `INTERNAL_ERROR` (500): an unexpected error in this API.""",
