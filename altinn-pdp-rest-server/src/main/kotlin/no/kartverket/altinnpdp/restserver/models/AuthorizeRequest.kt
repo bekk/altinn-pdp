@@ -12,7 +12,7 @@ import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.client.exception.PdpValidationException
 import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 
-// Properties are nullable so that nulls or missing fields result in VALIDATION_ERROR rather than MALFORMED_BODY.
+// Properties are nullable so that nulls or missing fields result in VALIDATION_ERROR rather than MALFORMED_REQUEST.
 @Serializable
 @JsonSchema.Required("resourceId", "customerOrganizationNumber", "action")
 data class AuthorizeRequest(

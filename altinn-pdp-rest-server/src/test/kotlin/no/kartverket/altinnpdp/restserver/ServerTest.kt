@@ -241,13 +241,23 @@ class ServerTest {
     }
 
     @Test
+    fun `every error is sent as application problem+json`() {
+        authorizeTest {
+            assertEquals(ContentType.Application.ProblemJson, postAuthorize(malformedBody).contentType()?.withoutParameters())
+        }
+        authorizeTest(statusCode = 500) {
+            assertEquals(ContentType.Application.ProblemJson, postAuthorize().contentType()?.withoutParameters())
+        }
+    }
+
+    @Test
     fun `a malformed body never echoes the request or kotlinx's own advice back`() = authorizeTest {
         val response = postAuthorize(malformedBody)
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
         val text = response.bodyAsText()
         assertEquals(
-            ErrorResponse("Malformed request body", ErrorCode.MALFORMED_BODY),
+            ErrorResponse.of(HttpStatusCode.BadRequest, "Malformed request body", ErrorCode.MALFORMED_REQUEST),
             Json.decodeFromString(ErrorResponse.serializer(), text),
         )
         assertFalse(text.contains("coerceInputValues"), "leaks kotlinx advice: $text")
@@ -316,7 +326,10 @@ class ServerTest {
             val response = postAuthorize()
 
             assertEquals(HttpStatusCode.InternalServerError, response.status)
-            assertEquals(ErrorResponse("Internal server error", ErrorCode.INTERNAL_ERROR), response.errorResponse())
+            assertEquals(
+                ErrorResponse.of(HttpStatusCode.InternalServerError, "Internal server error", ErrorCode.INTERNAL_ERROR),
+                response.errorResponse(),
+            )
         }
 
     private val malformedBody = """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
@@ -346,7 +359,7 @@ class ServerTest {
 
                 assertEquals(HttpStatusCode.BadRequest, response.status, "for ${case.why}")
                 assertEquals(
-                    ErrorResponse(error = "Validation failed", code = ErrorCode.VALIDATION_ERROR, errors = case.errors),
+                    ErrorResponse.of(HttpStatusCode.BadRequest, "Validation failed", ErrorCode.VALIDATION_ERROR, case.errors),
                     response.errorResponse(),
                     "for ${case.why}",
                 )

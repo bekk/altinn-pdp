@@ -122,14 +122,17 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "MissingFields": {
                                         "value": {
-                                            "error": "Validation failed",
+                                            "type": "about:blank",
+                                            "title": "Bad Request",
+                                            "status": 400,
+                                            "detail": "Validation failed",
                                             "code": "VALIDATION_ERROR",
                                             "errors": [
                                                 {
@@ -152,7 +155,10 @@
                                     },
                                     "BothSystemuserIdAndPid": {
                                         "value": {
-                                            "error": "Validation failed",
+                                            "type": "about:blank",
+                                            "title": "Bad Request",
+                                            "status": 400,
+                                            "detail": "Validation failed",
                                             "code": "VALIDATION_ERROR",
                                             "errors": [
                                                 {
@@ -170,7 +176,10 @@
                                     },
                                     "InvalidCustomerOrganizationNumber": {
                                         "value": {
-                                            "error": "Validation failed",
+                                            "type": "about:blank",
+                                            "title": "Bad Request",
+                                            "status": 400,
+                                            "detail": "Validation failed",
                                             "code": "VALIDATION_ERROR",
                                             "errors": [
                                                 {
@@ -183,19 +192,28 @@
                                     },
                                     "MalformedBody": {
                                         "value": {
-                                            "error": "Malformed request body",
-                                            "code": "MALFORMED_BODY"
+                                            "type": "about:blank",
+                                            "title": "Bad Request",
+                                            "status": 400,
+                                            "detail": "Malformed request body",
+                                            "code": "MALFORMED_REQUEST"
                                         }
                                     },
                                     "InvalidCacheControl": {
                                         "value": {
-                                            "error": "Invalid max-age in Cache-Control",
+                                            "type": "about:blank",
+                                            "title": "Bad Request",
+                                            "status": 400,
+                                            "detail": "Invalid max-age in Cache-Control",
                                             "code": "INVALID_CACHE_CONTROL"
                                         }
                                     },
                                     "AltinnRejected": {
                                         "value": {
-                                            "error": "Altinn rejected the request",
+                                            "type": "about:blank",
+                                            "title": "Bad Request",
+                                            "status": 400,
+                                            "detail": "Altinn rejected the request",
                                             "code": "UPSTREAM_REJECTED"
                                         }
                                     }
@@ -215,14 +233,17 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "UpstreamError": {
                                         "value": {
-                                            "error": "The call to Altinn failed",
+                                            "type": "about:blank",
+                                            "title": "Bad Gateway",
+                                            "status": 502,
+                                            "detail": "The call to Altinn failed",
                                             "code": "UPSTREAM_ERROR"
                                         }
                                     }
@@ -242,14 +263,17 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "InternalError": {
                                         "value": {
-                                            "error": "Internal server error",
+                                            "type": "about:blank",
+                                            "title": "Internal Server Error",
+                                            "status": 500,
+                                            "detail": "Internal server error",
                                             "code": "INTERNAL_ERROR"
                                         }
                                     }
@@ -362,20 +386,35 @@
                 "type": "object",
                 "title": "ErrorResponse",
                 "required": [
-                    "error",
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
                     "code"
                 ],
                 "properties": {
-                    "error": {
+                    "type": {
                         "type": "string",
-                        "description": "A short summary for people to read. The wording may change, so check `code` in your code."
+                        "description": "Always `about:blank`. `code` says what went wrong."
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "The HTTP status text, for example `Bad Request`."
+                    },
+                    "status": {
+                        "type": "integer",
+                        "description": "The HTTP status code, the same as the response's."
+                    },
+                    "detail": {
+                        "type": "string",
+                        "description": "What went wrong, for people to read. The wording may change, so check `code` in your code."
                     },
                     "code": {
                         "type": "string",
-                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `VALIDATION_ERROR` (400): one or more fields are missing or invalid. `errors` lists all of them.\n- `MALFORMED_BODY` (400): the body is not valid JSON, or a field has the wrong type.\n- `INVALID_CACHE_CONTROL` (400): `max-age` in the `Cache-Control` header is not a whole number of seconds, 0 or more.\n- `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause\n  it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
+                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `VALIDATION_ERROR` (400): one or more fields are missing or invalid. `errors` lists all of them.\n- `MALFORMED_REQUEST` (400): the request could not be read, for example a body that is not valid JSON or a field\n  with the wrong type.\n- `INVALID_CACHE_CONTROL` (400): `max-age` in the `Cache-Control` header is not a whole number of seconds, 0 or more.\n- `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause\n  it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
                         "enum": [
                             "VALIDATION_ERROR",
-                            "MALFORMED_BODY",
+                            "MALFORMED_REQUEST",
                             "INVALID_CACHE_CONTROL",
                             "UPSTREAM_REJECTED",
                             "UPSTREAM_ERROR",

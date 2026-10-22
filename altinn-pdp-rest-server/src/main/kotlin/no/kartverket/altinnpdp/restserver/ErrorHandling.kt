@@ -1,5 +1,6 @@
 package no.kartverket.altinnpdp.restserver
 
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.JsonConvertException
 import io.ktor.server.application.ApplicationCall
@@ -7,7 +8,8 @@ import io.ktor.server.application.log
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.ContentTransformationException
 import io.ktor.server.plugins.statuspages.StatusPagesConfig
-import io.ktor.server.response.respond
+import io.ktor.server.response.respondText
+import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.exception.PdpValidationException
@@ -21,10 +23,7 @@ internal fun StatusPagesConfig.errorResponses() {
     exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
     exception<PdpValidationException> { call, cause -> call.respondValidationFailed(cause) }
     exception<InvalidCacheControlException> { call, _ ->
-        call.respond(
-            HttpStatusCode.BadRequest,
-            ErrorResponse("Invalid max-age in Cache-Control", ErrorCode.INVALID_CACHE_CONTROL),
-        )
+        call.respondProblem(HttpStatusCode.BadRequest, "Invalid max-age in Cache-Control", ErrorCode.INVALID_CACHE_CONTROL)
     }
     exception<AltinnPdpException> { call, cause ->
         call.application.log.error("Call to Maskinporten or Altinn failed: statusCode=${cause.statusCode}", cause)
@@ -32,34 +31,40 @@ internal fun StatusPagesConfig.errorResponses() {
     }
     exception<Throwable> { call, cause ->
         call.application.log.error("Unhandled exception", cause)
-        call.respond(
-            HttpStatusCode.InternalServerError,
-            ErrorResponse("Internal server error", ErrorCode.INTERNAL_ERROR),
-        )
+        call.respondProblem(HttpStatusCode.InternalServerError, "Internal server error", ErrorCode.INTERNAL_ERROR)
     }
 }
 
 private suspend fun ApplicationCall.respondValidationFailed(cause: PdpValidationException) {
-    respond(
+    respondProblem(
         HttpStatusCode.BadRequest,
-        ErrorResponse(
-            error = "Validation failed",
-            code = ErrorCode.VALIDATION_ERROR,
-            errors = cause.errors.map { FieldError(it.field, it.code, it.message) },
-        ),
+        "Validation failed",
+        ErrorCode.VALIDATION_ERROR,
+        cause.errors.map { FieldError(it.field, it.code, it.message) },
     )
 }
 
 private suspend fun ApplicationCall.respondMalformedBody(cause: Throwable) {
     val causes = generateSequence(cause) { it.cause }.joinToString(" caused by ") { it.javaClass.name }
     application.log.warn("Malformed request body: $causes")
-    respond(HttpStatusCode.BadRequest, ErrorResponse("Malformed request body", ErrorCode.MALFORMED_BODY))
+    respondProblem(HttpStatusCode.BadRequest, "Malformed request body", ErrorCode.MALFORMED_REQUEST)
 }
 
 private suspend fun ApplicationCall.respondUpstream(cause: AltinnPdpException) {
     if (cause is PdpException && cause.statusCode == 400) {
-        respond(HttpStatusCode.BadRequest, ErrorResponse("Altinn rejected the request", ErrorCode.UPSTREAM_REJECTED))
+        respondProblem(HttpStatusCode.BadRequest, "Altinn rejected the request", ErrorCode.UPSTREAM_REJECTED)
     } else {
-        respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Altinn failed", ErrorCode.UPSTREAM_ERROR))
+        respondProblem(HttpStatusCode.BadGateway, "The call to Altinn failed", ErrorCode.UPSTREAM_ERROR)
     }
 }
+
+private suspend fun ApplicationCall.respondProblem(
+    status: HttpStatusCode,
+    detail: String,
+    code: ErrorCode,
+    errors: List<FieldError>? = null,
+) = respondText(
+    Json.encodeToString(ErrorResponse.serializer(), ErrorResponse.of(status, detail, code, errors)),
+    ContentType.Application.ProblemJson,
+    status,
+)

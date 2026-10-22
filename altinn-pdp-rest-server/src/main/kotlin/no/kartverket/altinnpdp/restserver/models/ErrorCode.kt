@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class ErrorCode {
     VALIDATION_ERROR,
-    MALFORMED_BODY,
+    MALFORMED_REQUEST,
     INVALID_CACHE_CONTROL,
     UPSTREAM_REJECTED,
     UPSTREAM_ERROR,

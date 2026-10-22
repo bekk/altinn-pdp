@@ -115,6 +115,10 @@ server serves it at `GET /openapi`, and the same spec is checked in as
 [`openapi.json`](altinn-pdp-rest-server/openapi.json). It names no `servers`, so a client uses the
 host it fetched the spec from.
 
+Errors follow Problem Details ([RFC 9457](https://www.rfc-editor.org/info/rfc9457/)). They are sent
+as `application/problem+json`, with a `code` your code can rely on, and with `VALIDATION_ERROR` an
+`errors` list of every field that failed.
+
 ---
 
 ## 📚 Using the client
