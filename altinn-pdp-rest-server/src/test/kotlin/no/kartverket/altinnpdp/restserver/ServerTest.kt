@@ -16,6 +16,8 @@ import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpAuthorization
 import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
+import no.kartverket.altinnpdp.client.support.SAMPLE_PID
+import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.client.validation.PdpValidationCode
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse

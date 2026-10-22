@@ -2,6 +2,7 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.server.config.MapApplicationConfig
 import no.kartverket.altinnpdp.client.AltinnEnvironment
+import no.kartverket.altinnpdp.client.support.testJwk
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertContains

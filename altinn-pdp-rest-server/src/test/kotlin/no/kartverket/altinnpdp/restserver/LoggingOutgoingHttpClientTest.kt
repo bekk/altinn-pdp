@@ -11,7 +11,8 @@ import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.client.exception.AltinnException
 import no.kartverket.altinnpdp.client.exception.MaskinportenException
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
-import no.kartverket.altinnpdp.client.http.OutgoingResponse
+import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
+import no.kartverket.altinnpdp.client.support.response
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import kotlin.test.AfterTest
@@ -56,8 +57,8 @@ class LoggingOutgoingHttpClientTest {
             authorizeThrough { request ->
                 assertEquals("Calling ${request.method} ${request.url}", lines.last())
                 when (request.url.path) {
-                    "/token" -> OutgoingResponse(200, "application/json", """{"access_token":"mp-token","expires_in":3600}""".toByteArray())
-                    else -> OutgoingResponse(500, "text/plain", "boom".toByteArray())
+                    "/token" -> response(200, "application/json", """{"access_token":"mp-token","expires_in":3600}""")
+                    else -> response(500, "text/plain", "boom")
                 }
             }
         }

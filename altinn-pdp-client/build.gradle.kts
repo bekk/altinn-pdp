@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
 plugins {
+    `java-test-fixtures`
     alias(libs.plugins.kotlin.serialization)
 }
 
@@ -13,4 +14,5 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.nimbus.jose.jwt)
     implementation(libs.nocommons)
+    testFixturesImplementation(libs.nimbus.jose.jwt)
 }
