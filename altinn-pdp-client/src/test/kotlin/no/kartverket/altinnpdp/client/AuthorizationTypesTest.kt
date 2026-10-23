@@ -1,7 +1,7 @@
 package no.kartverket.altinnpdp.client
 
-import no.kartverket.altinnpdp.client.exception.PdpValidationException
-import no.kartverket.altinnpdp.client.validation.PdpValidationCode
+import no.kartverket.altinnpdp.client.exception.ValidationException
+import no.kartverket.altinnpdp.client.validation.ValidationCode
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -28,10 +28,10 @@ class AuthorizationTypesTest {
     fun `parse keeps a valid value and throws with the reason for an invalid one`() {
         for (case in cases) {
             assertEquals(case.valid, case.parse(case.valid))
-            val invalid = assertFailsWith<PdpValidationException>(case.field) { case.parse(case.invalid) }
+            val invalid = assertFailsWith<ValidationException>(case.field) { case.parse(case.invalid) }
             assertEquals(case.field, invalid.errors.single().field)
-            val blank = assertFailsWith<PdpValidationException>(case.field) { case.parse("") }
-            assertEquals(PdpValidationCode.MISSING, blank.errors.single().code)
+            val blank = assertFailsWith<ValidationException>(case.field) { case.parse("") }
+            assertEquals(ValidationCode.MISSING, blank.errors.single().code)
         }
     }
 

@@ -1,8 +1,8 @@
 package no.kartverket.altinnpdp.client
 
-import no.kartverket.altinnpdp.client.exception.PdpValidationException
+import no.kartverket.altinnpdp.client.exception.ValidationException
 import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
-import no.kartverket.altinnpdp.client.validation.PdpValidationError
+import no.kartverket.altinnpdp.client.validation.ValidationError
 
 public sealed interface PdpSubject
 
@@ -44,7 +44,7 @@ public value class ActionId private constructor(public val value: String) {
     }
 }
 
-private fun valid(value: String, error: (String?) -> PdpValidationError?): String {
-    error(value)?.let { throw PdpValidationException(listOf(it)) }
+private fun valid(value: String, error: (String?) -> ValidationError?): String {
+    error(value)?.let { throw ValidationException(listOf(it)) }
     return value
 }

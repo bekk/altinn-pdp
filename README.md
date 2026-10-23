@@ -110,10 +110,15 @@ Every call gets a request id: the caller's `X-Request-Id` header, or a new UUID 
 or not safe to log. The server logs it on every line of the call as `request_id`, and sends it back
 in the response's `X-Request-Id` header, so a caller can tell us which call to look for.
 
-The OpenAPI spec documents every field, decision and error code, and how to act on the answer. The
+The OpenAPI spec documents every field, decision and error type, and how to act on the answer. The
 server serves it at `GET /openapi`, and the same spec is checked in as
 [`openapi.json`](altinn-pdp-rest-server/openapi.json). It names no `servers`, so a client uses the
 host it fetched the spec from.
+
+Errors follow Problem Details ([RFC 9457](https://www.rfc-editor.org/info/rfc9457/)). They are sent
+as `application/problem+json`, with a `type` your code can rely on: a name like
+`tag:kartverket.no,2026:validation-error`, which comes with an `errors` list of every field that
+failed.
 
 ---
 

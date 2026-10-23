@@ -22,12 +22,12 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import no.kartverket.altinnpdp.client.PdpDecision
-import no.kartverket.altinnpdp.client.validation.PdpValidationCode
+import no.kartverket.altinnpdp.client.validation.ValidationCode
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
-import no.kartverket.altinnpdp.restserver.models.ErrorCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
+import no.kartverket.altinnpdp.restserver.models.ProblemType
 
 private val openApiJson = Json { prettyPrint = true }
 
@@ -178,53 +178,57 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
         }
 
         HttpStatusCode.BadRequest {
-            description = "The request was not accepted. `code` says why."
+            description = "The request was not accepted. `type` says why."
             headers { requestId() }
-            ContentType.Application.Json {
+            ContentType.Application.ProblemJson {
                 schema = jsonSchema<ErrorResponse>()
                 example(
                     "MissingFields",
-                    ErrorResponse(
-                        error = "Validation failed",
-                        code = ErrorCode.VALIDATION_ERROR,
+                    ErrorResponse.of(
+                        ProblemType.VALIDATION_ERROR,
+                        HttpStatusCode.BadRequest,
                         errors = listOf(
-                            FieldError("systemuserId", PdpValidationCode.MISSING, "systemuserId or pid is required"),
-                            FieldError("pid", PdpValidationCode.MISSING, "systemuserId or pid is required"),
-                            FieldError("resourceId", PdpValidationCode.MISSING, "resourceId is required"),
+                            FieldError("systemuserId", ValidationCode.MISSING, "systemuserId or pid is required"),
+                            FieldError("pid", ValidationCode.MISSING, "systemuserId or pid is required"),
+                            FieldError("resourceId", ValidationCode.MISSING, "resourceId is required"),
                         ),
                     ),
                 )
                 example(
                     "BothSystemuserIdAndPid",
-                    ErrorResponse(
-                        error = "Validation failed",
-                        code = ErrorCode.VALIDATION_ERROR,
+                    ErrorResponse.of(
+                        ProblemType.VALIDATION_ERROR,
+                        HttpStatusCode.BadRequest,
                         errors = listOf(
-                            FieldError("systemuserId", PdpValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
-                            FieldError("pid", PdpValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
+                            FieldError("systemuserId", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
+                            FieldError("pid", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
                         ),
                     ),
                 )
                 example(
                     "InvalidCustomerOrganizationNumber",
-                    ErrorResponse(
-                        error = "Validation failed",
-                        code = ErrorCode.VALIDATION_ERROR,
+                    ErrorResponse.of(
+                        ProblemType.VALIDATION_ERROR,
+                        HttpStatusCode.BadRequest,
                         errors = listOf(
                             FieldError(
                                 field = "customerOrganizationNumber",
-                                code = PdpValidationCode.INVALID_FORMAT,
+                                code = ValidationCode.INVALID_FORMAT,
                                 message = "customerOrganizationNumber must have a valid MOD11 check digit",
                             ),
                         ),
                     ),
                 )
-                example("MalformedBody", ErrorResponse("Malformed request body", ErrorCode.MALFORMED_BODY))
+                example("MalformedBody", ErrorResponse.of(ProblemType.MALFORMED_REQUEST, HttpStatusCode.BadRequest, "Malformed request body"))
                 example(
                     "InvalidCacheControl",
-                    ErrorResponse("Invalid max-age in Cache-Control", ErrorCode.INVALID_CACHE_CONTROL),
+                    ErrorResponse.of(
+                        ProblemType.VALIDATION_ERROR,
+                        HttpStatusCode.BadRequest,
+                        errors = listOf(FieldError(HttpHeaders.CacheControl, ValidationCode.INVALID_FORMAT, "max-age in Cache-Control must be a whole number of seconds, 0 or more")),
+                    ),
                 )
-                example("AltinnRejected", ErrorResponse("Altinn rejected the request", ErrorCode.UPSTREAM_REJECTED))
+                example("AltinnRejected", ErrorResponse.of(ProblemType.UPSTREAM_REJECTED, HttpStatusCode.BadRequest, "Altinn rejected the request"))
             }
         }
 
@@ -232,18 +236,18 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
             description = "This API could not get an answer from Altinn. Your request did not cause it. Treat it as " +
                 "no access."
             headers { requestId() }
-            ContentType.Application.Json {
+            ContentType.Application.ProblemJson {
                 schema = jsonSchema<ErrorResponse>()
-                example("UpstreamError", ErrorResponse("The call to Altinn failed", ErrorCode.UPSTREAM_ERROR))
+                example("UpstreamError", ErrorResponse.of(ProblemType.UPSTREAM_ERROR, HttpStatusCode.BadGateway, "The call to Altinn failed"))
             }
         }
 
         HttpStatusCode.InternalServerError {
             description = "An unexpected error in this API. Treat it as no access."
             headers { requestId() }
-            ContentType.Application.Json {
+            ContentType.Application.ProblemJson {
                 schema = jsonSchema<ErrorResponse>()
-                example("InternalError", ErrorResponse("Internal server error", ErrorCode.INTERNAL_ERROR))
+                example("InternalError", ErrorResponse.of(ProblemType.INTERNAL_ERROR, HttpStatusCode.InternalServerError))
             }
         }
     }

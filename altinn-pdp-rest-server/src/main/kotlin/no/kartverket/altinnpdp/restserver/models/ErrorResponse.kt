@@ -1,5 +1,6 @@
 package no.kartverket.altinnpdp.restserver.models
 
+import io.ktor.http.HttpStatusCode
 import io.ktor.openapi.JsonSchema
 import io.ktor.openapi.JsonType
 import kotlinx.serialization.Serializable
@@ -7,26 +8,41 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ErrorResponse(
     @JsonSchema.Description(
-        "A short summary for people to read. The wording may change, so check `code` in your code.",
+        """What went wrong, as a name that does not change, so your code can rely on it.
+
+- `tag:kartverket.no,2026:validation-error` (400): one or more fields are missing or invalid. `errors` lists all of
+  them.
+- `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a body that is not
+  valid JSON or a field with the wrong type.
+- `tag:kartverket.no,2026:upstream-rejected` (400): the values passed this API's checks, but Altinn rejected them.
+- `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.
+- `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.
+- `tag:kartverket.no,2026:upstream-error` (502): this API could not get an answer from Altinn. Your request did not
+  cause it.
+- `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API.""",
     )
-    val error: String,
+    val type: String,
+
+    @JsonSchema.Description("A short name for the `type`, the same every time.")
+    val title: String,
+
+    @JsonSchema.Description("The HTTP status code, the same as the response's.")
+    val status: Int,
 
     @JsonSchema.Description(
-        """What went wrong. These values do not change, so your code can rely on them.
-
-- `VALIDATION_ERROR` (400): one or more fields are missing or invalid. `errors` lists all of them.
-- `MALFORMED_BODY` (400): the body is not valid JSON, or a field has the wrong type.
-- `INVALID_CACHE_CONTROL` (400): `max-age` in the `Cache-Control` header is not a whole number of seconds, 0 or more.
-- `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.
-- `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause
-  it.
-- `INTERNAL_ERROR` (500): an unexpected error in this API.""",
+        "What went wrong this time, for people to read. Left out when `title` says it all. The wording may change, " +
+            "so check `type` in your code.",
     )
-    val code: ErrorCode,
+    val detail: String? = null,
 
     @JsonSchema.Type(JsonType.ARRAY)
     @JsonSchema.Description(
-        "Only with `VALIDATION_ERROR`: every field that failed, so you can fix them all at once.",
+        "Only with `tag:kartverket.no,2026:validation-error`: every field that failed, so you can fix them all at once.",
     )
     val errors: List<FieldError>? = null,
-)
+) {
+    companion object {
+        fun of(type: ProblemType, status: HttpStatusCode, detail: String? = null, errors: List<FieldError>? = null) =
+            ErrorResponse(type.uri, type.title, status.value, detail, errors)
+    }
+}
