@@ -20,7 +20,8 @@ person has access to a resource. See [README.md](README.md) for the background, 
 
 - `main()` handles process setup: config, logging, then starting the server. `Application.module()` installs the
   plugins and routes. Keep that wiring in `module()`, so that tests and production run the same code.
-- Tests use `testApplication { application { module(...) } }` with a fake HTTP client instead of the real Altinn.
+- Server tests start the app with `testServer(...)` from `TestServer.kt`, which runs `module(...)` with a fake HTTP
+  client instead of the real Altinn.
 - All configuration is read once, into `AppConfig`. A new setting belongs in `application.yaml`, `.env.example`
   and the environment variable table in the README.
 - The OpenAPI spec is generated from the routes, the `@JsonSchema` annotations on the models, and `OpenApi.kt`. A

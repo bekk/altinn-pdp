@@ -2,7 +2,6 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
-import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -15,11 +14,7 @@ import kotlin.test.assertTrue
 class OpenApiSpecFileTest {
 
     @Test
-    fun `the checked-in spec is the one the server serves`() = testApplication {
-        application {
-            module(testPdpClient())
-        }
-
+    fun `the checked-in spec is the one the server serves`() = testServer {
         val served = client.get("/openapi").bodyAsText() + "\n"
         val file = File("openapi.json")
         if (System.getProperty("openApiSpec.write") == "true") file.writeText(served)
@@ -28,11 +23,7 @@ class OpenApiSpecFileTest {
     }
 
     @Test
-    fun `every required field exists in its schema`() = testApplication {
-        application {
-            module(testPdpClient())
-        }
-
+    fun `every required field exists in its schema`() = testServer {
         val spec = Json.parseToJsonElement(client.get("/openapi").bodyAsText()).jsonObject
         val schemas = spec.getValue("components").jsonObject.getValue("schemas").jsonObject
         assertTrue(schemas.isNotEmpty(), "expected the spec to have schemas")
