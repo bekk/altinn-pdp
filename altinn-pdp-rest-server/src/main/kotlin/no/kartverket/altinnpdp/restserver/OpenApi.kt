@@ -222,7 +222,11 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                 example("MalformedBody", ErrorResponse.of(ProblemType.MALFORMED_REQUEST, HttpStatusCode.BadRequest, "Malformed request body"))
                 example(
                     "InvalidCacheControl",
-                    ErrorResponse.of(ProblemType.INVALID_CACHE_CONTROL, HttpStatusCode.BadRequest, "Invalid max-age in Cache-Control"),
+                    ErrorResponse.of(
+                        ProblemType.VALIDATION_ERROR,
+                        HttpStatusCode.BadRequest,
+                        errors = listOf(FieldError(HttpHeaders.CacheControl, ValidationCode.INVALID_FORMAT, "max-age in Cache-Control must be a whole number of seconds, 0 or more")),
+                    ),
                 )
                 example("AltinnRejected", ErrorResponse.of(ProblemType.UPSTREAM_REJECTED, HttpStatusCode.BadRequest, "Altinn rejected the request"))
             }

@@ -6,7 +6,7 @@ import no.kartverket.altinnpdp.client.validation.ValidationCode
 
 @Serializable
 data class FieldError(
-    @JsonSchema.Description("The request field, for example `customerOrganizationNumber`.")
+    @JsonSchema.Description("The request field or header, for example `customerOrganizationNumber` or `Cache-Control`.")
     val field: String,
 
     @JsonSchema.Description(

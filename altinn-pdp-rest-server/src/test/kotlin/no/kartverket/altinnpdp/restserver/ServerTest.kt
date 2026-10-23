@@ -96,7 +96,10 @@ class ServerTest {
             val response = postAuthorize(cacheControl = "max-age=-1")
 
             assertEquals(HttpStatusCode.BadRequest, response.status)
-            assertEquals(ProblemType.INVALID_CACHE_CONTROL.uri, response.errorResponse().type)
+            assertEquals(
+                listOf(FieldError(HttpHeaders.CacheControl, ValidationCode.INVALID_FORMAT, "max-age in Cache-Control must be a whole number of seconds, 0 or more")),
+                response.errorResponse().errors,
+            )
             assertEquals(emptyList(), sent)
         }
     }

@@ -63,12 +63,14 @@ Errors are sent as `application/problem+json`:
 |---|---|---|
 | `validation-error` | 400 | One or more fields are missing or not valid |
 | `malformed-request` | 400 | The body is not valid JSON, or a field has the wrong type |
-| `invalid-cache-control` | 400 | `max-age` in `Cache-Control` is not a whole number of seconds, 0 or more |
 | `upstream-rejected` | 400 | The values passed this API's checks, but Altinn rejected them |
 | `not-found` | 404 | There is no endpoint at the path |
 | `method-not-allowed` | 405 | The endpoint does not accept the method |
 | `upstream-error` | 502 | This API could not get an answer from Altinn or Maskinporten |
 | `internal-error` | 500 | An unexpected error in this API |
+
+A header is a field too: a bad `max-age` in `Cache-Control` is a `validation-error`, with
+`Cache-Control` in `errors`, as a bad header is in maskinporten-management.
 
 ### Positive Consequences
 
@@ -79,7 +81,7 @@ Errors are sent as `application/problem+json`:
 ### Negative Consequences
 
 - Callers that read `error` and `code` must change. `MALFORMED_BODY` is now `malformed-request`, the
-  name maskinporten-management uses.
+  name maskinporten-management uses, and `INVALID_CACHE_CONTROL` is now a `validation-error`.
 - The names are part of the API. Renaming one breaks callers, so a new meaning needs a new name. A
   new kind of error that both APIs can have should get the same name in both.
 - `type` is not a link, so what each type means is described in the OpenAPI spec.
@@ -119,4 +121,5 @@ Errors are sent as `application/problem+json`:
 
 - [RFC 9457: Problem Details for HTTP APIs](https://www.rfc-editor.org/rfc/rfc9457)
 - [RFC 4151: The 'tag' URI Scheme](https://www.rfc-editor.org/rfc/rfc4151)
+- [Cache PDP decisions in memory per pod, with freshness chosen by the caller](2026-10-19-cache-pdp-decisions-in-memory-with-caller-chosen-freshness.md), whose `INVALID_CACHE_CONTROL` this replaces
 - [The same decision in maskinporten-management](https://github.com/kartverket/maskinporten-management/blob/main/docs/adr/2026-10-22-answer-errors-as-problem-details.md)

@@ -1,6 +1,7 @@
 package no.kartverket.altinnpdp.restserver
 
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.JsonConvertException
 import io.ktor.server.application.ApplicationCall
@@ -13,6 +14,7 @@ import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.exception.ValidationException
+import no.kartverket.altinnpdp.client.validation.ValidationCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
 import no.kartverket.altinnpdp.restserver.models.ProblemType
@@ -23,7 +25,11 @@ internal fun StatusPagesConfig.errorResponses() {
     exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
     exception<ValidationException> { call, cause -> call.respondValidationFailed(cause) }
     exception<InvalidCacheControlException> { call, _ ->
-        call.respondProblem(ProblemType.INVALID_CACHE_CONTROL, HttpStatusCode.BadRequest, "Invalid max-age in Cache-Control")
+        call.respondProblem(
+            ProblemType.VALIDATION_ERROR,
+            HttpStatusCode.BadRequest,
+            errors = listOf(FieldError(HttpHeaders.CacheControl, ValidationCode.INVALID_FORMAT, "max-age in Cache-Control must be a whole number of seconds, 0 or more")),
+        )
     }
     exception<AltinnPdpException> { call, cause ->
         call.application.log.error("Call to Maskinporten or Altinn failed: statusCode=${cause.statusCode}", cause)

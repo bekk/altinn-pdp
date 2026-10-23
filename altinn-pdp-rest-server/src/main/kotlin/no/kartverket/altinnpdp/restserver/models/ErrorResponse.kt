@@ -14,8 +14,6 @@ data class ErrorResponse(
   them.
 - `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a body that is not
   valid JSON or a field with the wrong type.
-- `tag:kartverket.no,2026:invalid-cache-control` (400): `max-age` in the `Cache-Control` header is not a whole number
-  of seconds, 0 or more.
 - `tag:kartverket.no,2026:upstream-rejected` (400): the values passed this API's checks, but Altinn rejected them.
 - `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.
 - `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.
