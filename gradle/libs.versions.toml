@@ -10,7 +10,7 @@ kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 nimbus-jose-jwt = "10.10"
 nocommons = "0.17.0"
-zstd-jni = "1.5.7-23"
+zstd-jni = "1.5.7-24"
 
 [libraries]
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
