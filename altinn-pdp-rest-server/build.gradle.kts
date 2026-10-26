@@ -59,6 +59,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.logback.classic)
     implementation(libs.logstash.logback.encoder)
+    // logstash-logback-encoder pulls in an older Jackson 3 with known vulnerabilities.
+    implementation(platform(libs.jackson.bom))
     implementation(libs.nocommons)
     implementation(libs.caffeine)
 
