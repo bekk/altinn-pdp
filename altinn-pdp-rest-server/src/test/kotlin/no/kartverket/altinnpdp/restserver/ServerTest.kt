@@ -334,7 +334,7 @@ class ServerTest {
                 val response = postAuthorize()
 
                 assertEquals(case.expected, response.status, case.describe())
-                assertEquals(case.expectedType.uri, response.errorResponse().type, case.describe())
+                assertEquals(case.expectedType, response.errorResponse().type, case.describe())
             }
         }
     }
@@ -349,7 +349,7 @@ class ServerTest {
                 val response = postAuthorize()
 
                 assertEquals(HttpStatusCode.BadGateway, response.status, "for $where")
-                assertEquals(ProblemType.UPSTREAM_ERROR.uri, response.errorResponse().type, "for $where")
+                assertEquals(ProblemType.UPSTREAM_ERROR, response.errorResponse().type, "for $where")
             }
         }
     }

@@ -21,7 +21,7 @@ data class ErrorResponse(
   cause it.
 - `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API.""",
     )
-    val type: String,
+    val type: ProblemType,
 
     @JsonSchema.Description("A short name for the `type`, the same every time.")
     val title: String,
@@ -43,6 +43,6 @@ data class ErrorResponse(
 ) {
     companion object {
         fun of(type: ProblemType, status: HttpStatusCode, detail: String? = null, errors: List<FieldError>? = null) =
-            ErrorResponse(type.uri, type.title, status.value, detail, errors)
+            ErrorResponse(type, type.title, status.value, detail, errors)
     }
 }
