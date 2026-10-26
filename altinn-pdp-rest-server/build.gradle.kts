@@ -49,6 +49,8 @@ dependencies {
     implementation(ktorLibs.server.core)
     implementation(ktorLibs.server.config.yaml)
     implementation(ktorLibs.server.netty)
+    // ktor pulls in an older netty with known vulnerabilities
+    implementation(platform(libs.netty.bom))
     implementation(ktorLibs.server.contentNegotiation)
     implementation(ktorLibs.server.statusPages)
     implementation(ktorLibs.server.callLogging)
