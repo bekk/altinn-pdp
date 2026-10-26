@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Java
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '25'
@@ -101,7 +101,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run Pharos
-        uses: kartverket/pharos@446d11f033ffe30b4c91f885c3ad34ea3d8c6af7 # v0.7.0
+        uses: kartverket/pharos@aee5b200a4bb042954127dd1446408d2841fcc29 # v0.7.1
         with:
           image_url: "${{ env.registry }}/${{ env.image_name }}@${{ needs.build.outputs.image_digest }}"
           tfsec: false
