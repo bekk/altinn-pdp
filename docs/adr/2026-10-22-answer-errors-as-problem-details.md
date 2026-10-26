@@ -121,5 +121,5 @@ A header is a field too: a bad `max-age` in `Cache-Control` is a `validation-err
 
 - [RFC 9457: Problem Details for HTTP APIs](https://www.rfc-editor.org/rfc/rfc9457)
 - [RFC 4151: The 'tag' URI Scheme](https://www.rfc-editor.org/rfc/rfc4151)
-- [Cache PDP decisions in memory per pod, with freshness chosen by the caller](2026-10-19-cache-pdp-decisions-in-memory-with-caller-chosen-freshness.md), whose `INVALID_CACHE_CONTROL` this replaces
+- Changes how [Cache PDP decisions in memory per pod, with freshness chosen by the caller](2026-10-19-cache-pdp-decisions-in-memory-with-caller-chosen-freshness.md) refuses a bad `max-age`
 - [The same decision in maskinporten-management](https://github.com/kartverket/maskinporten-management/blob/main/docs/adr/2026-10-22-answer-errors-as-problem-details.md)

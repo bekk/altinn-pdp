@@ -39,8 +39,8 @@ that bears the risk, keeps an upper bound the server controls, and needs no new 
   `DECISION_CACHE_MAXIMUM_SIZE` decisions.
 - A caller sends `Cache-Control: max-age=<seconds>` to say how old a decision it accepts, or
   `no-cache` (or `max-age=0`) to have Altinn asked and the cached entry refreshed. An invalid
-  `max-age` is refused with `400` and `INVALID_CACHE_CONTROL`, so a typo never silently gives a
-  looser answer than the caller meant.
+  `max-age` is refused with `400` and a `validation-error` with `Cache-Control` in `errors`, so a
+  typo never silently gives a looser answer than the caller meant.
 - A caller that sends neither gets `DECISION_CACHE_DEFAULT_MAX_AGE_SECONDS`, which defaults to 0.
   Callers only get cached answers if they, or whoever runs the server, ask for them.
 - `DECISION_CACHE_TIME_TO_LIVE_SECONDS` (default 60) is the upper bound, whatever `max-age` a
