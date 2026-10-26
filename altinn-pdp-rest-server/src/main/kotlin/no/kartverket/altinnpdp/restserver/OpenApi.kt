@@ -233,8 +233,8 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
         }
 
         HttpStatusCode.BadGateway {
-            description = "This API could not get an answer from Altinn. Your request did not cause it. Treat it as " +
-                "no access."
+            description = "This API could not get a decision from Altinn. Your request did not cause it. Treat it " +
+                "as no access."
             headers { requestId() }
             ContentType.Application.ProblemJson {
                 schema = jsonSchema<ErrorResponse>()

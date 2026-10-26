@@ -62,11 +62,11 @@ Errors are sent as `application/problem+json`:
 | `type`, after `tag:kartverket.no,2026:` | Status | When |
 |---|---|---|
 | `validation-error` | 400 | One or more fields are missing or not valid |
-| `malformed-request` | 400 | The body is not valid JSON, or a field has the wrong type |
+| `malformed-request` | 400 | The body is not valid JSON, a field has the wrong type, or `Content-Type` is not `application/json` |
 | `upstream-rejected` | 400 | The values passed this API's checks, but Altinn rejected them |
 | `not-found` | 404 | There is no endpoint at the path |
 | `method-not-allowed` | 405 | The endpoint does not accept the method |
-| `upstream-error` | 502 | This API could not get an answer from Altinn or Maskinporten |
+| `upstream-error` | 502 | This API could not get a decision from Altinn |
 | `internal-error` | 500 | An unexpected error in this API |
 
 A header is a field too: a bad `max-age` in `Cache-Control` is a `validation-error`, with
