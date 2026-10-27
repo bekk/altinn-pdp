@@ -2,25 +2,16 @@ package no.kartverket.altinnpdp.restserver
 
 import io.lettuce.core.ClientOptions
 import io.lettuce.core.RedisClient
-import io.lettuce.core.RedisConnectionException
 import io.lettuce.core.RedisException
-import io.lettuce.core.RedisNoScriptException
 import io.lettuce.core.RedisURI
-import io.lettuce.core.ScriptOutputType
 import io.lettuce.core.SetArgs
 import io.lettuce.core.SocketOptions
 import io.lettuce.core.TimeoutOptions
 import io.lettuce.core.api.StatefulRedisConnection
 import io.lettuce.core.api.async.RedisAsyncCommands
 import io.lettuce.core.codec.StringCodec
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
 import kotlinx.coroutines.future.asDeferred
 import kotlinx.coroutines.future.await
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -32,14 +23,11 @@ import no.kartverket.altinnpdp.client.PersonId
 import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import org.slf4j.LoggerFactory
-import java.security.MessageDigest
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.util.HexFormat
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
