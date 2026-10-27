@@ -26,14 +26,14 @@ class PdpRequestValidationTest {
         val errors = validate(systemuserId = null, resourceId = null, customerOrganizationNumber = null, action = null)
 
         assertEquals(listOf("systemuserId", "pid", "resourceId", "customerOrganizationNumber", "action"), errors.map { it.field })
-        assertTrue(errors.all { it.code == PdpValidationCode.MISSING })
+        assertTrue(errors.all { it.code == ValidationCode.MISSING })
     }
 
     @Test
     fun `a blank field counts as missing`() {
         val errors = validate(action = "   ")
 
-        assertEquals(PdpValidationCode.MISSING, errors.single().code)
+        assertEquals(ValidationCode.MISSING, errors.single().code)
         assertEquals("action", errors.single().field)
     }
 
@@ -55,7 +55,7 @@ class PdpRequestValidationTest {
         val errors = validate(systemuserId = null)
 
         assertEquals(listOf("systemuserId", "pid"), errors.map { it.field })
-        assertTrue(errors.all { it.code == PdpValidationCode.MISSING && it.message == "systemuserId or pid is required" })
+        assertTrue(errors.all { it.code == ValidationCode.MISSING && it.message == "systemuserId or pid is required" })
     }
 
     @Test
@@ -63,7 +63,7 @@ class PdpRequestValidationTest {
         val errors = validate(pid = "01017012343")
 
         assertEquals(listOf("systemuserId", "pid"), errors.map { it.field })
-        assertTrue(errors.all { it.code == PdpValidationCode.CONFLICTING })
+        assertTrue(errors.all { it.code == ValidationCode.CONFLICTING })
     }
 
     @Test

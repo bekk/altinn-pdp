@@ -17,12 +17,12 @@ import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import no.kartverket.altinnpdp.client.support.SAMPLE_PID
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
-import no.kartverket.altinnpdp.client.validation.PdpValidationCode
+import no.kartverket.altinnpdp.client.validation.ValidationCode
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
-import no.kartverket.altinnpdp.restserver.models.ErrorCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
+import no.kartverket.altinnpdp.restserver.models.ProblemType
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import kotlin.test.Test
@@ -96,7 +96,10 @@ class ServerTest {
             val response = postAuthorize(cacheControl = "max-age=-1")
 
             assertEquals(HttpStatusCode.BadRequest, response.status)
-            assertEquals(ErrorCode.INVALID_CACHE_CONTROL, response.errorResponse().code)
+            assertEquals(
+                listOf(FieldError(HttpHeaders.CacheControl, ValidationCode.INVALID_FORMAT, "max-age in Cache-Control must be a whole number of seconds, 0 or more")),
+                response.errorResponse().errors,
+            )
             assertEquals(emptyList(), sent)
         }
     }
@@ -169,7 +172,7 @@ class ServerTest {
             val response = postAuthorize(synthetic)
             assertEquals(HttpStatusCode.BadRequest, response.status)
             assertEquals(
-                listOf(FieldError("pid", PdpValidationCode.INVALID_FORMAT, "pid must be a valid fødselsnummer or D number")),
+                listOf(FieldError("pid", ValidationCode.INVALID_FORMAT, "pid must be a valid fødselsnummer or D number")),
                 response.errorResponse().errors,
             )
         }
@@ -206,47 +209,47 @@ class ServerTest {
                 why = "neither systemuserId nor pid",
                 body = authorizeBody(systemuserId = null),
                 errors = listOf(
-                    FieldError("systemuserId", PdpValidationCode.MISSING, "systemuserId or pid is required"),
-                    FieldError("pid", PdpValidationCode.MISSING, "systemuserId or pid is required"),
+                    FieldError("systemuserId", ValidationCode.MISSING, "systemuserId or pid is required"),
+                    FieldError("pid", ValidationCode.MISSING, "systemuserId or pid is required"),
                 ),
             ),
             ValidationCase(
                 why = "both systemuserId and pid",
                 body = authorizeBody(pid = SAMPLE_PID),
                 errors = listOf(
-                    FieldError("systemuserId", PdpValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
-                    FieldError("pid", PdpValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
+                    FieldError("systemuserId", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
+                    FieldError("pid", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
                 ),
             ),
             ValidationCase(
                 why = "a pid with a bad check digit",
                 body = authorizeBody(systemuserId = null, pid = "31827012312"),
-                errors = listOf(FieldError("pid", PdpValidationCode.INVALID_FORMAT, "pid must be a valid fødselsnummer or D number")),
+                errors = listOf(FieldError("pid", ValidationCode.INVALID_FORMAT, "pid must be a valid fødselsnummer or D number")),
             ),
             ValidationCase(
                 why = "an explicit null",
                 body = """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
                     """"customerOrganizationNumber":null,"action":"read"}""",
                 errors = listOf(
-                    FieldError("customerOrganizationNumber", PdpValidationCode.MISSING, "customerOrganizationNumber is required"),
+                    FieldError("customerOrganizationNumber", ValidationCode.MISSING, "customerOrganizationNumber is required"),
                 ),
             ),
             ValidationCase(
                 why = "every field at once",
                 body = """{"systemuserId":"nope","resourceId":"ab","customerOrganizationNumber":"12345"}""",
                 errors = listOf(
-                    FieldError("systemuserId", PdpValidationCode.INVALID_FORMAT, "systemuserId must be a UUID"),
+                    FieldError("systemuserId", ValidationCode.INVALID_FORMAT, "systemuserId must be a UUID"),
                     FieldError(
                         "resourceId",
-                        PdpValidationCode.INVALID_FORMAT,
+                        ValidationCode.INVALID_FORMAT,
                         "resourceId must be at least 4 characters of lowercase letters, digits, underscore or hyphen",
                     ),
                     FieldError(
                         "customerOrganizationNumber",
-                        PdpValidationCode.INVALID_FORMAT,
+                        ValidationCode.INVALID_FORMAT,
                         "customerOrganizationNumber must be exactly 9 digits",
                     ),
-                    FieldError("action", PdpValidationCode.MISSING, "action is required"),
+                    FieldError("action", ValidationCode.MISSING, "action is required"),
                 ),
             ),
         )
@@ -260,13 +263,54 @@ class ServerTest {
     }
 
     @Test
+    fun `a path with no endpoint gives 404, of type not-found`() = testServer {
+        val response = client.get("/authorise")
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+        assertEquals(
+            ErrorResponse.of(ProblemType.NOT_FOUND, HttpStatusCode.NotFound, "There is no endpoint at this path"),
+            response.errorResponse(),
+        )
+    }
+
+    @Test
+    fun `a method the endpoint does not accept gives 405, of type method-not-allowed`() = testServer {
+        val response = client.get("/authorize")
+
+        assertEquals(HttpStatusCode.MethodNotAllowed, response.status)
+        assertEquals(
+            ErrorResponse.of(
+                ProblemType.METHOD_NOT_ALLOWED,
+                HttpStatusCode.MethodNotAllowed,
+                "The endpoint at this path does not accept this method",
+            ),
+            response.errorResponse(),
+        )
+    }
+
+    @Test
+    fun `every error is sent as application problem+json`() {
+        authorizeTest {
+            assertEquals(ContentType.Application.ProblemJson, postAuthorize(malformedBody).contentType()?.withoutParameters())
+        }
+        authorizeTest(statusCode = 500) {
+            assertEquals(ContentType.Application.ProblemJson, postAuthorize().contentType()?.withoutParameters())
+        }
+        testServer {
+            for (response in listOf(client.get("/authorise"), client.get("/authorize"))) {
+                assertEquals(ContentType.Application.ProblemJson, response.contentType()?.withoutParameters(), "${response.status}")
+            }
+        }
+    }
+
+    @Test
     fun `a malformed body never echoes the request or kotlinx's own advice back`() = authorizeTest {
         val response = postAuthorize(malformedBody)
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
         val text = response.bodyAsText()
         assertEquals(
-            ErrorResponse("Malformed request body", ErrorCode.MALFORMED_BODY),
+            ErrorResponse.of(ProblemType.MALFORMED_REQUEST, HttpStatusCode.BadRequest, "Malformed request body"),
             Json.decodeFromString(ErrorResponse.serializer(), text),
         )
         assertFalse(text.contains("coerceInputValues"), "leaks kotlinx advice: $text")
@@ -300,8 +344,8 @@ class ServerTest {
     @Test
     fun `the upstream status decides whether the caller or Altinn is to blame`() {
         val cases = listOf(
-            UpstreamCase(400, HttpStatusCode.BadRequest, ErrorCode.UPSTREAM_REJECTED, "only Altinn's own 400 is the caller's fault"),
-            UpstreamCase(500, HttpStatusCode.BadGateway, ErrorCode.UPSTREAM_ERROR, "anything else is not the caller's fault"),
+            UpstreamCase(400, HttpStatusCode.BadRequest, ProblemType.UPSTREAM_REJECTED, "only Altinn's own 400 is the caller's fault"),
+            UpstreamCase(500, HttpStatusCode.BadGateway, ProblemType.UPSTREAM_ERROR, "anything else is not the caller's fault"),
         )
 
         for (case in cases) {
@@ -309,7 +353,7 @@ class ServerTest {
                 val response = postAuthorize()
 
                 assertEquals(case.expected, response.status, case.describe())
-                assertEquals(case.expectedCode, response.errorResponse().code, case.describe())
+                assertEquals(case.expectedType, response.errorResponse().type, case.describe())
             }
         }
     }
@@ -324,7 +368,7 @@ class ServerTest {
                 val response = postAuthorize()
 
                 assertEquals(HttpStatusCode.BadGateway, response.status, "for $where")
-                assertEquals(ErrorCode.UPSTREAM_ERROR, response.errorResponse().code, "for $where")
+                assertEquals(ProblemType.UPSTREAM_ERROR, response.errorResponse().type, "for $where")
             }
         }
     }
@@ -335,7 +379,10 @@ class ServerTest {
             val response = postAuthorize()
 
             assertEquals(HttpStatusCode.InternalServerError, response.status)
-            assertEquals(ErrorResponse("Internal server error", ErrorCode.INTERNAL_ERROR), response.errorResponse())
+            assertEquals(
+                """{"type":"tag:kartverket.no,2026:internal-error","title":"Internal error","status":500}""",
+                response.bodyAsText(),
+            )
         }
 
     private val malformedBody = """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
@@ -352,7 +399,7 @@ class ServerTest {
     private data class UpstreamCase(
         val upstream: Int,
         val expected: HttpStatusCode,
-        val expectedCode: ErrorCode,
+        val expectedType: ProblemType,
         val why: String,
     ) {
         fun describe() = "upstream $upstream: $why"
@@ -365,7 +412,7 @@ class ServerTest {
 
                 assertEquals(HttpStatusCode.BadRequest, response.status, "for ${case.why}")
                 assertEquals(
-                    ErrorResponse(error = "Validation failed", code = ErrorCode.VALIDATION_ERROR, errors = case.errors),
+                    ErrorResponse.of(ProblemType.VALIDATION_ERROR, HttpStatusCode.BadRequest, errors = case.errors),
                     response.errorResponse(),
                     "for ${case.why}",
                 )
