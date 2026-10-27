@@ -31,6 +31,11 @@ import java.util.concurrent.CompletableFuture
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
+/** What the server does when Redis cannot be read: ask Altinn without the cache, or refuse the call. */
+enum class DecisionCacheFailureMode { BYPASS, REJECT }
+
+class DecisionCacheUnavailableException(cause: Throwable) : RuntimeException("The decision cache is unavailable", cause)
+
 /**
  * Keeps decisions in Redis, shared by every pod. Redis only sees an HMAC of the question, never a national identity
  * number or any other value from the request.
@@ -42,6 +47,7 @@ class RedisPdpDecisionCache internal constructor(
     private val timeToLive: Duration,
     private val defaultMaxAge: Duration,
     timeout: Duration,
+    private val failureMode: DecisionCacheFailureMode,
     private val clock: Clock,
 ) : PdpDecisionCache {
 
@@ -52,6 +58,7 @@ class RedisPdpDecisionCache internal constructor(
         timeToLive: Duration,
         defaultMaxAge: Duration,
         timeout: Duration,
+        failureMode: DecisionCacheFailureMode,
     ) : this(
         url,
         keySecret,
@@ -59,6 +66,7 @@ class RedisPdpDecisionCache internal constructor(
         timeToLive,
         defaultMaxAge,
         timeout,
+        failureMode,
         Clock.systemUTC(),
     )
 
@@ -111,6 +119,7 @@ class RedisPdpDecisionCache internal constructor(
         val value = try {
             commands().get(redisKey).await()
         } catch (e: RedisException) {
+            if (failureMode == DecisionCacheFailureMode.REJECT) throw DecisionCacheUnavailableException(e)
             log.warn("The decision cache is unavailable, so Altinn is asked directly: ${e.message}")
             return null
         }

@@ -20,6 +20,8 @@ data class ErrorResponse(
 - `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.
 - `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause
   it.
+- `DECISION_CACHE_UNAVAILABLE` (503): the decision cache could not be read, and this API is set up to refuse calls
+  rather than ask Altinn without it. Your request did not cause it.
 - `INTERNAL_ERROR` (500): an unexpected error in this API.""",
     )
     val code: ErrorCode,

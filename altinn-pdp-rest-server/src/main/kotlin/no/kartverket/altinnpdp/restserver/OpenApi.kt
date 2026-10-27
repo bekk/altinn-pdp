@@ -238,6 +238,19 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
             }
         }
 
+        HttpStatusCode.ServiceUnavailable {
+            description = "The decision cache could not be read, and this API is set up to refuse calls rather than " +
+                "ask Altinn without it. Your request did not cause it. Treat it as no access, and try again later."
+            headers { requestId() }
+            ContentType.Application.Json {
+                schema = jsonSchema<ErrorResponse>()
+                example(
+                    "DecisionCacheUnavailable",
+                    ErrorResponse("The decision cache is unavailable", ErrorCode.DECISION_CACHE_UNAVAILABLE),
+                )
+            }
+        }
+
         HttpStatusCode.InternalServerError {
             description = "An unexpected error in this API. Treat it as no access."
             headers { requestId() }

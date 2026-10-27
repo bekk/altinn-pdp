@@ -30,6 +30,13 @@ internal fun StatusPagesConfig.errorResponses() {
         call.application.log.error("Call to Maskinporten or Altinn failed: statusCode=${cause.statusCode}", cause)
         call.respondUpstream(cause)
     }
+    exception<DecisionCacheUnavailableException> { call, cause ->
+        call.application.log.warn("The decision cache is unavailable, so the call is refused: ${cause.cause?.message}")
+        call.respond(
+            HttpStatusCode.ServiceUnavailable,
+            ErrorResponse("The decision cache is unavailable", ErrorCode.DECISION_CACHE_UNAVAILABLE),
+        )
+    }
     exception<Throwable> { call, cause ->
         call.application.log.error("Unhandled exception", cause)
         call.respond(

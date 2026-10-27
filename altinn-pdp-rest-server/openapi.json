@@ -230,6 +230,33 @@
                             }
                         }
                     },
+                    "503": {
+                        "description": "The decision cache could not be read, and this API is set up to refuse calls rather than ask Altinn without it. Your request did not cause it. Treat it as no access, and try again later.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "DecisionCacheUnavailable": {
+                                        "value": {
+                                            "error": "The decision cache is unavailable",
+                                            "code": "DECISION_CACHE_UNAVAILABLE"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "500": {
                         "description": "An unexpected error in this API. Treat it as no access.",
                         "headers": {
@@ -372,13 +399,14 @@
                     },
                     "code": {
                         "type": "string",
-                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `VALIDATION_ERROR` (400): one or more fields are missing or invalid. `errors` lists all of them.\n- `MALFORMED_BODY` (400): the body is not valid JSON, or a field has the wrong type.\n- `INVALID_CACHE_CONTROL` (400): `max-age` in the `Cache-Control` header is not a whole number of seconds, 0 or more.\n- `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause\n  it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
+                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `VALIDATION_ERROR` (400): one or more fields are missing or invalid. `errors` lists all of them.\n- `MALFORMED_BODY` (400): the body is not valid JSON, or a field has the wrong type.\n- `INVALID_CACHE_CONTROL` (400): `max-age` in the `Cache-Control` header is not a whole number of seconds, 0 or more.\n- `UPSTREAM_REJECTED` (400): the values passed this API's checks, but Altinn rejected them.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Altinn. Your request did not cause\n  it.\n- `DECISION_CACHE_UNAVAILABLE` (503): the decision cache could not be read, and this API is set up to refuse calls\n  rather than ask Altinn without it. Your request did not cause it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
                         "enum": [
                             "VALIDATION_ERROR",
                             "MALFORMED_BODY",
                             "INVALID_CACHE_CONTROL",
                             "UPSTREAM_REJECTED",
                             "UPSTREAM_ERROR",
+                            "DECISION_CACHE_UNAVAILABLE",
                             "INTERNAL_ERROR"
                         ]
                     },

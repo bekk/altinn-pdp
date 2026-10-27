@@ -158,6 +158,7 @@ class ConfigTest {
             "decisionCache.maximumSize" to "0",
             "decisionCache.type" to "redis",
             "decisionCache.redis.timeoutMillis" to "0",
+            "decisionCache.redis.failureMode" to "IGNORE",
         )
         for ((path, value) in invalid) {
             val config = MapApplicationConfig("decisionCache.enabled" to "false", path to value)

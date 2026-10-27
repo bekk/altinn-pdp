@@ -242,11 +242,26 @@ class RedisPdpDecisionCacheTest {
     }
 
     @Test
-    fun `asks Altinn when Redis is down`() = runBlocking {
+    fun `asks Altinn when Redis is down and the failure mode is BYPASS`() = runBlocking {
         val down = cache(url = "redis://localhost:${unusedPort()}")
 
         assertEquals(PdpDecision.PERMIT, down.get(key(), maxAge = null, load = permit).authorization.decision)
         assertEquals(1, loads.get())
+    }
+
+    @Test
+    fun `refuses the call when Redis is down and the failure mode is REJECT`() = runBlocking {
+        val down = cache(url = "redis://localhost:${unusedPort()}", failureMode = DecisionCacheFailureMode.REJECT)
+
+        assertFailsWith<DecisionCacheUnavailableException> { down.get(key(), maxAge = null, load = permit) }
+        assertEquals(0, loads.get())
+    }
+
+    @Test
+    fun `a max age of zero asks Altinn even when Redis is down and the failure mode is REJECT`() = runBlocking {
+        val down = cache(url = "redis://localhost:${unusedPort()}", failureMode = DecisionCacheFailureMode.REJECT)
+
+        assertEquals(PdpDecision.PERMIT, down.get(key(), Duration.ZERO, permit).authorization.decision)
     }
 
     @Test
@@ -274,6 +289,7 @@ class RedisPdpDecisionCacheTest {
     private fun cache(
         url: String = "redis://${redis.host}:${redis.bindPort}",
         keySecret: String = "test-secret",
+        failureMode: DecisionCacheFailureMode = DecisionCacheFailureMode.BYPASS,
         environment: AltinnEnvironment = AltinnEnvironment.TT02,
     ) = RedisPdpDecisionCache(
         url = url,
@@ -282,6 +298,7 @@ class RedisPdpDecisionCacheTest {
         timeToLive = timeToLive,
         defaultMaxAge = defaultMaxAge,
         timeout = Duration.ofSeconds(1),
+        failureMode = failureMode,
         clock = clock,
     ).also { caches += it }
 

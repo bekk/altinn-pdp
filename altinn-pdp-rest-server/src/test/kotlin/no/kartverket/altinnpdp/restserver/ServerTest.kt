@@ -140,6 +140,23 @@ class ServerTest {
     }
 
     @Test
+    fun `a decision cache that refuses the call answers 503`() {
+        val cache = object : PdpDecisionCache {
+            override suspend fun get(
+                key: AuthorizeRequest.Parsed,
+                maxAge: Duration?,
+                load: suspend () -> PdpAuthorization,
+            ): AuthorizationWithAge = throw DecisionCacheUnavailableException(IllegalStateException("Redis is down"))
+        }
+        authorizeTest(decisionCache = cache) {
+            val response = postAuthorize()
+
+            assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
+            assertEquals(ErrorCode.DECISION_CACHE_UNAVAILABLE, response.errorResponse().code)
+        }
+    }
+
+    @Test
     fun `the subject reaches Altinn as the attribute for its kind`() {
         val cases = mapOf(
             authorizeBody() to """{"attributeId":"urn:altinn:systemuser:uuid","value":"$SAMPLE_SYSTEMUSER_ID"}""",
