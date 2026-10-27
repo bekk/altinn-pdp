@@ -116,6 +116,11 @@ class RedisPdpDecisionCache internal constructor(
 
     private val available = AtomicBoolean(true)
 
+    // Connecting takes longer than a lookup may wait, so it starts now instead of on the first lookup.
+    init {
+        connection()
+    }
+
     override suspend fun get(
         key: AuthorizeRequest.Parsed,
         maxAge: Duration?,
@@ -213,7 +218,7 @@ class RedisPdpDecisionCache internal constructor(
         return connection.async()
     }
 
-    // Connects on first use, so the server starts even when Redis is down. After a failed attempt, the next waits a
+    // Connects in the background, so the server starts even when Redis is down. After a failed attempt, the next waits a
     // while, so a Redis that is down is not asked to connect on every lookup. Once connected, Lettuce reconnects.
     @Synchronized
     private fun connection(): CompletableFuture<StatefulRedisConnection<String, String>> {

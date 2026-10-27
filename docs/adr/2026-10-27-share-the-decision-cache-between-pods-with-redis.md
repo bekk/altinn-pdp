@@ -69,7 +69,7 @@ of Redis, and changes nothing for operators who do not ask for it.
   100). Connecting, including TLS, is bounded by `DECISION_CACHE_REDIS_CONNECT_TIMEOUT_MILLIS`
   (default 1000) and goes on in the background. After a failed attempt, the next is a second later.
   The server logs once when Redis becomes unavailable and once when it is back.
-- The server starts even when Redis is down, since it connects on first use.
+- The server starts even when Redis is down, since it connects in the background.
 
 **The accepted stale-`PERMIT` window is still the time to live, plus a small margin.** The age of a
 cached decision is counted on the pod that reads it, from the moment the writing pod asked Altinn.

@@ -367,6 +367,16 @@ class RedisPdpDecisionCacheTest {
     }
 
     @Test
+    fun `connects when created, before the first lookup`() {
+        ServerSocket(0).use { server ->
+            server.soTimeout = 2_000
+            cache(url = "redis://localhost:${server.localPort}")
+
+            server.accept().close()
+        }
+    }
+
+    @Test
     fun `a lookup does not wait for a slow connection longer than the timeout`() = runBlocking {
         // The socket accepts the connection but never answers, like a Redis behind a stalled network.
         ServerSocket(0).use { silent ->
