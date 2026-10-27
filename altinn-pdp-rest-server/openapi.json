@@ -219,7 +219,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get a decision from Altinn. Your request did not cause it. Treat it as no access.",
+                        "description": "This API could not get a decision from Altinn. Your request did not cause it. Treat it as no access for now, and try again later.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
