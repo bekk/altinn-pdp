@@ -39,6 +39,25 @@ internal fun ApplicationConfig.decisionCache(): PdpDecisionCache {
     val timeToLive = Duration.ofSeconds(long("decisionCache.timeToLiveSeconds", default = 60, minimum = 1))
     val defaultMaxAge = Duration.ofSeconds(long("decisionCache.defaultMaxAgeSeconds", default = 0, minimum = 0))
     val maximumSize = long("decisionCache.maximumSize", default = 10_000, minimum = 1)
+    val type = enum("decisionCache.type", default = DecisionCacheType.IN_MEMORY)
+    val redisTimeout = Duration.ofMillis(long("decisionCache.redis.timeoutMillis", default = 100, minimum = 1))
     if (!enabled) return NoPdpDecisionCache
-    return InMemoryPdpDecisionCache(timeToLive = timeToLive, defaultMaxAge = defaultMaxAge, maximumSize = maximumSize)
+    return when (type) {
+        DecisionCacheType.IN_MEMORY -> InMemoryPdpDecisionCache(
+            timeToLive = timeToLive,
+            defaultMaxAge = defaultMaxAge,
+            maximumSize = maximumSize,
+        )
+
+        DecisionCacheType.REDIS -> RedisPdpDecisionCache(
+            url = required("decisionCache.redis.url"),
+            keySecret = required("decisionCache.redis.keySecret"),
+            environment = enum("altinn.environment"),
+            timeToLive = timeToLive,
+            defaultMaxAge = defaultMaxAge,
+            timeout = redisTimeout,
+        )
+    }
 }
+
+internal enum class DecisionCacheType { IN_MEMORY, REDIS }

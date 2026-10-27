@@ -61,11 +61,14 @@ internal fun ApplicationConfig.long(path: String, default: Long, minimum: Long):
         ?: error("$path must be a whole number of at least $minimum, but was \"$raw\" (see .env.example)")
 }
 
-internal inline fun <reified T : Enum<T>> ApplicationConfig.enum(path: String): T {
-    val raw = required(path)
-    return enumValues<T>().find { it.name == raw }
+internal inline fun <reified T : Enum<T>> ApplicationConfig.enum(path: String): T = parseEnum(path, required(path))
+
+internal inline fun <reified T : Enum<T>> ApplicationConfig.enum(path: String, default: T): T =
+    optional(path)?.let { parseEnum(path, it) } ?: default
+
+internal inline fun <reified T : Enum<T>> parseEnum(path: String, raw: String): T =
+    enumValues<T>().find { it.name == raw }
         ?: error("$path must be one of ${enumValues<T>().joinToString()}, but was \"$raw\" (see .env.example)")
-}
 
 internal fun ApplicationConfig.port(path: String): Int {
     val raw = required(path)
