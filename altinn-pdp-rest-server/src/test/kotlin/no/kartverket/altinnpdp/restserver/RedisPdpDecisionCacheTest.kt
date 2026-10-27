@@ -223,6 +223,65 @@ class RedisPdpDecisionCacheTest {
     }
 
     @Test
+    fun `concurrent lookups of the same key share one load`() = runBlocking {
+        coroutineScope {
+            List(50) {
+                async(Dispatchers.Default) {
+                    lookup {
+                        loads.incrementAndGet()
+                        delay(200)
+                        PdpAuthorization(PdpDecision.PERMIT)
+                    }
+                }
+            }.awaitAll()
+        }
+
+        assertEquals(1, loads.get())
+    }
+
+    @Test
+    fun `a lookup with max age zero does not wait for a load already in flight`() = runBlocking {
+        val release = CompletableDeferred<Unit>()
+        val inFlight = async(start = CoroutineStart.UNDISPATCHED) {
+            lookup(Duration.ZERO) { loads.incrementAndGet(); release.await(); PdpAuthorization(PdpDecision.PERMIT) }
+        }
+        val fresh = async(start = CoroutineStart.UNDISPATCHED) { lookup(Duration.ZERO) }
+
+        assertEquals(PdpDecision.PERMIT, fresh.await().authorization.decision)
+        release.complete(Unit)
+        inFlight.await()
+        assertEquals(2, loads.get())
+    }
+
+    @Test
+    fun `a load in flight is joined only if it started within the max age`() = runBlocking {
+        val release = CompletableDeferred<Unit>()
+        val inFlight = async(start = CoroutineStart.UNDISPATCHED) {
+            lookup(Duration.ZERO) { loads.incrementAndGet(); release.await(); PdpAuthorization(PdpDecision.PERMIT) }
+        }
+        clock.advance(Duration.ofSeconds(10))
+
+        assertEquals(PdpDecision.PERMIT, withTimeout(5_000) { lookup(Duration.ofSeconds(10)) }.authorization.decision)
+        release.complete(Unit)
+        inFlight.await()
+        assertEquals(2, loads.get())
+    }
+
+    @Test
+    fun `an older decision does not replace a newer one`() = runBlocking {
+        val release = CompletableDeferred<Unit>()
+        val older = async(start = CoroutineStart.UNDISPATCHED) {
+            lookup(Duration.ZERO) { release.await(); PdpAuthorization(PdpDecision.PERMIT) }
+        }
+        clock.advance(Duration.ofSeconds(1))
+        cache().get(key(), Duration.ZERO) { PdpAuthorization(PdpDecision.DENY) }
+        release.complete(Unit)
+        older.await()
+
+        assertEquals(PdpDecision.DENY, lookup().authorization.decision)
+    }
+
+    @Test
     fun `does not keep a failed load`() = runBlocking {
         assertFailsWith<IllegalStateException> {
             lookup { loads.incrementAndGet(); error("Altinn is down") }

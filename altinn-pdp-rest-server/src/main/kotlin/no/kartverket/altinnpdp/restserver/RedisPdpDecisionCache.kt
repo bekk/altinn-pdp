@@ -3,13 +3,19 @@ package no.kartverket.altinnpdp.restserver
 import io.lettuce.core.ClientOptions
 import io.lettuce.core.RedisClient
 import io.lettuce.core.RedisException
+import io.lettuce.core.RedisNoScriptException
 import io.lettuce.core.RedisURI
-import io.lettuce.core.SetArgs
+import io.lettuce.core.ScriptOutputType
 import io.lettuce.core.SocketOptions
 import io.lettuce.core.TimeoutOptions
 import io.lettuce.core.api.StatefulRedisConnection
 import io.lettuce.core.api.async.RedisAsyncCommands
 import io.lettuce.core.codec.StringCodec
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.future.asDeferred
 import kotlinx.coroutines.future.await
 import kotlinx.serialization.Serializable
@@ -23,11 +29,13 @@ import no.kartverket.altinnpdp.client.PersonId
 import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import org.slf4j.LoggerFactory
+import java.security.MessageDigest
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.util.HexFormat
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
@@ -87,6 +95,13 @@ class RedisPdpDecisionCache internal constructor(
     // when CachedDecision changes, so pods on different versions do not read each other's entries.
     private val keyPrefix = "altinn-pdp:${environment.name.lowercase()}:decision:v1:"
 
+    // Altinn may answer from any moment after the call starts, so the age counts from then.
+    private class Load(val startedAt: Instant, val result: Deferred<PdpAuthorization>)
+
+    private val loads = ConcurrentHashMap<String, Load>()
+
+    private val loadScope = CoroutineScope(SupervisorJob())
+
     private var connection: CompletableFuture<StatefulRedisConnection<String, String>>? = null
 
     override suspend fun get(
@@ -105,15 +120,33 @@ class RedisPdpDecisionCache internal constructor(
             }
         }
 
-        val startedAt = clock.instant()
-        val authorization = load()
-        if (authorization.decision != PdpDecision.INDETERMINATE) save(redisKey, CachedDecision.of(authorization, startedAt))
-        return AuthorizationWithAge(authorization, ageSince(startedAt))
+        // Lookups on this pod that miss at the same time share one call to Altinn, as in InMemoryPdpDecisionCache.
+        val pending = loads.compute(redisKey) { _, running ->
+            running?.takeIf { it.isYoungerThan(acceptedAge) } ?: start(redisKey, load)
+        }!!
+        pending.result.start()
+        return AuthorizationWithAge(pending.result.await(), ageSince(pending.startedAt))
     }
 
     override fun close() {
         client.shutdown()
     }
+
+    // The load runs outside the caller, so a caller that gives up neither cancels it for the others nor stops the save.
+    private fun start(redisKey: String, load: suspend () -> PdpAuthorization): Load {
+        val startedAt = clock.instant()
+        val result = loadScope.async(start = CoroutineStart.LAZY) {
+            load().also {
+                if (it.decision != PdpDecision.INDETERMINATE) save(redisKey, CachedDecision.of(it, startedAt))
+            }
+        }
+        return Load(startedAt, result).also { started ->
+            result.invokeOnCompletion { loads.remove(redisKey, started) }
+        }
+    }
+
+    // A load still in flight is joined only if it started recently enough, so max-age=0 always asks Altinn anew.
+    private fun Load.isYoungerThan(age: Duration): Boolean = !result.isCancelled && ageSince(startedAt) < age
 
     private suspend fun read(redisKey: String): CachedDecision? {
         val value = try {
@@ -135,8 +168,15 @@ class RedisPdpDecisionCache internal constructor(
     }
 
     private suspend fun save(redisKey: String, decision: CachedDecision) {
+        val args = arrayOf(Json.encodeToString(decision), decision.startedAt.toString(), timeToLive.toMillis().toString())
         try {
-            commands().set(redisKey, Json.encodeToString(decision), SetArgs().px(timeToLive.toMillis())).await()
+            val commands = commands()
+            try {
+                commands.evalsha<Long>(SAVE_SCRIPT_SHA, ScriptOutputType.INTEGER, arrayOf(redisKey), *args).await()
+            } catch (_: RedisNoScriptException) {
+                // Redis forgets loaded scripts when it restarts. EVAL loads it again.
+                commands.eval<Long>(SAVE_SCRIPT, ScriptOutputType.INTEGER, arrayOf(redisKey), *args).await()
+            }
         } catch (e: RedisException) {
             log.warn("Could not save the decision in the decision cache: ${e.message}")
         }
@@ -196,6 +236,24 @@ class RedisPdpDecisionCache internal constructor(
 
     private companion object {
         const val HMAC_ALGORITHM = "HmacSHA256"
+
+        // Saves a decision unless Redis holds one that Altinn was asked for later, so a slow, older answer never
+        // replaces a newer one. An entry that cannot be read is replaced.
+        const val SAVE_SCRIPT = """
+            local old = redis.call('GET', KEYS[1])
+            if old then
+                local ok, cached = pcall(cjson.decode, old)
+                if ok and type(cached) == 'table' and tonumber(cached.startedAt)
+                    and tonumber(cached.startedAt) > tonumber(ARGV[2]) then
+                    return 0
+                end
+            end
+            redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[3])
+            return 1
+        """
+
+        val SAVE_SCRIPT_SHA: String =
+            HexFormat.of().formatHex(MessageDigest.getInstance("SHA-1").digest(SAVE_SCRIPT.toByteArray()))
 
         val log = LoggerFactory.getLogger(RedisPdpDecisionCache::class.java)
     }
