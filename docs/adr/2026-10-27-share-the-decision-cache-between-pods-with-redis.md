@@ -61,10 +61,10 @@ of Redis, and changes nothing for operators who do not ask for it.
   never replaces a newer `DENY`.
 - Concurrent misses on one pod share one call to Altinn, as in the in-memory cache.
 - `DECISION_CACHE_REDIS_FAILURE_MODE` chooses what happens when Redis cannot be read. `BYPASS`, the
-  default, asks Altinn without the cache. `REJECT` refuses the call with `503` and the new error code
-  `DECISION_CACHE_UNAVAILABLE`. This adds a response to the API contract, which callers only see
-  when the operators choose `REJECT`. A call with `max-age=0` never reads the cache, so it is asked
-  of Altinn in both modes.
+  default, asks Altinn without the cache. `REJECT` refuses the call with `503` and the new problem
+  type `tag:kartverket.no,2026:decision-cache-unavailable`. This adds a response to the API
+  contract, which callers only see when the operators choose `REJECT`. A call with `max-age=0` never
+  reads the cache, so it is asked of Altinn in both modes.
 - A Redis that is down or slow costs a call at most `DECISION_CACHE_REDIS_TIMEOUT_MILLIS` (default
   100). Connecting, including TLS, is bounded by `DECISION_CACHE_REDIS_CONNECT_TIMEOUT_MILLIS`
   (default 1000) and goes on in the background. After a failed attempt, the next is a second later.

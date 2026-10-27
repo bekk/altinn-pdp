@@ -9,10 +9,10 @@ import no.kartverket.altinnpdp.client.PdpSubject
 import no.kartverket.altinnpdp.client.PersonId
 import no.kartverket.altinnpdp.client.ResourceId
 import no.kartverket.altinnpdp.client.SystemUserId
-import no.kartverket.altinnpdp.client.exception.PdpValidationException
+import no.kartverket.altinnpdp.client.exception.ValidationException
 import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 
-// Properties are nullable so that nulls or missing fields result in VALIDATION_ERROR rather than MALFORMED_BODY.
+// Properties are nullable so that nulls or missing fields result in VALIDATION_ERROR rather than MALFORMED_REQUEST.
 @Serializable
 @JsonSchema.Required("resourceId", "customerOrganizationNumber", "action")
 data class AuthorizeRequest(
@@ -68,7 +68,7 @@ must be a valid check digit.""",
 ) {
     fun parse(): Parsed {
         val errors = PdpRequestValidation.validate(systemuserId, pid, resourceId, customerOrganizationNumber, action)
-        if (errors.isNotEmpty()) throw PdpValidationException(errors)
+        if (errors.isNotEmpty()) throw ValidationException(errors)
         return Parsed(
             if (pid.isNullOrBlank()) SystemUserId.parse(systemuserId!!) else PersonId.parse(pid),
             ResourceId.parse(resourceId!!),
