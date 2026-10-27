@@ -110,7 +110,7 @@ class ConfigTest {
             "decisionCache.enabled" to "true",
             "decisionCache.type" to "REDIS",
             "decisionCache.redis.url" to "redis://localhost:6379",
-            "decisionCache.redis.keySecret" to "secret",
+            "decisionCache.redis.keySecret" to KEY_SECRET,
             "altinn.environment" to "TT02",
         )
         val inMemory = MapApplicationConfig("decisionCache.enabled" to "true", "decisionCache.type" to "IN_MEMORY")
@@ -126,7 +126,7 @@ class ConfigTest {
                 "decisionCache.enabled" to "true",
                 "decisionCache.type" to "REDIS",
                 "decisionCache.redis.url" to "redis://localhost:6379",
-                "decisionCache.redis.keySecret" to "secret",
+                "decisionCache.redis.keySecret" to KEY_SECRET,
                 "altinn.environment" to "TT02",
             ).apply { put(path, "") }
 
@@ -134,6 +134,21 @@ class ConfigTest {
 
             assertContains(e.message!!, path, message = path)
         }
+    }
+
+    @Test
+    fun `a Redis decision cache refuses a short key secret`() {
+        val config = MapApplicationConfig(
+            "decisionCache.enabled" to "true",
+            "decisionCache.type" to "REDIS",
+            "decisionCache.redis.url" to "redis://localhost:6379",
+            "decisionCache.redis.keySecret" to "a".repeat(31),
+            "altinn.environment" to "TT02",
+        )
+
+        val e = assertFailsWith<IllegalStateException> { config.decisionCache() }
+
+        assertContains(e.message!!, "decisionCache.redis.keySecret must be at least 32 bytes")
     }
 
     @Test
@@ -186,3 +201,6 @@ class ConfigTest {
         assertContains(e.message!!, ".yaml or .yml")
     }
 }
+
+// The length of `openssl rand -base64 32`, as .env.example suggests.
+private val KEY_SECRET = "k".repeat(44)

@@ -51,7 +51,7 @@ internal fun ApplicationConfig.decisionCache(): PdpDecisionCache {
 
         DecisionCacheType.REDIS -> RedisPdpDecisionCache(
             url = required("decisionCache.redis.url"),
-            keySecret = required("decisionCache.redis.keySecret"),
+            keySecret = redisKeySecret("decisionCache.redis.keySecret"),
             environment = enum("altinn.environment"),
             timeToLive = timeToLive,
             defaultMaxAge = defaultMaxAge,
@@ -59,5 +59,13 @@ internal fun ApplicationConfig.decisionCache(): PdpDecisionCache {
         )
     }
 }
+
+// Anyone who can read Redis can try every national identity number against a guessed secret, since there are few
+// enough of them. A long secret keeps that out of reach, as long as it is also random.
+private fun ApplicationConfig.redisKeySecret(path: String): String =
+    required(path).takeIf { it.toByteArray().size >= MINIMUM_KEY_SECRET_BYTES }
+        ?: error("$path must be at least $MINIMUM_KEY_SECRET_BYTES bytes (see .env.example)")
+
+private const val MINIMUM_KEY_SECRET_BYTES = 32
 
 internal enum class DecisionCacheType { IN_MEMORY, REDIS }

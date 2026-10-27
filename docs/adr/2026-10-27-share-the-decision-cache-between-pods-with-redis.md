@@ -54,6 +54,8 @@ of Redis, and changes nothing for operators who do not ask for it.
 - Redis only sees an HMAC-SHA256 of the question, keyed with `DECISION_CACHE_REDIS_KEY_SECRET`, and
   prefixed with the Altinn environment, so TT02 and PROD never share a decision even in one Redis.
   The stored value is the decision, its status code, its obligations and when Altinn was asked.
+  The server refuses to start with a secret shorter than 32 bytes, since there are few enough
+  national identity numbers that anyone who can read Redis could try them all against a weak one.
 - The entry expires in Redis after the time to live. A decision is saved with a script that keeps
   the entry when Redis already holds one that Altinn was asked for later, so a slow, older `PERMIT`
   never replaces a newer `DENY`.
