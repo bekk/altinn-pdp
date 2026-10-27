@@ -124,6 +124,25 @@ class ServerTest {
     }
 
     @Test
+    fun `the decision cache is closed when the server stops`() {
+        var closed = false
+        val cache = object : PdpDecisionCache {
+            override suspend fun get(
+                key: AuthorizeRequest.Parsed,
+                maxAge: Duration?,
+                load: suspend () -> PdpAuthorization,
+            ) = AuthorizationWithAge(load(), Duration.ZERO)
+
+            override fun close() {
+                closed = true
+            }
+        }
+        authorizeTest(decisionCache = cache) { postAuthorize() }
+
+        assertTrue(closed)
+    }
+
+    @Test
     fun `the subject reaches Altinn as the attribute for its kind`() {
         val cases = mapOf(
             authorizeBody() to """{"attributeId":"urn:altinn:systemuser:uuid","value":"$SAMPLE_SYSTEMUSER_ID"}""",

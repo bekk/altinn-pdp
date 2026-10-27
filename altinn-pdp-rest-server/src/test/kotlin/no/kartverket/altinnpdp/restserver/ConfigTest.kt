@@ -105,9 +105,47 @@ class ConfigTest {
     }
 
     @Test
+    fun `the decision cache type chooses where decisions are kept`() {
+        val redis = MapApplicationConfig(
+            "decisionCache.enabled" to "true",
+            "decisionCache.type" to "REDIS",
+            "decisionCache.redis.url" to "redis://localhost:6379",
+            "decisionCache.redis.keySecret" to "secret",
+            "altinn.environment" to "TT02",
+        )
+        val inMemory = MapApplicationConfig("decisionCache.enabled" to "true", "decisionCache.type" to "IN_MEMORY")
+
+        assertIs<RedisPdpDecisionCache>(redis.decisionCache()).close()
+        assertIs<InMemoryPdpDecisionCache>(inMemory.decisionCache())
+    }
+
+    @Test
+    fun `a Redis decision cache needs a URL and a key secret`() {
+        for (path in listOf("decisionCache.redis.url", "decisionCache.redis.keySecret")) {
+            val config = MapApplicationConfig(
+                "decisionCache.enabled" to "true",
+                "decisionCache.type" to "REDIS",
+                "decisionCache.redis.url" to "redis://localhost:6379",
+                "decisionCache.redis.keySecret" to "secret",
+                "altinn.environment" to "TT02",
+            ).apply { put(path, "") }
+
+            val e = assertFailsWith<IllegalStateException>(path) { config.decisionCache() }
+
+            assertContains(e.message!!, path, message = path)
+        }
+    }
+
+    @Test
     fun `the decision cache refuses invalid settings even when disabled`() {
-        for (path in listOf("decisionCache.timeToLiveSeconds", "decisionCache.maximumSize")) {
-            val config = MapApplicationConfig("decisionCache.enabled" to "false", path to "0")
+        val invalid = mapOf(
+            "decisionCache.timeToLiveSeconds" to "0",
+            "decisionCache.maximumSize" to "0",
+            "decisionCache.type" to "redis",
+            "decisionCache.redis.timeoutMillis" to "0",
+        )
+        for ((path, value) in invalid) {
+            val config = MapApplicationConfig("decisionCache.enabled" to "false", path to value)
 
             val e = assertFailsWith<IllegalStateException>(path) { config.decisionCache() }
 
