@@ -41,6 +41,8 @@ internal fun ApplicationConfig.decisionCache(): PdpDecisionCache {
     val maximumSize = long("decisionCache.maximumSize", default = 10_000, minimum = 1)
     val type = enum("decisionCache.type", default = DecisionCacheType.IN_MEMORY)
     val redisTimeout = Duration.ofMillis(long("decisionCache.redis.timeoutMillis", default = 100, minimum = 1))
+    val redisConnectTimeout =
+        Duration.ofMillis(long("decisionCache.redis.connectTimeoutMillis", default = 1_000, minimum = 1))
     val redisFailureMode = enum("decisionCache.redis.failureMode", default = DecisionCacheFailureMode.BYPASS)
     if (!enabled) return NoPdpDecisionCache
     return when (type) {
@@ -57,6 +59,7 @@ internal fun ApplicationConfig.decisionCache(): PdpDecisionCache {
             timeToLive = timeToLive,
             defaultMaxAge = defaultMaxAge,
             timeout = redisTimeout,
+            connectTimeout = redisConnectTimeout,
             failureMode = redisFailureMode,
         )
     }

@@ -248,6 +248,7 @@ person, only in `TT02`. In `PROD`, only real persons pass.
 | `DECISION_CACHE_REDIS_URL`                    | with `REDIS` | -           | The Redis to cache in, such as `redis://localhost:6379`                              |
 | `DECISION_CACHE_REDIS_KEY_SECRET`             | with `REDIS` | -           | The secret each question is hashed with before it goes to Redis, at least 32 bytes   |
 | `DECISION_CACHE_REDIS_TIMEOUT_MILLIS`         | no           | `100`       | How long to wait for Redis before treating it as unavailable                         |
+| `DECISION_CACHE_REDIS_CONNECT_TIMEOUT_MILLIS` | no           | `1000`      | How long connecting to Redis may take, including TLS                                 |
 | `DECISION_CACHE_REDIS_FAILURE_MODE`           | no           | `BYPASS`    | `BYPASS` asks Altinn when Redis is unavailable, `REJECT` answers 503                 |
 | `LOGBACK_CONFIG_FILE`                         | no           | -           | A `logback.xml` that replaces the bundled one                                        |
 | `APPLICATION_CONFIG_FILE`                     | no           | -           | An `application.yaml` that replaces the bundled one                                  |

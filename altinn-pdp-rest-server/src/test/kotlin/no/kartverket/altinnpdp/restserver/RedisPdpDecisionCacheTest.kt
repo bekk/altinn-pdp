@@ -324,7 +324,7 @@ class RedisPdpDecisionCacheTest {
     }
 
     @Test
-    fun `starts caching once Redis is up, even if it was down at first`() = runBlocking {
+    fun `starts caching once Redis is up, but tries to connect at most once a second`() = runBlocking {
         val port = unusedPort()
         val cache = cache(url = "redis://localhost:$port")
         cache.get(key(), maxAge = null, load = permit)
@@ -332,11 +332,63 @@ class RedisPdpDecisionCacheTest {
         val late = RedisServer.newRedisServer(port).start()
         try {
             cache.get(key(), maxAge = null, load = permit)
+            assertEquals(2, loads.get(), "less than a second since the last try, so not connected yet")
+
+            clock.advance(Duration.ofSeconds(1))
+            cache.get(key(), maxAge = null, load = permit)
             cache.get(key(), maxAge = null, load = permit)
         } finally {
             late.stop()
         }
-        assertEquals(2, loads.get(), "the first while Redis was down, the second once it was up")
+        assertEquals(3, loads.get(), "connected on the third lookup, and the fourth was cached")
+    }
+
+    @Test
+    fun `logs once when Redis becomes unavailable, and once when it is back`() = runBlocking {
+        val logger = LoggerFactory.getLogger(RedisPdpDecisionCache::class.java) as Logger
+        val appender = ListAppender<ILoggingEvent>().apply { start() }
+        logger.addAppender(appender)
+        try {
+            val port = unusedPort()
+            val cache = cache(url = "redis://localhost:$port")
+            repeat(3) { cache.get(key(), maxAge = null, load = permit) }
+
+            val late = RedisServer.newRedisServer(port).start()
+            try {
+                clock.advance(Duration.ofSeconds(1))
+                repeat(3) { cache.get(key(), maxAge = null, load = permit) }
+            } finally {
+                late.stop()
+            }
+        } finally {
+            logger.detachAppender(appender)
+        }
+        assertEquals(listOf(Level.WARN, Level.INFO), appender.list.map { it.level })
+    }
+
+    @Test
+    fun `a lookup does not wait for a slow connection longer than the timeout`() = runBlocking {
+        // The socket accepts the connection but never answers, like a Redis behind a stalled network.
+        ServerSocket(0).use { silent ->
+            val cache = cache(url = "redis://localhost:${silent.localPort}", connectTimeout = Duration.ofSeconds(30))
+
+            val authorization = withTimeout(5_000) { cache.get(key(), maxAge = null, load = permit) }
+
+            assertEquals(PdpDecision.PERMIT, authorization.authorization.decision)
+        }
+    }
+
+    @Test
+    fun `a connection that never answers fails after the connect timeout, and lookups then skip Redis`() = runBlocking {
+        ServerSocket(0).use { silent ->
+            val cache = cache(url = "redis://localhost:${silent.localPort}", connectTimeout = Duration.ofMillis(300))
+            cache.get(key(), maxAge = null, load = permit)
+            delay(600)
+
+            val authorization = withTimeout(500) { cache.get(key(), maxAge = null, load = permit) }
+
+            assertEquals(PdpDecision.PERMIT, authorization.authorization.decision)
+        }
     }
 
     private suspend fun lookup(
@@ -350,6 +402,7 @@ class RedisPdpDecisionCacheTest {
         keySecret: String = "test-secret",
         failureMode: DecisionCacheFailureMode = DecisionCacheFailureMode.BYPASS,
         environment: AltinnEnvironment = AltinnEnvironment.TT02,
+        connectTimeout: Duration = Duration.ofSeconds(1),
     ) = RedisPdpDecisionCache(
         url = url,
         keySecret = keySecret,
@@ -357,6 +410,7 @@ class RedisPdpDecisionCacheTest {
         timeToLive = timeToLive,
         defaultMaxAge = defaultMaxAge,
         timeout = Duration.ofSeconds(1),
+        connectTimeout = connectTimeout,
         failureMode = failureMode,
         clock = clock,
     ).also { caches += it }

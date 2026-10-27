@@ -2,6 +2,7 @@ package no.kartverket.altinnpdp.restserver
 
 import io.lettuce.core.ClientOptions
 import io.lettuce.core.RedisClient
+import io.lettuce.core.RedisConnectionException
 import io.lettuce.core.RedisException
 import io.lettuce.core.RedisNoScriptException
 import io.lettuce.core.RedisURI
@@ -18,6 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.future.asDeferred
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -36,6 +38,7 @@ import java.time.Instant
 import java.util.HexFormat
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
@@ -54,7 +57,8 @@ class RedisPdpDecisionCache internal constructor(
     environment: AltinnEnvironment,
     private val timeToLive: Duration,
     private val defaultMaxAge: Duration,
-    timeout: Duration,
+    private val timeout: Duration,
+    connectTimeout: Duration,
     private val failureMode: DecisionCacheFailureMode,
     private val clock: Clock,
 ) : PdpDecisionCache {
@@ -66,6 +70,7 @@ class RedisPdpDecisionCache internal constructor(
         timeToLive: Duration,
         defaultMaxAge: Duration,
         timeout: Duration,
+        connectTimeout: Duration,
         failureMode: DecisionCacheFailureMode,
     ) : this(
         url,
@@ -74,17 +79,19 @@ class RedisPdpDecisionCache internal constructor(
         timeToLive,
         defaultMaxAge,
         timeout,
+        connectTimeout,
         failureMode,
         Clock.systemUTC(),
     )
 
-    private val uri = RedisURI.create(url)
+    // The URI's timeout also bounds the handshake that follows the socket connect.
+    private val uri = RedisURI.create(url).also { it.timeout = connectTimeout }
 
     private val client = RedisClient.create().apply {
         options = ClientOptions.builder()
             // A Redis that is down fails each command at once, and a slow one after the timeout, instead of queueing.
             .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
-            .socketOptions(SocketOptions.builder().connectTimeout(timeout).build())
+            .socketOptions(SocketOptions.builder().connectTimeout(connectTimeout).build())
             .timeoutOptions(TimeoutOptions.enabled(timeout))
             .build()
     }
@@ -103,6 +110,11 @@ class RedisPdpDecisionCache internal constructor(
     private val loadScope = CoroutineScope(SupervisorJob())
 
     private var connection: CompletableFuture<StatefulRedisConnection<String, String>>? = null
+
+    @Volatile
+    private var connectFailedAt: Instant = Instant.EPOCH
+
+    private val available = AtomicBoolean(true)
 
     override suspend fun get(
         key: AuthorizeRequest.Parsed,
@@ -150,10 +162,10 @@ class RedisPdpDecisionCache internal constructor(
 
     private suspend fun read(redisKey: String): CachedDecision? {
         val value = try {
-            commands().get(redisKey).await()
+            commands().get(redisKey).await().also { markAvailable() }
         } catch (e: RedisException) {
+            markUnavailable(e)
             if (failureMode == DecisionCacheFailureMode.REJECT) throw DecisionCacheUnavailableException(e)
-            log.warn("The decision cache is unavailable, so Altinn is asked directly: ${e.message}")
             return null
         }
         return value?.let(::decode)
@@ -177,18 +189,42 @@ class RedisPdpDecisionCache internal constructor(
                 // Redis forgets loaded scripts when it restarts. EVAL loads it again.
                 commands.eval<Long>(SAVE_SCRIPT, ScriptOutputType.INTEGER, arrayOf(redisKey), *args).await()
             }
+            markAvailable()
         } catch (e: RedisException) {
-            log.warn("Could not save the decision in the decision cache: ${e.message}")
+            markUnavailable(e)
         }
     }
 
-    private suspend fun commands(): RedisAsyncCommands<String, String> = connection().asDeferred().await().async()
+    // Logs when Redis goes away and when it is back, not on every lookup in between.
+    private fun markAvailable() {
+        if (available.compareAndSet(false, true)) log.info("The decision cache is available again")
+    }
 
-    // Connects on first use, and again after a failed attempt, so the server starts even when Redis is down.
+    private fun markUnavailable(e: RedisException) {
+        if (available.compareAndSet(true, false)) {
+            log.warn("The decision cache is unavailable until Redis answers again: ${e.message}")
+        }
+    }
+
+    // Waits for the connection no longer than for a command, while connecting goes on in the background.
+    private suspend fun commands(): RedisAsyncCommands<String, String> {
+        val connection = withTimeoutOrNull(timeout.toMillis()) { connection().asDeferred().await() }
+            ?: throw RedisConnectionException("Not connected to Redis within $timeout")
+        return connection.async()
+    }
+
+    // Connects on first use, so the server starts even when Redis is down. After a failed attempt, the next waits a
+    // while, so a Redis that is down is not asked to connect on every lookup. Once connected, Lettuce reconnects.
     @Synchronized
-    private fun connection(): CompletableFuture<StatefulRedisConnection<String, String>> =
-        connection?.takeUnless { it.isCompletedExceptionally }
-            ?: client.connectAsync(StringCodec.UTF8, uri).toCompletableFuture().also { connection = it }
+    private fun connection(): CompletableFuture<StatefulRedisConnection<String, String>> {
+        val current = connection
+        if (current != null && !(current.isCompletedExceptionally && mayConnectAgain())) return current
+        return client.connectAsync(StringCodec.UTF8, uri).toCompletableFuture()
+            .whenComplete { _, e -> if (e != null) connectFailedAt = clock.instant() }
+            .also { connection = it }
+    }
+
+    private fun mayConnectAgain(): Boolean = Duration.between(connectFailedAt, clock.instant()) >= RECONNECT_DELAY
 
     // Every field of the question must be in the HMAC input. A test fails when Parsed gets a new field, as a reminder.
     private fun redisKey(key: AuthorizeRequest.Parsed): String {
@@ -236,6 +272,8 @@ class RedisPdpDecisionCache internal constructor(
 
     private companion object {
         const val HMAC_ALGORITHM = "HmacSHA256"
+
+        val RECONNECT_DELAY: Duration = Duration.ofSeconds(1)
 
         // Saves a decision unless Redis holds one that Altinn was asked for later, so a slow, older answer never
         // replaces a newer one. An entry that cannot be read is replaced.

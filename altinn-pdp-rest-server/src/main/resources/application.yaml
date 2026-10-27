@@ -19,6 +19,7 @@ decisionCache:
     url: "$?DECISION_CACHE_REDIS_URL"
     keySecret: "$?DECISION_CACHE_REDIS_KEY_SECRET"
     timeoutMillis: "$?DECISION_CACHE_REDIS_TIMEOUT_MILLIS"
+    connectTimeoutMillis: "$?DECISION_CACHE_REDIS_CONNECT_TIMEOUT_MILLIS"
     failureMode: "$?DECISION_CACHE_REDIS_FAILURE_MODE"
 
 accessLog:
