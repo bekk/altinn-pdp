@@ -9,7 +9,6 @@ import java.io.File
 internal class AppConfig(
     val port: Int,
     val accessLog: Boolean,
-    val logbackConfigFile: String?,
     val altinnEnvironment: AltinnEnvironment,
     val altinnSubscriptionKey: String,
     val maskinportenClientId: String,
@@ -17,16 +16,18 @@ internal class AppConfig(
     val decisionCache: PdpDecisionCache,
 ) {
     companion object {
-        fun load(config: ApplicationConfig = loadApplicationConfig()): AppConfig = AppConfig(
-            port = config.port("server.port"),
-            accessLog = config.boolean("accessLog.enabled", default = true),
-            logbackConfigFile = config.file("logback.configFile"),
-            altinnEnvironment = config.enum("altinn.environment"),
-            altinnSubscriptionKey = config.required("altinn.subscriptionKey"),
-            maskinportenClientId = config.required("maskinporten.clientId"),
-            maskinportenKey = MaskinportenKey.parse(config.required("maskinporten.clientJwk")),
-            decisionCache = config.decisionCache(),
-        )
+        fun load(config: ApplicationConfig = loadApplicationConfig()): AppConfig {
+            val altinnEnvironment = config.enum<AltinnEnvironment>("altinn.environment")
+            return AppConfig(
+                port = config.port("server.port"),
+                accessLog = config.boolean("accessLog.enabled", default = true),
+                altinnEnvironment = altinnEnvironment,
+                altinnSubscriptionKey = config.required("altinn.subscriptionKey"),
+                maskinportenClientId = config.required("maskinporten.clientId"),
+                maskinportenKey = MaskinportenKey.parse(config.required("maskinporten.clientJwk")),
+                decisionCache = config.decisionCache(altinnEnvironment),
+            )
+        }
     }
 }
 
@@ -61,11 +62,14 @@ internal fun ApplicationConfig.long(path: String, default: Long, minimum: Long):
         ?: error("$path must be a whole number of at least $minimum, but was \"$raw\" (see .env.example)")
 }
 
-internal inline fun <reified T : Enum<T>> ApplicationConfig.enum(path: String): T {
-    val raw = required(path)
-    return enumValues<T>().find { it.name == raw }
+internal inline fun <reified T : Enum<T>> ApplicationConfig.enum(path: String): T = parseEnum(path, required(path))
+
+internal inline fun <reified T : Enum<T>> ApplicationConfig.enum(path: String, default: T): T =
+    optional(path)?.let { parseEnum(path, it) } ?: default
+
+internal inline fun <reified T : Enum<T>> parseEnum(path: String, raw: String): T =
+    enumValues<T>().find { it.name == raw }
         ?: error("$path must be one of ${enumValues<T>().joinToString()}, but was \"$raw\" (see .env.example)")
-}
 
 internal fun ApplicationConfig.port(path: String): Int {
     val raw = required(path)

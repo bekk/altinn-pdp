@@ -99,17 +99,68 @@ class ConfigTest {
 
     @Test
     fun `the decision cache is off unless enabled`() {
-        assertSame(NoPdpDecisionCache, MapApplicationConfig().decisionCache())
-        assertSame(NoPdpDecisionCache, MapApplicationConfig("decisionCache.enabled" to "false").decisionCache())
-        assertIs<InMemoryPdpDecisionCache>(MapApplicationConfig("decisionCache.enabled" to "true").decisionCache())
+        assertSame(NoPdpDecisionCache, MapApplicationConfig().decisionCache(AltinnEnvironment.TT02))
+        assertSame(NoPdpDecisionCache, MapApplicationConfig("decisionCache.enabled" to "false").decisionCache(AltinnEnvironment.TT02))
+        assertIs<InMemoryPdpDecisionCache>(MapApplicationConfig("decisionCache.enabled" to "true").decisionCache(AltinnEnvironment.TT02))
+    }
+
+    @Test
+    fun `the decision cache type chooses where decisions are kept`() {
+        val redis = MapApplicationConfig(
+            "decisionCache.enabled" to "true",
+            "decisionCache.type" to "REDIS",
+            "decisionCache.redis.url" to "redis://localhost:6379",
+            "decisionCache.redis.keySecret" to KEY_SECRET,
+        )
+        val inMemory = MapApplicationConfig("decisionCache.enabled" to "true", "decisionCache.type" to "IN_MEMORY")
+
+        assertIs<RedisPdpDecisionCache>(redis.decisionCache(AltinnEnvironment.TT02)).close()
+        assertIs<InMemoryPdpDecisionCache>(inMemory.decisionCache(AltinnEnvironment.TT02))
+    }
+
+    @Test
+    fun `a Redis decision cache needs a URL and a key secret`() {
+        for (path in listOf("decisionCache.redis.url", "decisionCache.redis.keySecret")) {
+            val config = MapApplicationConfig(
+                "decisionCache.enabled" to "true",
+                "decisionCache.type" to "REDIS",
+                "decisionCache.redis.url" to "redis://localhost:6379",
+                "decisionCache.redis.keySecret" to KEY_SECRET,
+                ).apply { put(path, "") }
+
+            val e = assertFailsWith<IllegalStateException>(path) { config.decisionCache(AltinnEnvironment.TT02) }
+
+            assertContains(e.message!!, path, message = path)
+        }
+    }
+
+    @Test
+    fun `a Redis decision cache refuses a short key secret`() {
+        val config = MapApplicationConfig(
+            "decisionCache.enabled" to "true",
+            "decisionCache.type" to "REDIS",
+            "decisionCache.redis.url" to "redis://localhost:6379",
+            "decisionCache.redis.keySecret" to "a".repeat(31),
+        )
+
+        val e = assertFailsWith<IllegalStateException> { config.decisionCache(AltinnEnvironment.TT02) }
+
+        assertContains(e.message!!, "decisionCache.redis.keySecret must be at least 32 bytes")
     }
 
     @Test
     fun `the decision cache refuses invalid settings even when disabled`() {
-        for (path in listOf("decisionCache.timeToLiveSeconds", "decisionCache.maximumSize")) {
-            val config = MapApplicationConfig("decisionCache.enabled" to "false", path to "0")
+        val invalid = mapOf(
+            "decisionCache.timeToLiveSeconds" to "0",
+            "decisionCache.maximumSize" to "0",
+            "decisionCache.type" to "redis",
+            "decisionCache.redis.timeoutMillis" to "0",
+            "decisionCache.redis.failureMode" to "IGNORE",
+        )
+        for ((path, value) in invalid) {
+            val config = MapApplicationConfig("decisionCache.enabled" to "false", path to value)
 
-            val e = assertFailsWith<IllegalStateException>(path) { config.decisionCache() }
+            val e = assertFailsWith<IllegalStateException>(path) { config.decisionCache(AltinnEnvironment.TT02) }
 
             assertContains(e.message!!, path, message = path)
         }
@@ -119,7 +170,7 @@ class ConfigTest {
     fun `an enabled decision cache refuses a negative default max age`() {
         val config = MapApplicationConfig("decisionCache.enabled" to "true", "decisionCache.defaultMaxAgeSeconds" to "-1")
 
-        val e = assertFailsWith<IllegalStateException> { config.decisionCache() }
+        val e = assertFailsWith<IllegalStateException> { config.decisionCache(AltinnEnvironment.TT02) }
 
         assertContains(e.message!!, "decisionCache.defaultMaxAgeSeconds")
     }
@@ -148,3 +199,6 @@ class ConfigTest {
         assertContains(e.message!!, ".yaml or .yml")
     }
 }
+
+// The length of `openssl rand -base64 32`, as .env.example suggests.
+private val KEY_SECRET = "k".repeat(44)

@@ -14,6 +14,12 @@ decisionCache:
   timeToLiveSeconds: "$?DECISION_CACHE_TIME_TO_LIVE_SECONDS"
   defaultMaxAgeSeconds: "$?DECISION_CACHE_DEFAULT_MAX_AGE_SECONDS"
   maximumSize: "$?DECISION_CACHE_MAXIMUM_SIZE"
+  type: "$?DECISION_CACHE_TYPE"
+  redis:
+    url: "$?DECISION_CACHE_REDIS_URL"
+    keySecret: "$?DECISION_CACHE_REDIS_KEY_SECRET"
+    timeoutMillis: "$?DECISION_CACHE_REDIS_TIMEOUT_MILLIS"
+    failureMode: "$?DECISION_CACHE_REDIS_FAILURE_MODE"
 
 accessLog:
   enabled: "$?ACCESS_LOG_ENABLED"
