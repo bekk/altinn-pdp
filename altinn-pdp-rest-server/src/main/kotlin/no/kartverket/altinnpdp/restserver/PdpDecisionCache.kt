@@ -7,12 +7,14 @@ import java.time.Duration
 /** A decision and how long ago Altinn made it. */
 data class AuthorizationWithAge(val authorization: PdpAuthorization, val age: Duration)
 
-interface PdpDecisionCache {
+interface PdpDecisionCache : AutoCloseable {
     suspend fun get(
         key: AuthorizeRequest.Parsed,
         maxAge: Duration?,
         load: suspend () -> PdpAuthorization,
     ): AuthorizationWithAge
+
+    override fun close() {}
 }
 
 object NoPdpDecisionCache : PdpDecisionCache {
