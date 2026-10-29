@@ -17,12 +17,12 @@ import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import no.kartverket.altinnpdp.client.support.SAMPLE_PID
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
-import no.kartverket.altinnpdp.client.validation.ValidationCode
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
 import no.kartverket.altinnpdp.restserver.models.ProblemType
+import no.kartverket.altinnpdp.restserver.models.ValidationCode
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import kotlin.test.Test
