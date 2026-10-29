@@ -1,6 +1,6 @@
 # Cache PDP decisions in memory per pod, with freshness chosen by the caller
 
-Status: proposed  
+Status: proposed, partially superseded by [Share the decision cache between pods with Redis, as an option](2026-10-27-share-the-decision-cache-between-pods-with-redis.md)  
 Deciders: Team Tilgangsstyring
 
 ## Context and Problem Statement

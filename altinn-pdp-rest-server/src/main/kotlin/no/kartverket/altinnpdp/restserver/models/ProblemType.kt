@@ -25,6 +25,9 @@ enum class ProblemType(val title: String) {
     @SerialName("$PROBLEM_TYPE_PREFIX:upstream-error")
     UPSTREAM_ERROR("A service this API depends on failed"),
 
+    @SerialName("$PROBLEM_TYPE_PREFIX:decision-cache-unavailable")
+    DECISION_CACHE_UNAVAILABLE("The decision cache is unavailable"),
+
     @SerialName("$PROBLEM_TYPE_PREFIX:internal-error")
     INTERNAL_ERROR("Internal error"),
 }

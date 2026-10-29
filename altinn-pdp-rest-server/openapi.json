@@ -247,6 +247,34 @@
                             }
                         }
                     },
+                    "503": {
+                        "description": "The decision cache could not be read, and this API is set up to refuse calls rather than ask Altinn without it. Your request did not cause it. Treat it as no access, and try again later.",
+                        "headers": {
+                            "X-Request-ID": {
+                                "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "DecisionCacheUnavailable": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:decision-cache-unavailable",
+                                            "title": "The decision cache is unavailable",
+                                            "status": 503
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "500": {
                         "description": "An unexpected error in this API. Treat it as no access.",
                         "headers": {
@@ -387,7 +415,7 @@
                 "properties": {
                     "type": {
                         "type": "string",
-                        "description": "What went wrong, as a name that does not change, so your code can rely on it.\n\n- `tag:kartverket.no,2026:validation-error` (400): one or more fields are missing or invalid. `errors` lists all of\n  them.\n- `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a body that is not\n  valid JSON, a field with the wrong type, or a `Content-Type` that is not `application/json`.\n- `tag:kartverket.no,2026:upstream-rejected` (400): the values passed this API's checks, but Altinn rejected them.\n- `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.\n- `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.\n- `tag:kartverket.no,2026:upstream-error` (502): this API could not get a decision from Altinn. Your request did\n  not cause it.\n- `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API.",
+                        "description": "What went wrong, as a name that does not change, so your code can rely on it.\n\n- `tag:kartverket.no,2026:validation-error` (400): one or more fields are missing or invalid. `errors` lists all of\n  them.\n- `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a body that is not\n  valid JSON, a field with the wrong type, or a `Content-Type` that is not `application/json`.\n- `tag:kartverket.no,2026:upstream-rejected` (400): the values passed this API's checks, but Altinn rejected them.\n- `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.\n- `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.\n- `tag:kartverket.no,2026:upstream-error` (502): this API could not get a decision from Altinn. Your request did\n  not cause it.\n- `tag:kartverket.no,2026:decision-cache-unavailable` (503): the decision cache could not be read, and this API is\n  set up to refuse calls rather than ask Altinn without it. Your request did not cause it.\n- `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API.",
                         "enum": [
                             "tag:kartverket.no,2026:validation-error",
                             "tag:kartverket.no,2026:malformed-request",
@@ -395,6 +423,7 @@
                             "tag:kartverket.no,2026:not-found",
                             "tag:kartverket.no,2026:method-not-allowed",
                             "tag:kartverket.no,2026:upstream-error",
+                            "tag:kartverket.no,2026:decision-cache-unavailable",
                             "tag:kartverket.no,2026:internal-error"
                         ]
                     },

@@ -2,6 +2,7 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.yaml.YamlConfig
+import no.kartverket.altinnpdp.client.AltinnEnvironment
 import kotlin.test.Test
 import kotlin.test.assertFails
 import kotlin.test.assertSame
@@ -21,7 +22,7 @@ class ApplicationConfigTest {
 
     @Test
     fun `the decision cache is off by default`() {
-        assertSame(NoPdpDecisionCache, loadConfig().decisionCache())
+        assertSame(NoPdpDecisionCache, loadConfig().decisionCache(AltinnEnvironment.TT02))
     }
 
     private fun loadConfig(without: String? = null): ApplicationConfig {

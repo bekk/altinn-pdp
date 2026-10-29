@@ -19,6 +19,8 @@ data class ErrorResponse(
 - `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.
 - `tag:kartverket.no,2026:upstream-error` (502): this API could not get a decision from Altinn. Your request did
   not cause it.
+- `tag:kartverket.no,2026:decision-cache-unavailable` (503): the decision cache could not be read, and this API is
+  set up to refuse calls rather than ask Altinn without it. Your request did not cause it.
 - `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API.""",
     )
     val type: ProblemType,
