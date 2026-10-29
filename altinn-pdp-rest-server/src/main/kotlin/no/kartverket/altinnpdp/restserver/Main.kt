@@ -76,6 +76,7 @@ fun Application.module(
                     resourceId = request.resourceId,
                     customerOrganizationNumber = request.customerOrganizationNumber,
                     action = request.action,
+                    resourceAttributes = request.resourceAttributes,
                 )
             }
 

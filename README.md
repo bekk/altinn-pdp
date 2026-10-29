@@ -194,6 +194,33 @@ The answer is a `PdpAuthorization`:
 > logging in, `authorization_details[].authorized_parties[].orgno.ID` in the Ansattporten token.
 > Strip the ISO6523 prefix: send `311718371`, not `0192:311718371`.
 
+### Asking about a sub-resource
+
+When your resource's policy has rules for sub-resources, send the sub-resource as `resourceAttributes`:
+
+```kotlin
+val authorization = client.authorize(
+    subject = SystemUserId.parse("<system user uuid>"),
+    resourceId = ResourceId.parse("kv-geonorge"),
+    customerOrganizationNumber = OrganizationNumber.parse("923609016"),
+    action = ActionId.parse("download"),
+    resourceAttributes = listOf(
+        ResourceAttribute.parse("urn:altinn:subresource", "metadata"),
+        ResourceAttribute.parse("urn:kv:geonorge", "dataset"),
+    ),
+)
+```
+
+In Altinn Studio's policy editor, each entry in `resourceAttributes` is one Type and Id row of a
+sub-resource, other than the first row, which has Type `urn:altinn:resource` and your `resourceId`
+as Id. A rule only matches when every row of one of its sub-resources is sent.
+
+> [!WARNING]
+> A rule whose sub-resource only has the `urn:altinn:resource` row matches whatever
+> `resourceAttributes` are sent. If that rule allows `read`, then `read` is allowed on every
+> sub-resource too. To give a sub-resource access of its own, give its rule an action that the
+> resource's other rules do not have.
+
 ### HTTP client
 
 `httpClient` takes an `OutgoingHttpClient`, and timeouts, proxy and so on are set on it. Implement

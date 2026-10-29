@@ -52,6 +52,24 @@
                                         "customerOrganizationNumber": "923609016",
                                         "action": "read"
                                     }
+                                },
+                                "SubResource": {
+                                    "value": {
+                                        "systemuserId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                                        "resourceId": "kv-geonorge",
+                                        "customerOrganizationNumber": "923609016",
+                                        "action": "download",
+                                        "resourceAttributes": [
+                                            {
+                                                "type": "urn:altinn:subresource",
+                                                "id": "metadata"
+                                            },
+                                            {
+                                                "type": "urn:kv:geonorge",
+                                                "id": "dataset"
+                                            }
+                                        ]
+                                    }
                                 }
                             }
                         }
@@ -281,6 +299,26 @@
     },
     "components": {
         "schemas": {
+            "AuthorizeRequest.ResourceAttribute": {
+                "type": "object",
+                "title": "AuthorizeRequest.ResourceAttribute",
+                "required": [
+                    "type",
+                    "id"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "description": "The row's Type, for example `urn:kv:geonorge` or `urn:altinn:subresource`. It must be `urn:<name>` or `urn:<name>:<name>`, where each name has only lowercase letters, `-` or `_`. The editor adds `urn:` if the policy's author left it out, but allows other types than these, and a policy with one of them cannot be asked about. Types under `urn:altinn:` are refused, other than `urn:altinn:subresource`.",
+                        "pattern": "^urn:[a-z_-]+(:[a-z_-]+)?$"
+                    },
+                    "id": {
+                        "type": "string",
+                        "description": "The row's Id, for example `dataset`. A policy made in the editor compares it as exact text, case included. It cannot contain `:`, since the editor splits Type and Id at the last colon.",
+                        "pattern": "^[^:]+$"
+                    }
+                }
+            },
             "AuthorizeRequest": {
                 "type": "object",
                 "title": "AuthorizeRequest",
@@ -313,6 +351,13 @@
                     "action": {
                         "type": "string",
                         "description": "What the caller wants to do, as named in your resource's policy, for example `read` or `write`. Any value that is not empty is accepted."
+                    },
+                    "resourceAttributes": {
+                        "type": "array",
+                        "description": "The sub-resource to ask about, when your resource's policy has rules for sub-resources. Leave it out to\nask about the resource itself.\n\nIn Altinn Studio's policy editor, a rule lists its sub-resources under «Hvilken sub-ressurser skal regelen gjelde\nfor?». The first row of a sub-resource has Type `urn:altinn:resource`, and your `resourceId` as Id. Send each of\nits other rows, the ones added with «Legg til en innsnevring av sub-ressursen», as one entry here. A rule only\nmatches when the request has every row of one of its sub-resources. Send each `type` only once.\n\nA sub-resource with only the `urn:altinn:resource` row matches whatever is sent here. To give a sub-resource\naccess of its own, give its rule an action that the resource's other rules do not have.",
+                        "items": {
+                            "$ref": "#/components/schemas/AuthorizeRequest.ResourceAttribute"
+                        }
                     }
                 }
             },
@@ -359,11 +404,11 @@
                 "properties": {
                     "field": {
                         "type": "string",
-                        "description": "The request field or header, for example `customerOrganizationNumber` or `Cache-Control`."
+                        "description": "The request field or header, for example `customerOrganizationNumber`, `resourceAttributes[0].type` or `Cache-Control`."
                     },
                     "code": {
                         "type": "string",
-                        "description": "- `MISSING`: the field is absent, null or blank. If neither `systemuserId` nor `pid` is sent, both\n  are listed.\n- `INVALID_FORMAT`: the field is present but not valid.\n- `CONFLICTING`: both `systemuserId` and `pid` were sent. Both are listed.",
+                        "description": "- `MISSING`: the field is absent, null or blank. If neither `systemuserId` nor `pid` is sent, both\n  are listed.\n- `INVALID_FORMAT`: the field is present but not valid.\n- `CONFLICTING`: both `systemuserId` and `pid` were sent, or more than one entry in `resourceAttributes` has the\n  same `type`. Every field in the conflict is listed.",
                         "enum": [
                             "MISSING",
                             "INVALID_FORMAT",

@@ -5,6 +5,7 @@ import no.kartverket.altinnpdp.client.ActionId
 import no.kartverket.altinnpdp.client.OrganizationNumber
 import no.kartverket.altinnpdp.client.PdpSubject
 import no.kartverket.altinnpdp.client.PersonId
+import no.kartverket.altinnpdp.client.ResourceAttribute
 import no.kartverket.altinnpdp.client.ResourceId
 import no.kartverket.altinnpdp.client.SystemUserId
 
@@ -45,6 +46,7 @@ internal data class XacmlAuthorizationRequest(val request: Request) {
             resourceId: ResourceId,
             customerOrganizationNumber: OrganizationNumber,
             action: ActionId,
+            resourceAttributes: List<ResourceAttribute>,
         ): XacmlAuthorizationRequest = XacmlAuthorizationRequest(
             Request(
                 returnPolicyIdList = true,
@@ -54,6 +56,7 @@ internal data class XacmlAuthorizationRequest(val request: Request) {
                     Category.of(
                         Attribute(ATTRIBUTE_RESOURCE, resourceId.value),
                         Attribute(ATTRIBUTE_ORGANIZATION_NUMBER, customerOrganizationNumber.value),
+                        *resourceAttributes.map { Attribute(it.type, it.id) }.toTypedArray(),
                     ),
                 ),
             ),

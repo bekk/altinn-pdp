@@ -36,6 +36,48 @@ class AuthorizationTypesTest {
     }
 
     @Test
+    fun `a ResourceAttribute takes the type and id rows of Altinn Studio's policy editor`() {
+        val attribute = ResourceAttribute.parse("urn:kv:geonorge", "dataset")
+        assertEquals("urn:kv:geonorge", attribute.type)
+        assertEquals("dataset", attribute.id)
+        assertEquals("metadata", ResourceAttribute.parse("urn:altinn:subresource", "metadata").id)
+        for (type in listOf("urn:geonorge", "urn:kv-geo:data_set")) {
+            assertEquals(type, ResourceAttribute.parse(type, "dataset").type)
+        }
+    }
+
+    @Test
+    fun `a ResourceAttribute refuses a type outside urn or inside urn altinn`() {
+        val refused = mapOf(
+            "kv:geonorge" to "no urn: prefix, which the editor would have added",
+            "URN:kv:geonorge" to "the editor only recognises a lowercase urn: prefix",
+            "urn:kv geonorge" to "whitespace",
+            "urn:kv:\u2003geonorge" to "an em space",
+            "urn:kv\u00A0geonorge" to "a non-breaking space",
+            "urn:kv:Geonorge" to "an uppercase letter",
+            "urn:kv2:geonorge" to "a digit",
+            "urn:kv.geonorge" to "a dot",
+            "urn:kv:" to "an empty name after a colon",
+            "urn::geonorge" to "an empty name between colons",
+            "urn:kv:geonorge:dataset" to "more than two names after urn:",
+            "urn:" to "nothing after urn:",
+            "urn:altinn:resource" to "sent from resourceId",
+            "urn:altinn:organization:identifier-no" to "sent from customerOrganizationNumber",
+            "urn:ALTINN:resource" to "urn:altinn: in another case",
+        )
+        for ((type, why) in refused) {
+            assertFailsWith<ValidationException>(why) { ResourceAttribute.parse(type, "dataset") }
+        }
+    }
+
+    @Test
+    fun `a ResourceAttribute refuses a blank id or one with a colon`() {
+        for (id in listOf("", " ", "abc:123")) {
+            assertFailsWith<ValidationException>("\"$id\"") { ResourceAttribute.parse("urn:kv:geonorge", id) }
+        }
+    }
+
+    @Test
     fun `a PersonId never prints the number, while a SystemUserId prints as is`() {
         val subject: PdpSubject = PersonId.parse("01817012309")
 

@@ -27,14 +27,17 @@ internal fun authorizeBody(
     resourceId: String? = "test-resource",
     customerOrganizationNumber: String? = "923609016",
     action: String? = "read",
-): String = listOf(
-    "systemuserId" to systemuserId,
-    "pid" to pid,
-    "resourceId" to resourceId,
-    "customerOrganizationNumber" to customerOrganizationNumber,
-    "action" to action,
-).mapNotNull { (field, value) -> value?.let { """"$field":"$it"""" } }
-    .joinToString(prefix = "{", postfix = "}")
+    resourceAttributesJson: String? = null,
+): String = (
+    listOf(
+        "systemuserId" to systemuserId,
+        "pid" to pid,
+        "resourceId" to resourceId,
+        "customerOrganizationNumber" to customerOrganizationNumber,
+        "action" to action,
+    ).mapNotNull { (field, value) -> value?.let { """"$field":"$it"""" } } +
+        listOfNotNull(resourceAttributesJson?.let { """"resourceAttributes":$it""" })
+    ).joinToString(prefix = "{", postfix = "}")
 
 internal suspend fun ApplicationTestBuilder.postAuthorize(
     body: String = authorizeBody(),
