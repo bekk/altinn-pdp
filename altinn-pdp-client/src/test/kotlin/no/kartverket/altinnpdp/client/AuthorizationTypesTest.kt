@@ -1,7 +1,5 @@
 package no.kartverket.altinnpdp.client
 
-import no.kartverket.altinnpdp.client.exception.ValidationException
-import no.kartverket.altinnpdp.client.validation.ValidationCode
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -18,21 +16,24 @@ class AuthorizationTypesTest {
 
     private val cases = listOf(
         Case("systemuserId", { SystemUserId.parse(it).value }, "1725580F-70F4-4ACE-A748-4F912497A0D7", "1-1-1-1-1"),
-        Case("pid", { PersonId.parse(it).value }, "01817012309", "31027012357"),
+        Case("pid", { PersonId.parse(it).value }, "01817012309", "0181701230"),
         Case("resourceId", { ResourceId.parse(it).value }, "kartverket-eiendom", "ABC"),
         Case("customerOrganizationNumber", { OrganizationNumber.parse(it).value }, "923609016", "923609017"),
         Case("action", { ActionId.parse(it).value }, "custom-action", " "),
     )
 
     @Test
-    fun `parse keeps a valid value and throws with the reason for an invalid one`() {
+    fun `parse keeps a valid value and refuses an invalid or blank one`() {
         for (case in cases) {
             assertEquals(case.valid, case.parse(case.valid))
-            val invalid = assertFailsWith<ValidationException>(case.field) { case.parse(case.invalid) }
-            assertEquals(case.field, invalid.errors.single().field)
-            val blank = assertFailsWith<ValidationException>(case.field) { case.parse("") }
-            assertEquals(ValidationCode.MISSING, blank.errors.single().code)
+            assertFailsWith<IllegalArgumentException>(case.field) { case.parse(case.invalid) }
+            assertFailsWith<IllegalArgumentException>(case.field) { case.parse("") }
         }
+    }
+
+    @Test
+    fun `a PersonId only checks that the number has 11 digits`() {
+        assertEquals("31027012356", PersonId.parse("31027012356").value)
     }
 
     @Test

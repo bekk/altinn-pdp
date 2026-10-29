@@ -13,17 +13,18 @@ import io.ktor.server.response.respondText
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.exception.AltinnPdpException
 import no.kartverket.altinnpdp.client.exception.PdpException
-import no.kartverket.altinnpdp.client.exception.ValidationException
-import no.kartverket.altinnpdp.client.validation.ValidationCode
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
 import no.kartverket.altinnpdp.restserver.models.FieldError
 import no.kartverket.altinnpdp.restserver.models.ProblemType
+import no.kartverket.altinnpdp.restserver.models.ValidationCode
 
 internal fun StatusPagesConfig.errorResponses() {
     exception<JsonConvertException> { call, cause -> call.respondMalformedBody(cause) }
     exception<ContentTransformationException> { call, cause -> call.respondMalformedBody(cause) }
     exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
-    exception<ValidationException> { call, cause -> call.respondValidationFailed(cause) }
+    exception<InvalidRequestException> { call, cause ->
+        call.respondProblem(ProblemType.VALIDATION_ERROR, HttpStatusCode.BadRequest, errors = cause.errors)
+    }
     exception<InvalidCacheControlException> { call, _ ->
         call.respondProblem(
             ProblemType.VALIDATION_ERROR,
@@ -49,14 +50,6 @@ internal fun StatusPagesConfig.errorResponses() {
     status(HttpStatusCode.MethodNotAllowed) { call, status ->
         call.respondProblem(ProblemType.METHOD_NOT_ALLOWED, status, "The endpoint at this path does not accept this method")
     }
-}
-
-private suspend fun ApplicationCall.respondValidationFailed(cause: ValidationException) {
-    respondProblem(
-        ProblemType.VALIDATION_ERROR,
-        HttpStatusCode.BadRequest,
-        errors = cause.errors.map { FieldError(it.field, it.code, it.message) },
-    )
 }
 
 private suspend fun ApplicationCall.respondMalformedBody(cause: Throwable) {

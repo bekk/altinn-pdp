@@ -1,48 +1,40 @@
-package no.kartverket.altinnpdp.client.validation
+package no.kartverket.altinnpdp.restserver
 
 import no.bekk.bekkopen.org.OrganisasjonsnummerValidator
 import no.bekk.bekkopen.person.FodselsnummerValidator
+import no.kartverket.altinnpdp.restserver.models.FieldError
+import no.kartverket.altinnpdp.restserver.models.ValidationCode
 import kotlin.uuid.Uuid
 
-public enum class ValidationCode {
-    MISSING,
-    INVALID_FORMAT,
-    CONFLICTING,
-}
+internal class InvalidRequestException(val errors: List<FieldError>) : RuntimeException(errors.joinToString("; ") { it.message })
 
-public data class ValidationError(
-    val field: String,
-    val code: ValidationCode,
-    val message: String,
-)
+internal object PdpRequestValidation {
 
-public object PdpRequestValidation {
+    const val RESOURCE_ID_PATTERN: String = "^[a-z0-9_-]{4,}$"
 
-    public const val RESOURCE_ID_PATTERN: String = "^[a-z0-9_-]{4,}$"
+    private val RESOURCE_ID_FORMAT = Regex(RESOURCE_ID_PATTERN)
 
-    public val RESOURCE_ID_FORMAT: Regex = Regex(RESOURCE_ID_PATTERN)
+    const val ORGANIZATION_NUMBER_PATTERN: String = "^[0-9]{9}$"
 
-    public const val ORGANIZATION_NUMBER_PATTERN: String = "^[0-9]{9}$"
+    private val ORGANIZATION_NUMBER_FORMAT = Regex(ORGANIZATION_NUMBER_PATTERN)
 
-    public val ORGANIZATION_NUMBER_FORMAT: Regex = Regex(ORGANIZATION_NUMBER_PATTERN)
+    const val PID_PATTERN: String = "^[0-9]{11}$"
 
-    public const val PID_PATTERN: String = "^[0-9]{11}$"
+    private val PID_FORMAT = Regex(PID_PATTERN)
 
-    public val PID_FORMAT: Regex = Regex(PID_PATTERN)
-
-    public fun validate(
+    fun validate(
         systemuserId: String?,
         pid: String?,
         resourceId: String?,
         customerOrganizationNumber: String?,
         action: String?,
-    ): List<ValidationError> = subjectErrors(systemuserId, pid) + listOfNotNull(
+    ): List<FieldError> = subjectErrors(systemuserId, pid) + listOfNotNull(
         resourceIdError(resourceId),
         organizationNumberError(customerOrganizationNumber),
         actionError(action),
     )
 
-    private fun subjectErrors(systemuserId: String?, pid: String?): List<ValidationError> {
+    private fun subjectErrors(systemuserId: String?, pid: String?): List<FieldError> {
         val hasSystemuserId = !systemuserId.isNullOrBlank()
         val hasPid = !pid.isNullOrBlank()
         return when {
@@ -53,13 +45,13 @@ public object PdpRequestValidation {
         }
     }
 
-    private fun bothSubjectFields(code: ValidationCode, message: String): List<ValidationError> =
-        listOf("systemuserId", "pid").map { ValidationError(it, code, message) }
+    private fun bothSubjectFields(code: ValidationCode, message: String): List<FieldError> =
+        listOf("systemuserId", "pid").map { FieldError(it, code, message) }
 
-    internal fun systemuserIdError(value: String?): ValidationError? =
+    private fun systemuserIdError(value: String?): FieldError? =
         fieldError(value, "systemuserId") { if (Uuid.parseHexDashOrNull(it) == null) "must be a UUID" else null }
 
-    internal fun pidError(value: String?): ValidationError? =
+    private fun pidError(value: String?): FieldError? =
         fieldError(value, "pid") {
             when {
                 !it.matches(PID_FORMAT) -> "must be exactly 11 digits"
@@ -68,7 +60,7 @@ public object PdpRequestValidation {
             }
         }
 
-    internal fun resourceIdError(value: String?): ValidationError? =
+    private fun resourceIdError(value: String?): FieldError? =
         fieldError(value, "resourceId") {
             if (it.matches(RESOURCE_ID_FORMAT)) {
                 null
@@ -77,7 +69,7 @@ public object PdpRequestValidation {
             }
         }
 
-    internal fun organizationNumberError(value: String?): ValidationError? =
+    private fun organizationNumberError(value: String?): FieldError? =
         fieldError(value, "customerOrganizationNumber") {
             when {
                 !it.matches(ORGANIZATION_NUMBER_FORMAT) -> "must be exactly 9 digits"
@@ -86,17 +78,17 @@ public object PdpRequestValidation {
             }
         }
 
-    internal fun actionError(value: String?): ValidationError? =
+    private fun actionError(value: String?): FieldError? =
         fieldError(value, "action") { null }
 
     private inline fun fieldError(
         value: String?,
         field: String,
         problem: (String) -> String?,
-    ): ValidationError? {
+    ): FieldError? {
         if (value.isNullOrBlank()) {
-            return ValidationError(field, ValidationCode.MISSING, "$field is required")
+            return FieldError(field, ValidationCode.MISSING, "$field is required")
         }
-        return problem(value)?.let { ValidationError(field, ValidationCode.INVALID_FORMAT, "$field $it") }
+        return problem(value)?.let { FieldError(field, ValidationCode.INVALID_FORMAT, "$field $it") }
     }
 }
