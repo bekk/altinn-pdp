@@ -11,6 +11,7 @@ ktlint_standard_function-literal = disabled
 ktlint_standard_function-signature = disabled
 ktlint_standard_indent = disabled
 ktlint_standard_multiline-expression-wrapping = disabled
+ktlint_standard_no-unused-imports = enabled
 ktlint_standard_statement-wrapping = disabled
 ktlint_standard_string-template-indent = disabled
 ktlint_standard_trailing-comma-on-call-site = disabled
