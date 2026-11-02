@@ -1,23 +1,10 @@
 package no.kartverket.altinnpdp.restserver
 
-import io.lettuce.core.ClientOptions
-import io.lettuce.core.RedisClient
-import io.lettuce.core.RedisException
-import io.lettuce.core.RedisURI
-import io.lettuce.core.SetArgs
-import io.lettuce.core.SocketOptions
-import io.lettuce.core.TimeoutOptions
-import io.lettuce.core.api.StatefulRedisConnection
-import io.lettuce.core.api.async.RedisAsyncCommands
-import io.lettuce.core.codec.StringCodec
-import io.lettuce.core.resource.ClientResources
-import io.lettuce.core.resource.Delay
-import kotlinx.coroutines.future.asDeferred
-import kotlinx.coroutines.future.await
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpAuthorization
 import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.PdpObligation
@@ -25,85 +12,55 @@ import no.kartverket.altinnpdp.client.PersonId
 import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import org.slf4j.LoggerFactory
+import redis.clients.jedis.ConnectionPoolConfig
+import redis.clients.jedis.DefaultJedisClientConfig
+import redis.clients.jedis.RedisClient
+import redis.clients.jedis.SslOptions
+import redis.clients.jedis.exceptions.JedisException
+import redis.clients.jedis.params.SetParams
+import redis.clients.jedis.util.JedisURIHelper
+import java.net.URI
+import java.net.URISyntaxException
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.util.HexFormat
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
-/** What the server does when Redis cannot be read: ask Altinn without the cache, or refuse the call. */
 enum class DecisionCacheFailureMode { BYPASS, REJECT }
 
 class DecisionCacheUnavailableException(cause: Throwable) : RuntimeException("The decision cache is unavailable", cause)
 
-/**
- * Keeps decisions in Redis, shared by every pod. Redis only sees an HMAC of the question, never a national identity
- * number or any other value from the request.
- */
-class RedisPdpDecisionCache internal constructor(
+class RedisPdpDecisionCache(
     url: String,
     keySecret: String,
-    environment: AltinnEnvironment,
     private val timeToLive: Duration,
     private val defaultMaxAge: Duration,
     timeout: Duration,
     private val failureMode: DecisionCacheFailureMode,
-    private val clock: Clock,
+    private val clock: Clock = Clock.systemUTC(),
 ) : PdpDecisionCache {
 
-    constructor(
-        url: String,
-        keySecret: String,
-        environment: AltinnEnvironment,
-        timeToLive: Duration,
-        defaultMaxAge: Duration,
-        timeout: Duration,
-        failureMode: DecisionCacheFailureMode,
-    ) : this(
-        url,
-        keySecret,
-        environment,
-        timeToLive,
-        defaultMaxAge,
-        timeout,
-        failureMode,
-        Clock.systemUTC(),
-    )
-
-    // The URI's timeout bounds the handshake that follows the socket connect, which Lettuce otherwise lets run for 60
-    // seconds.
-    private val uri = RedisURI.create(url).also { it.timeout = timeout }
-
-    // Created on first use, since the client starts its threads and logging as soon as it exists.
-    private val lazyResources = lazy {
-        ClientResources.builder()
-            .reconnectDelay(Delay.exponential(MIN_RECONNECT_DELAY, MAX_RECONNECT_DELAY, 2, TimeUnit.MILLISECONDS))
+    private val redis: RedisClient = redisUri(url).let { uri ->
+        RedisClient.builder()
+            .hostAndPort(JedisURIHelper.getHostAndPort(uri))
+            .clientConfig(
+                DefaultJedisClientConfig.builder()
+                    .user(JedisURIHelper.getUser(uri))
+                    .password(JedisURIHelper.getPassword(uri))
+                    .database(JedisURIHelper.getDBIndex(uri))
+                    .apply { if (JedisURIHelper.isRedisSSLScheme(uri)) sslOptions(SslOptions.defaults()) }
+                    .connectionTimeoutMillis(timeout.toMillis().toInt())
+                    .socketTimeoutMillis(timeout.toMillis().toInt())
+                    .build(),
+            )
+            .poolConfig(ConnectionPoolConfig().apply { setMaxWait(timeout) })
             .build()
     }
-    private val lazyClient = lazy {
-        RedisClient.create(lazyResources.value).apply {
-            options = ClientOptions.builder()
-                // A Redis that is down fails each command at once, and a slow one after the timeout, instead of
-                // queueing.
-                .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
-                .socketOptions(SocketOptions.builder().connectTimeout(timeout).build())
-                .timeoutOptions(TimeoutOptions.enabled(timeout))
-                .build()
-        }
-    }
-    private val client by lazyClient
 
     private val keySpec = SecretKeySpec(keySecret.toByteArray(), HMAC_ALGORITHM)
-
-    // Kept apart per Altinn environment, so TT02 and PROD never share a decision, even in one Redis. Change the version
-    // when CachedDecision changes, so pods on different versions do not read each other's entries.
-    private val keyPrefix = "altinn-pdp:${environment.name.lowercase()}:decision:v1:"
-
-    private var connection: CompletableFuture<StatefulRedisConnection<String, String>>? = null
 
     private val available = AtomicBoolean(true)
 
@@ -119,7 +76,7 @@ class RedisPdpDecisionCache internal constructor(
         if (acceptedAge > Duration.ZERO) {
             val cached = try {
                 read(redisKey)
-            } catch (e: RedisException) {
+            } catch (e: JedisException) {
                 markUnavailable(e)
                 if (failureMode == DecisionCacheFailureMode.REJECT) throw DecisionCacheUnavailableException(e)
                 readFailed = true
@@ -133,27 +90,22 @@ class RedisPdpDecisionCache internal constructor(
 
         val startedAt = clock.instant()
         val authorization = load()
-        // Not saved when the read just failed, so a lookup never waits for a Redis that is down twice. An indeterminate
-        // decision is not kept, and removes the older one, so that it is not served after a refresh.
         if (!readFailed) {
             if (authorization.decision == PdpDecision.INDETERMINATE) {
-                remove(redisKey)
+                write("removed from") { redis.del(redisKey) }
             } else {
-                save(redisKey, CachedDecision.of(authorization, startedAt))
+                val value = Json.encodeToString(CachedDecision.of(authorization, startedAt))
+                write("saved in") { redis.set(redisKey, value, SetParams().px(timeToLive.toMillis())) }
             }
         }
         return AuthorizationWithAge(authorization, ageSince(startedAt))
     }
 
-    override fun close() {
-        if (lazyClient.isInitialized()) client.shutdown()
-        if (lazyResources.isInitialized()) lazyResources.value.shutdown().get()
-    }
+    override fun close() = redis.close()
 
     private suspend fun read(redisKey: String): CachedDecision? =
-        commands().get(redisKey).await().also { markAvailable() }?.let(::decode)
+        withContext(Dispatchers.IO) { redis.get(redisKey) }.also { markAvailable() }?.let(::decode)
 
-    // An entry that cannot be read counts as a miss, and the new decision replaces it.
     private fun decode(value: String): CachedDecision? = try {
         Json.decodeFromString<CachedDecision>(value)
     } catch (_: SerializationException) {
@@ -161,47 +113,24 @@ class RedisPdpDecisionCache internal constructor(
         null
     }
 
-    // Connects first if no read has, so that a pod that only gets max-age=0 or no-cache calls still saves for the
-    // others. A failed save does not mark Redis as unavailable, since reads decide that, and logging it would repeat on
-    // every miss.
-    private suspend fun save(redisKey: String, decision: CachedDecision) {
+    private suspend fun write(action: String, command: () -> Unit) {
         try {
-            commands().set(redisKey, Json.encodeToString(decision), SetArgs().px(timeToLive.toMillis())).await()
-        } catch (e: RedisException) {
-            log.debug("A decision could not be saved in the decision cache: ${e.message}")
+            withContext(Dispatchers.IO) { command() }
+        } catch (e: JedisException) {
+            log.debug("A decision could not be $action the decision cache: ${e.message}")
         }
     }
 
-    // A failed removal is treated like a failed save.
-    private suspend fun remove(redisKey: String) {
-        try {
-            commands().del(redisKey).await()
-        } catch (e: RedisException) {
-            log.debug("A decision could not be removed from the decision cache: ${e.message}")
-        }
-    }
-
-    // Logs when Redis cannot be read and when it can again, not on every lookup in between.
     private fun markAvailable() {
         if (available.compareAndSet(false, true)) log.info("The decision cache is available again")
     }
 
-    private fun markUnavailable(e: RedisException) {
+    private fun markUnavailable(e: JedisException) {
         if (available.compareAndSet(true, false)) {
             log.warn("The decision cache is unavailable until Redis answers again: ${e.message}")
         }
     }
 
-    private suspend fun commands(): RedisAsyncCommands<String, String> = connection().asDeferred().await().async()
-
-    // Connects on first use, and again after a failed attempt, so the server starts even when Redis is down. Once
-    // connected, Lettuce reconnects by itself, and commands fail at once while it is disconnected.
-    @Synchronized
-    private fun connection(): CompletableFuture<StatefulRedisConnection<String, String>> =
-        connection?.takeUnless { it.isCompletedExceptionally }
-            ?: client.connectAsync(StringCodec.UTF8, uri).toCompletableFuture().also { connection = it }
-
-    // Every field of the question must be in the HMAC input. A test fails when Parsed gets a new field, as a reminder.
     private fun redisKey(key: AuthorizeRequest.Parsed): String {
         val subject = when (val subject = key.subject) {
             is PersonId -> "person:${subject.value}"
@@ -211,10 +140,9 @@ class RedisPdpDecisionCache internal constructor(
             listOf(subject, key.resourceId.value, key.customerOrganizationNumber.value, key.action.value),
         )
         val hmac = Mac.getInstance(HMAC_ALGORITHM).apply { init(keySpec) }.doFinal(question.toByteArray())
-        return keyPrefix + HexFormat.of().formatHex(hmac)
+        return KEY_PREFIX + HexFormat.of().formatHex(hmac)
     }
 
-    // Pods' clocks may differ a little, so a decision saved by another pod can look like it is from the future.
     private fun ageSince(startedAt: Instant): Duration =
         Duration.between(startedAt, clock.instant()).coerceAtLeast(Duration.ZERO)
 
@@ -223,7 +151,6 @@ class RedisPdpDecisionCache internal constructor(
         val decision: PdpDecision,
         val statusCode: String?,
         val obligations: List<CachedObligation>,
-        // Epoch milliseconds of when Altinn was asked, since Altinn may answer from any moment after that.
         val startedAt: Long,
     ) {
         fun toAuthorization() = PdpAuthorization(
@@ -247,10 +174,18 @@ class RedisPdpDecisionCache internal constructor(
 
     private companion object {
         const val HMAC_ALGORITHM = "HmacSHA256"
-
-        val MIN_RECONNECT_DELAY: Duration = Duration.ofMillis(100)
-        val MAX_RECONNECT_DELAY: Duration = Duration.ofSeconds(2)
+        const val KEY_PREFIX = "altinn-pdp:decision:v1:"
 
         val log = LoggerFactory.getLogger(RedisPdpDecisionCache::class.java)
+
+        fun redisUri(url: String): URI {
+            val uri = try {
+                URI(url)
+            } catch (_: URISyntaxException) {
+                null
+            }
+            return uri?.takeIf(JedisURIHelper::isValid)
+                ?: error("decisionCache.redis.url is not a valid Redis URL (see .env.example)")
+        }
     }
 }

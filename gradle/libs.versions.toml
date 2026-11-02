@@ -10,7 +10,7 @@ jib = "3.5.4"
 caffeine = "3.3.1"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.12.0"
-lettuce = "7.8.0.RELEASE"
+jedis = "8.0.2"
 jedis-mock = "1.1.19"
 nimbus-jose-jwt = "10.10"
 nocommons = "0.17.0"
@@ -23,7 +23,7 @@ jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jackson" }
 netty-bom = { module = "io.netty:netty-bom", version.ref = "netty" }
 logstash-logback-encoder = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstash-logback-encoder" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
-lettuce-core = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
+jedis = { module = "redis.clients:jedis", version.ref = "jedis" }
 jedis-mock = { module = "com.github.fppt:jedis-mock", version.ref = "jedis-mock" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }

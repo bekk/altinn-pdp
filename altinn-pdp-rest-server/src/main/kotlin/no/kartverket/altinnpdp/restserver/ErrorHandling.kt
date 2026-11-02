@@ -35,7 +35,6 @@ internal fun StatusPagesConfig.errorResponses() {
         call.application.log.error("Call to Maskinporten or Altinn failed: statusCode=${cause.statusCode}", cause)
         call.respondUpstream(cause)
     }
-    // Not logged per call: the cache logs once when Redis goes away and once when it is back.
     exception<DecisionCacheUnavailableException> { call, _ ->
         call.respondProblem(ProblemType.DECISION_CACHE_UNAVAILABLE, HttpStatusCode.ServiceUnavailable)
     }

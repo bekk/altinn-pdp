@@ -5,7 +5,6 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.github.fppt.jedismock.RedisServer
-import io.lettuce.core.RedisClient
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import no.kartverket.altinnpdp.client.AltinnEnvironment
@@ -16,6 +15,8 @@ import no.kartverket.altinnpdp.client.support.SAMPLE_PID
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import org.slf4j.LoggerFactory
+import redis.clients.jedis.Jedis
+import java.lang.reflect.Modifier
 import java.net.ServerSocket
 import java.time.Clock
 import java.time.Duration
@@ -28,6 +29,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class RedisPdpDecisionCacheTest {
 
@@ -95,6 +97,15 @@ class RedisPdpDecisionCacheTest {
         clock.advance(Duration.ofMillis(1))
         lookup(maxAge)
         assertEquals(2, loads.get())
+    }
+
+    @Test
+    fun `Redis expires a saved decision after the time to live`() = runBlocking {
+        // The age check alone is not enough: a pod whose clock is behind sees the decision as younger than it is.
+        lookup()
+
+        val expiresInMillis = Jedis(redis.host, redis.bindPort).use { jedis -> jedis.pttl(jedis.keys("*").single()) }
+        assertTrue(expiresInMillis in 1..timeToLive.toMillis(), "expires in $expiresInMillis ms")
     }
 
     @Test
@@ -181,18 +192,14 @@ class RedisPdpDecisionCacheTest {
     @Test
     fun `the Redis key covers every field of the question`() {
         // A field added to Parsed must also be added to redisKey(), or two questions would share a decision.
+        // The JVM returns declared fields in no particular order, so compare them as a set.
         assertEquals(
-            listOf("subject", "resourceId", "customerOrganizationNumber", "action"),
-            AuthorizeRequest.Parsed::class.java.declaredFields.map { it.name },
+            setOf("subject", "resourceId", "customerOrganizationNumber", "action"),
+            AuthorizeRequest.Parsed::class.java.declaredFields
+                .filterNot { it.isSynthetic || Modifier.isStatic(it.modifiers) }
+                .map { it.name }
+                .toSet(),
         )
-    }
-
-    @Test
-    fun `keeps the decisions of each Altinn environment apart`() = runBlocking {
-        cache(environment = AltinnEnvironment.TT02).get(key(), maxAge = null, load = permit)
-        cache(environment = AltinnEnvironment.PROD).get(key(), maxAge = null, load = permit)
-
-        assertEquals(2, loads.get())
     }
 
     @Test
@@ -347,12 +354,10 @@ class RedisPdpDecisionCacheTest {
     private fun cache(
         url: String = "redis://${redis.host}:${redis.bindPort}",
         keySecret: String = "test-secret",
-        environment: AltinnEnvironment = AltinnEnvironment.TT02,
         failureMode: DecisionCacheFailureMode = DecisionCacheFailureMode.BYPASS,
     ) = RedisPdpDecisionCache(
         url = url,
         keySecret = keySecret,
-        environment = environment,
         timeToLive = timeToLive,
         defaultMaxAge = defaultMaxAge,
         timeout = Duration.ofSeconds(1),
@@ -375,24 +380,12 @@ class RedisPdpDecisionCacheTest {
     ).parse()
 
     private fun overwriteEveryValue(value: String) {
-        val client = RedisClient.create("redis://${redis.host}:${redis.bindPort}")
-        try {
-            val commands = client.connect().sync()
-            commands.keys("*").forEach { commands.set(it, value) }
-        } finally {
-            client.shutdown()
-        }
+        Jedis(redis.host, redis.bindPort).use { jedis -> jedis.keys("*").forEach { jedis.set(it, value) } }
     }
 
     // Every key and value in Redis, one key and its value per line.
-    private fun redisContents(): String {
-        val client = RedisClient.create("redis://${redis.host}:${redis.bindPort}")
-        try {
-            val commands = client.connect().sync()
-            return commands.keys("*").sorted().joinToString("\n") { "$it ${commands.get(it)}" }
-        } finally {
-            client.shutdown()
-        }
+    private fun redisContents(): String = Jedis(redis.host, redis.bindPort).use { jedis ->
+        jedis.keys("*").sorted().joinToString("\n") { "$it ${jedis.get(it)}" }
     }
 
     private fun unusedPort(): Int = ServerSocket(0).use { it.localPort }

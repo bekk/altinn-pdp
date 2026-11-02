@@ -56,11 +56,11 @@ of Redis, and changes nothing for operators who do not ask for it.
   cache as a whole is still off unless `DECISION_CACHE_ENABLED` is set.
 - Cache-aside: a lookup reads Redis, and on a miss asks Altinn and saves the answer with `SET`, to
   expire after the time to live.
-- Redis only sees an HMAC-SHA256 of the question, keyed with `DECISION_CACHE_REDIS_KEY_SECRET`, and
-  prefixed with the Altinn environment, so TT02 and PROD never share a decision even in one Redis.
+- Redis only sees an HMAC-SHA256 of the question, keyed with `DECISION_CACHE_REDIS_KEY_SECRET`.
   The stored value is the decision, its status code, its obligations and when Altinn was asked.
-  The server refuses to start with a secret shorter than 32 bytes, since there are few enough
-  national identity numbers that anyone who can read Redis could try them all against a weak one.
+  The secret must be long and random, since there are few enough national identity numbers that
+  anyone who can read Redis could try them all against a weak one. Each Altinn environment has its
+  own Redis, so the keys do not name the environment.
 - `DECISION_CACHE_REDIS_FAILURE_MODE` chooses what happens when Redis cannot be read. `BYPASS`, the
   default, asks Altinn without the cache. `REJECT` refuses the call with `503` and the new problem
   type `tag:kartverket.no,2026:decision-cache-unavailable`. This adds a response to the API
@@ -69,16 +69,20 @@ of Redis, and changes nothing for operators who do not ask for it.
   either mode.
 - Nothing is kept to write to Redis once it is back: a Redis that restarted is empty, and the next
   miss saves a fresh answer.
-- Every wait for Redis is bounded by `DECISION_CACHE_REDIS_TIMEOUT_MILLIS` (default 100): each
-  command, the socket connect, and the handshake after it. A lookup reads, and on a miss saves, so
-  it waits for Redis at most twice the timeout, or up to twice more when it has to connect first.
-  A save connects first if no read has, so a refresh from a pod that only gets `max-age=0` or
-  `no-cache` calls still reaches the others. A lookup whose read failed does not save, so it never
-  waits for a Redis that is down twice. Once connected, the client reconnects by itself, waiting at
-  most 2 seconds between tries, and commands fail at once while it is disconnected.
+- The server talks to Redis with Jedis, a plain blocking client with a connection pool, called on
+  the IO dispatcher. It was chosen over Lettuce, whose async connection handling and Netty setup
+  made the code harder to follow than this cache needs.
+- Every wait for Redis is bounded by `DECISION_CACHE_REDIS_TIMEOUT_MILLIS` (default 100): the
+  socket connect, each command, and the wait for a free connection in the pool. A lookup reads, and
+  on a miss saves, so it waits for Redis at most twice the timeout, or a little more when it has to
+  connect first. Looking up Redis's hostname is not bounded by the timeout, since it is answered
+  inside the cluster. A save connects first if no read has, so a refresh from a pod that only gets
+  `max-age=0` or `no-cache` calls still reaches the others. A lookup whose read failed does not
+  save, so it never waits for a Redis that is down twice. The pool replaces a broken connection
+  with a new one when it is next needed, so there is no reconnect loop, and commands fail at once
+  while Redis refuses connections.
 - Reads decide whether Redis counts as available. The server logs once when Redis cannot be read
-  and once when it can again. A failed save is logged at debug level only. While Redis is down,
-  Lettuce also logs its reconnect attempts, at most once every 5 seconds.
+  and once when it can again. A failed save is logged at debug level only.
 - The server starts even when Redis is down, since it connects on first use.
 - Redis has no password for now. The platform limits access in the cluster, so that only the
   altinn-pdp pods can reach it. This matters, since anyone who can write to Redis can turn a `DENY`

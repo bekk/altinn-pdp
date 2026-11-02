@@ -8,6 +8,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertSame
 
@@ -98,10 +99,46 @@ class ConfigTest {
     }
 
     @Test
+    fun `a number can have a maximum`() {
+        val config = MapApplicationConfig("millis" to "2147483648")
+
+        val e = assertFailsWith<IllegalStateException> { config.long("millis", default = 1, minimum = 1, maximum = 10) }
+
+        assertContains(e.message!!, "millis must be a whole number from 1 to 10")
+        assertEquals(10, MapApplicationConfig("millis" to "10").long("millis", default = 1, minimum = 1, maximum = 10))
+    }
+
+    @Test
+    fun `the Redis timeout must fit in an int, since Jedis takes it as one`() {
+        val config = MapApplicationConfig("decisionCache.redis.timeoutMillis" to "4294967296")
+
+        val e = assertFailsWith<IllegalStateException> { config.decisionCache() }
+
+        assertContains(e.message!!, "decisionCache.redis.timeoutMillis")
+    }
+
+    @Test
+    fun `an invalid Redis URL is refused without showing the password`() {
+        for (url in listOf("redis://user:hunter2@local host:6379", "redis://user:hunter2@")) {
+            val config = MapApplicationConfig(
+                "decisionCache.enabled" to "true",
+                "decisionCache.type" to "REDIS",
+                "decisionCache.redis.url" to url,
+                "decisionCache.redis.keySecret" to KEY_SECRET,
+            )
+
+            val e = assertFailsWith<IllegalStateException>(url) { config.decisionCache() }
+
+            assertContains(e.message!!, "decisionCache.redis.url", message = url)
+            assertFalse(e.stackTraceToString().contains("hunter2"), url)
+        }
+    }
+
+    @Test
     fun `the decision cache is off unless enabled`() {
-        assertSame(NoPdpDecisionCache, MapApplicationConfig().decisionCache(AltinnEnvironment.TT02))
-        assertSame(NoPdpDecisionCache, MapApplicationConfig("decisionCache.enabled" to "false").decisionCache(AltinnEnvironment.TT02))
-        assertIs<InMemoryPdpDecisionCache>(MapApplicationConfig("decisionCache.enabled" to "true").decisionCache(AltinnEnvironment.TT02))
+        assertSame(NoPdpDecisionCache, MapApplicationConfig().decisionCache())
+        assertSame(NoPdpDecisionCache, MapApplicationConfig("decisionCache.enabled" to "false").decisionCache())
+        assertIs<InMemoryPdpDecisionCache>(MapApplicationConfig("decisionCache.enabled" to "true").decisionCache())
     }
 
     @Test
@@ -114,8 +151,8 @@ class ConfigTest {
         )
         val inMemory = MapApplicationConfig("decisionCache.enabled" to "true", "decisionCache.type" to "IN_MEMORY")
 
-        assertIs<RedisPdpDecisionCache>(redis.decisionCache(AltinnEnvironment.TT02)).close()
-        assertIs<InMemoryPdpDecisionCache>(inMemory.decisionCache(AltinnEnvironment.TT02))
+        assertIs<RedisPdpDecisionCache>(redis.decisionCache()).close()
+        assertIs<InMemoryPdpDecisionCache>(inMemory.decisionCache())
     }
 
     @Test
@@ -128,24 +165,10 @@ class ConfigTest {
                 "decisionCache.redis.keySecret" to KEY_SECRET,
                 ).apply { put(path, "") }
 
-            val e = assertFailsWith<IllegalStateException>(path) { config.decisionCache(AltinnEnvironment.TT02) }
+            val e = assertFailsWith<IllegalStateException>(path) { config.decisionCache() }
 
             assertContains(e.message!!, path, message = path)
         }
-    }
-
-    @Test
-    fun `a Redis decision cache refuses a short key secret`() {
-        val config = MapApplicationConfig(
-            "decisionCache.enabled" to "true",
-            "decisionCache.type" to "REDIS",
-            "decisionCache.redis.url" to "redis://localhost:6379",
-            "decisionCache.redis.keySecret" to "a".repeat(31),
-        )
-
-        val e = assertFailsWith<IllegalStateException> { config.decisionCache(AltinnEnvironment.TT02) }
-
-        assertContains(e.message!!, "decisionCache.redis.keySecret must be at least 32 bytes")
     }
 
     @Test
@@ -160,7 +183,7 @@ class ConfigTest {
         for ((path, value) in invalid) {
             val config = MapApplicationConfig("decisionCache.enabled" to "false", path to value)
 
-            val e = assertFailsWith<IllegalStateException>(path) { config.decisionCache(AltinnEnvironment.TT02) }
+            val e = assertFailsWith<IllegalStateException>(path) { config.decisionCache() }
 
             assertContains(e.message!!, path, message = path)
         }
@@ -170,7 +193,7 @@ class ConfigTest {
     fun `an enabled decision cache refuses a negative default max age`() {
         val config = MapApplicationConfig("decisionCache.enabled" to "true", "decisionCache.defaultMaxAgeSeconds" to "-1")
 
-        val e = assertFailsWith<IllegalStateException> { config.decisionCache(AltinnEnvironment.TT02) }
+        val e = assertFailsWith<IllegalStateException> { config.decisionCache() }
 
         assertContains(e.message!!, "decisionCache.defaultMaxAgeSeconds")
     }

@@ -65,7 +65,7 @@ dependencies {
     implementation(platform(libs.jackson.bom))
     implementation(libs.nocommons)
     implementation(libs.caffeine)
-    implementation(libs.lettuce.core)
+    implementation(libs.jedis)
 
     testImplementation(ktorLibs.server.testHost)
     testImplementation(testFixtures(project(":altinn-pdp-client")))
