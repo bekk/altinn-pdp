@@ -2,6 +2,7 @@ package no.kartverket.altinnpdp.client
 
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.exception.PdpException
+import no.kartverket.altinnpdp.client.exception.ValidationException
 import no.kartverket.altinnpdp.client.support.SAMPLE_PID
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.client.support.TestHttpServer
@@ -71,6 +72,43 @@ class PdpClientTest {
             {"request":{"returnPolicyIdList":true,"accessSubject":[{"attribute":[{"attributeId":"urn:altinn:person:identifier-no","value":"$SAMPLE_PID"}]}],"action":[{"attribute":[{"attributeId":"urn:oasis:names:tc:xacml:1.0:action:action-id","value":"read"}]}],"resource":[{"attribute":[{"attributeId":"urn:altinn:resource","value":"test-resource"},{"attributeId":"urn:altinn:organization:identifier-no","value":"923609016"}]}]}}
         """.trimIndent()
         assertEquals(expected, server.lastRequest(path).body)
+    }
+
+    @Test
+    fun `sends resource attributes in the resource category, after the customer`() = runBlocking {
+        serverAnswers()
+
+        testPdpClient(server.baseUrl).authorize(
+            SystemUserId.parse(SAMPLE_SYSTEMUSER_ID),
+            ResourceId.parse("test-resource"),
+            OrganizationNumber.parse("923609016"),
+            ActionId.parse("download"),
+            listOf(
+                ResourceAttribute.parse("urn:altinn:subresource", "metadata"),
+                ResourceAttribute.parse("urn:kv:geonorge", "service"),
+            ),
+        )
+
+        val expected = """
+            {"request":{"returnPolicyIdList":true,"accessSubject":[{"attribute":[{"attributeId":"urn:altinn:systemuser:uuid","value":"$SAMPLE_SYSTEMUSER_ID"}]}],"action":[{"attribute":[{"attributeId":"urn:oasis:names:tc:xacml:1.0:action:action-id","value":"download"}]}],"resource":[{"attribute":[{"attributeId":"urn:altinn:resource","value":"test-resource"},{"attributeId":"urn:altinn:organization:identifier-no","value":"923609016"},{"attributeId":"urn:altinn:subresource","value":"metadata"},{"attributeId":"urn:kv:geonorge","value":"service"}]}]}}
+        """.trimIndent()
+        assertEquals(expected, server.lastRequest(path).body)
+    }
+
+    @Test
+    fun `refuses two resource attributes of one type without asking the PDP`() = runBlocking {
+        serverAnswers()
+
+        assertFailsWith<ValidationException> {
+            testPdpClient(server.baseUrl).authorize(
+                SystemUserId.parse(SAMPLE_SYSTEMUSER_ID),
+                ResourceId.parse("test-resource"),
+                OrganizationNumber.parse("923609016"),
+                ActionId.parse("download"),
+                listOf(ResourceAttribute.parse("urn:kv:geonorge", "dataset"), ResourceAttribute.parse("urn:kv:geonorge", "service")),
+            )
+        }
+        assertEquals(0, server.requestCount(path))
     }
 
     @Test

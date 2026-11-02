@@ -136,6 +136,19 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                     action = "read",
                 ),
             )
+            example(
+                "SubResource",
+                AuthorizeRequest(
+                    systemuserId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    resourceId = "kv-geonorge",
+                    customerOrganizationNumber = "923609016",
+                    action = "download",
+                    resourceAttributes = listOf(
+                        AuthorizeRequest.ResourceAttribute(type = "urn:altinn:subresource", id = "metadata"),
+                        AuthorizeRequest.ResourceAttribute(type = "urn:kv:geonorge", id = "dataset"),
+                    ),
+                ),
+            )
         }
     }
 

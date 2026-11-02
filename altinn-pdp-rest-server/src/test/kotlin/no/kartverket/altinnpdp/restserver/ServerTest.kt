@@ -78,6 +78,31 @@ class ServerTest {
     }
 
     @Test
+    fun `a decision for one sub-resource is not answered from the cache for another`() {
+        val sent = mutableListOf<OutgoingRequest>()
+        authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
+            postAuthorize()
+            postAuthorize(authorizeBody(resourceAttributesJson = """[{"type":"urn:kv:geonorge","id":"dataset"}]"""))
+            postAuthorize(authorizeBody(resourceAttributesJson = """[{"type":"urn:kv:geonorge","id":"service"}]"""))
+
+            assertEquals(3, sent.count { it.url.path == "/authorization/api/v1/authorize" })
+        }
+    }
+
+    @Test
+    fun `the same resource attributes in another order are answered from the cache`() {
+        val sent = mutableListOf<OutgoingRequest>()
+        val metadata = """{"type":"urn:altinn:subresource","id":"metadata"}"""
+        val service = """{"type":"urn:kv:geonorge","id":"service"}"""
+        authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
+            postAuthorize(authorizeBody(resourceAttributesJson = "[$metadata,$service]"))
+            postAuthorize(authorizeBody(resourceAttributesJson = "[$service,$metadata]"))
+
+            assertEquals(1, sent.count { it.url.path == "/authorization/api/v1/authorize" })
+        }
+    }
+
+    @Test
     fun `Cache-Control max-age=0 asks Altinn even when the decision is cached`() {
         val sent = mutableListOf<OutgoingRequest>()
         authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
@@ -137,6 +162,99 @@ class ServerTest {
             }
             assertContains(sent.single { it.url.path == "/authorization/api/v1/authorize" }.body!!.decodeToString(), subject)
         }
+    }
+
+    @Test
+    fun `resource attributes reach Altinn in the resource category, after the customer`() {
+        val sent = mutableListOf<OutgoingRequest>()
+        val body = authorizeBody(
+            resourceAttributesJson = """[{"type":"urn:altinn:subresource","id":"metadata"},{"type":"urn:kv:geonorge","id":"service"}]""",
+        )
+        authorizeTest(sent = sent) {
+            assertEquals(HttpStatusCode.OK, postAuthorize(body).status)
+        }
+        assertContains(
+            sent.single { it.url.path == "/authorization/api/v1/authorize" }.body!!.decodeToString(),
+            """{"attributeId":"urn:altinn:organization:identifier-no","value":"923609016"},""" +
+                """{"attributeId":"urn:altinn:subresource","value":"metadata"},""" +
+                """{"attributeId":"urn:kv:geonorge","value":"service"}]""",
+        )
+    }
+
+    @Test
+    fun `every resource attribute the client refuses is a 400, not a 500`() {
+        val refused = listOf(
+            """{"type":"kv:geonorge","id":"dataset"}""",
+            """{"type":"URN:kv:geonorge","id":"dataset"}""",
+            """{"type":"urn:kv geonorge","id":"dataset"}""",
+            """{"type":"urn:","id":"dataset"}""",
+            """{"type":"urn:altinn:resource","id":"dataset"}""",
+            """{"type":"urn:ALTINN:resource","id":"dataset"}""",
+            """{"type":"urn:kv:geonorge","id":" "}""",
+            """{"type":"urn:kv:geonorge","id":"abc:123"}""",
+            """{"type":"urn:kv:geonorge","id":"dataset"},{"type":"urn:kv:geonorge","id":"service"}""",
+        )
+        for (attributes in refused) {
+            authorizeTest {
+                val response = postAuthorize(authorizeBody(resourceAttributesJson = "[$attributes]"))
+
+                assertEquals(HttpStatusCode.BadRequest, response.status, "for $attributes")
+            }
+        }
+    }
+
+    @Test
+    fun `resource attributes are rejected per entry, with the index in the field`() {
+        val cases = listOf(
+            ValidationCase(
+                why = "a missing type and an id with a colon",
+                body = authorizeBody(resourceAttributesJson = """[{"type":"urn:kv:geonorge","id":"dataset"},{"id":"abc:123"}]"""),
+                errors = listOf(
+                    FieldError("resourceAttributes[1].type", ValidationCode.MISSING, "resourceAttributes[1].type is required"),
+                    FieldError(
+                        "resourceAttributes[1].id",
+                        ValidationCode.INVALID_FORMAT,
+                        "resourceAttributes[1].id must not contain a colon",
+                    ),
+                ),
+            ),
+            ValidationCase(
+                why = "a type that this API sends itself",
+                body = authorizeBody(resourceAttributesJson = """[{"type":"urn:altinn:resource","id":"other-resource"}]"""),
+                errors = listOf(
+                    FieldError(
+                        "resourceAttributes[0].type",
+                        ValidationCode.INVALID_FORMAT,
+                        "resourceAttributes[0].type must not start with urn:altinn:, other than urn:altinn:subresource",
+                    ),
+                ),
+            ),
+            ValidationCase(
+                why = "one type twice",
+                body = authorizeBody(
+                    resourceAttributesJson = """[{"type":"urn:kv:geonorge","id":"dataset"},""" +
+                        """{"type":"urn:altinn:subresource","id":"metadata"},{"type":"urn:kv:geonorge","id":"service"}]""",
+                ),
+                errors = listOf(
+                    FieldError("resourceAttributes[0].type", ValidationCode.CONFLICTING, "send each type only once"),
+                    FieldError("resourceAttributes[2].type", ValidationCode.CONFLICTING, "send each type only once"),
+                ),
+            ),
+            ValidationCase(
+                why = "an invalid resource attribute next to a missing field",
+                body = authorizeBody(action = null, resourceAttributesJson = """[{"type":"geonorge","id":"dataset"}]"""),
+                errors = listOf(
+                    FieldError("action", ValidationCode.MISSING, "action is required"),
+                    FieldError(
+                        "resourceAttributes[0].type",
+                        ValidationCode.INVALID_FORMAT,
+                        "resourceAttributes[0].type must be urn:<name> or urn:<name>:<name>, with names of lowercase letters, hyphen or underscore",
+                    ),
+                ),
+            ),
+        )
+
+        assertRejected(cases)
     }
 
     @Test

@@ -44,6 +44,16 @@ public value class ActionId private constructor(public val value: String) {
     }
 }
 
+@ConsistentCopyVisibility
+public data class ResourceAttribute private constructor(public val type: String, public val id: String) {
+    public companion object {
+        public fun parse(type: String, id: String): ResourceAttribute = ResourceAttribute(
+            valid(type) { PdpRequestValidation.resourceAttributeTypeError("type", it) },
+            valid(id) { PdpRequestValidation.resourceAttributeIdError("id", it) },
+        )
+    }
+}
+
 private fun valid(value: String, error: (String?) -> ValidationError?): String {
     error(value)?.let { throw ValidationException(listOf(it)) }
     return value

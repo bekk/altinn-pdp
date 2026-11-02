@@ -30,6 +30,16 @@ public object PdpRequestValidation {
 
     public val PID_FORMAT: Regex = Regex(PID_PATTERN)
 
+    public const val RESOURCE_ATTRIBUTE_TYPE_PATTERN: String = "^urn:[a-z_-]+(:[a-z_-]+)?$"
+
+    private val RESOURCE_ATTRIBUTE_TYPE_FORMAT = Regex(RESOURCE_ATTRIBUTE_TYPE_PATTERN)
+
+    public const val RESOURCE_ATTRIBUTE_ID_PATTERN: String = "^[^:]+$"
+
+    private const val ALTINN_NAMESPACE = "urn:altinn:"
+
+    private const val ALTINN_SUBRESOURCE = "urn:altinn:subresource"
+
     public fun validate(
         systemuserId: String?,
         pid: String?,
@@ -41,6 +51,19 @@ public object PdpRequestValidation {
         organizationNumberError(customerOrganizationNumber),
         actionError(action),
     )
+
+    public fun validateResourceAttributes(typesAndIds: List<Pair<String?, String?>>): List<ValidationError> {
+        val repeatedTypes = typesAndIds.mapNotNull { it.first }.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
+        return typesAndIds.flatMapIndexed { index, (type, id) ->
+            val typeField = "resourceAttributes[$index].type"
+            val typeError = resourceAttributeTypeError(typeField, type) ?: if (type in repeatedTypes) {
+                ValidationError(typeField, ValidationCode.CONFLICTING, "send each type only once")
+            } else {
+                null
+            }
+            listOfNotNull(typeError, resourceAttributeIdError("resourceAttributes[$index].id", id))
+        }
+    }
 
     private fun subjectErrors(systemuserId: String?, pid: String?): List<ValidationError> {
         val hasSystemuserId = !systemuserId.isNullOrBlank()
@@ -88,6 +111,22 @@ public object PdpRequestValidation {
 
     internal fun actionError(value: String?): ValidationError? =
         fieldError(value, "action") { null }
+
+    internal fun resourceAttributeTypeError(field: String, value: String?): ValidationError? =
+        fieldError(value, field) {
+            when {
+                !it.matches(RESOURCE_ATTRIBUTE_TYPE_FORMAT) ->
+                    "must be urn:<name> or urn:<name>:<name>, with names of lowercase letters, hyphen or underscore"
+
+                it.startsWith(ALTINN_NAMESPACE) && it != ALTINN_SUBRESOURCE ->
+                    "must not start with $ALTINN_NAMESPACE, other than $ALTINN_SUBRESOURCE"
+
+                else -> null
+            }
+        }
+
+    internal fun resourceAttributeIdError(field: String, value: String?): ValidationError? =
+        fieldError(value, field) { if (':' in it) "must not contain a colon" else null }
 
     private inline fun fieldError(
         value: String?,

@@ -6,14 +6,18 @@ import no.kartverket.altinnpdp.client.validation.ValidationCode
 
 @Serializable
 data class FieldError(
-    @JsonSchema.Description("The request field or header, for example `customerOrganizationNumber` or `Cache-Control`.")
+    @JsonSchema.Description(
+        "The request field or header, for example `customerOrganizationNumber`, `resourceAttributes[0].type` or " +
+            "`Cache-Control`.",
+    )
     val field: String,
 
     @JsonSchema.Description(
         """- `MISSING`: the field is absent, null or blank. If neither `systemuserId` nor `pid` is sent, both
   are listed.
 - `INVALID_FORMAT`: the field is present but not valid.
-- `CONFLICTING`: both `systemuserId` and `pid` were sent. Both are listed.""",
+- `CONFLICTING`: both `systemuserId` and `pid` were sent, or more than one entry in `resourceAttributes` has the
+  same `type`. Every field in the conflict is listed.""",
     )
     val code: ValidationCode,
 

@@ -6,6 +6,7 @@ import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
 import no.kartverket.altinnpdp.client.auth.MaskinportenKey
 import no.kartverket.altinnpdp.client.exception.PdpException
+import no.kartverket.altinnpdp.client.exception.ValidationException
 import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.HttpMethod
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
@@ -13,6 +14,7 @@ import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import no.kartverket.altinnpdp.client.http.OutgoingResponse
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
+import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 import java.net.URI
 
 public class PdpClient internal constructor(
@@ -61,11 +63,14 @@ public class PdpClient internal constructor(
         resourceId: ResourceId,
         customerOrganizationNumber: OrganizationNumber,
         action: ActionId,
+        resourceAttributes: List<ResourceAttribute> = emptyList(),
     ): PdpAuthorization {
+        val errors = PdpRequestValidation.validateResourceAttributes(resourceAttributes.map { it.type to it.id })
+        if (errors.isNotEmpty()) throw ValidationException(errors)
         val token = tokenProvider.accessToken()
         val body = Http.json.encodeToString(
             XacmlAuthorizationRequest.serializer(),
-            XacmlAuthorizationRequest.of(subject, resourceId, customerOrganizationNumber, action),
+            XacmlAuthorizationRequest.of(subject, resourceId, customerOrganizationNumber, action, resourceAttributes),
         ).encodeToByteArray()
         val request = OutgoingRequest(
             method = HttpMethod.POST,
