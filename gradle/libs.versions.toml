@@ -2,7 +2,7 @@
 kotlin = "2.4.21"
 ktlint-cli = "1.8.0"
 ktlint-gradle = "14.2.0"
-logback = "1.6.5"
+logback = "1.6.6"
 logstash-logback-encoder = "9.0"
 jackson = "3.2.4"
 netty = "4.2.19.Final"
