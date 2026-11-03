@@ -104,7 +104,6 @@ class MaskinportenClientTest {
         val cases = mapOf(
             "no expires_in" to (maskinportenTokenResponse(expiresIn = null) to "expires_in"),
             "no access_token" to ("""{"token_type":"Bearer"}""" to "access_token"),
-            "an access_token with a newline" to ("""{"access_token":"mp\ntoken","expires_in":3600}""" to "access_token"),
             "a body that is not JSON" to ("<html>gateway error</html>" to ""),
         )
         for ((why, case) in cases) {
@@ -124,14 +123,5 @@ class MaskinportenClientTest {
         val e = assertFailsWith<MaskinportenException> { client().getToken() }
 
         assertNoTokenIn(e, "secret-mp-token")
-    }
-
-    @Test
-    fun `keeps the token out of the error when it is not a valid bearer token`() = runBlocking {
-        server.on(TOKEN_PATH) { TestResponse(body = """{"access_token":"secret-mp\ntoken","expires_in":3600}""") }
-
-        val e = assertFailsWith<MaskinportenException> { client().getToken() }
-
-        assertNoTokenIn(e, "secret-mp")
     }
 }

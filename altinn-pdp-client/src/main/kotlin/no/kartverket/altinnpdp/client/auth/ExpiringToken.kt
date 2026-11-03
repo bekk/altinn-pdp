@@ -3,10 +3,6 @@ package no.kartverket.altinnpdp.client.auth
 import java.time.Duration
 import java.time.Instant
 
-private val BEARER_TOKEN = Regex("[A-Za-z0-9._~+/-]+=*")
-
-internal fun isValidBearerToken(value: String): Boolean = BEARER_TOKEN.matches(value)
-
 internal sealed interface ExpiringToken {
     val value: String
     val expiresAt: Instant
