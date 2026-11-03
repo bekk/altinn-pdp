@@ -67,7 +67,8 @@ class AltinnTokenExchangerTest {
         val cases = mapOf(
             "no exp claim" to (signedJwt(expiresAt = null) to "exp"),
             "an empty body" to ("" to "empty"),
-            "a body that is not a JWT at all" to ("<html>gateway error</html>" to "JWT"),
+            "a body that is not a bearer token" to ("<html>gateway error</html>" to "bearer token"),
+            "a body that is not a JWT" to ("not-a-jwt" to "JWT"),
         )
         for ((why, case) in cases) {
             val (body, expectedInMessage) = case
@@ -96,5 +97,17 @@ class AltinnTokenExchangerTest {
         val e = assertFailsWith<AltinnException> { exchanger().exchange(maskinportenToken) }
 
         assertNoTokenIn(e, "secret.altinn.token")
+    }
+
+    @Test
+    fun `fails without the token in the error when the token is not a valid bearer token`() = runBlocking {
+        val jwt = signedJwt(NOW.plusSeconds(300))
+        val split = jwt.indexOf('.') + 5
+        server.on(path) { TestResponse(body = jwt.substring(0, split) + "\n" + jwt.substring(split)) }
+
+        val e = assertFailsWith<AltinnException> { exchanger().exchange(maskinportenToken) }
+
+        assertContains(e.message!!, "bearer token")
+        assertNoTokenIn(e, jwt.substring(split))
     }
 }

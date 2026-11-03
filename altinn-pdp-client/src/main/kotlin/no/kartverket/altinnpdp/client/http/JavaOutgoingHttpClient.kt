@@ -24,7 +24,13 @@ public class JavaOutgoingHttpClient(
         val builder = HttpRequest.newBuilder(request.url)
             .timeout(requestTimeout)
             .method(request.method.name, body)
-        request.headers.forEach { (name, value) -> builder.header(name, value) }
+        request.headers.forEach { (name, value) ->
+            try {
+                builder.header(name, value)
+            } catch (_: IllegalArgumentException) {
+                throw IllegalArgumentException("Invalid HTTP request header $name")
+            }
+        }
 
         val response = httpClient.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray()).await()
         return OutgoingResponse(
