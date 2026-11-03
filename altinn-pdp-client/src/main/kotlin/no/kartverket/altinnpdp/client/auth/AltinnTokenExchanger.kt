@@ -30,11 +30,7 @@ internal class AltinnTokenExchanger(
                 responseBody = body,
             )
         }
-        val expiresAt = expiresAt(token)
-        if (!isValidBearerToken(token)) {
-            throw AltinnException("The token from Altinn is not a valid bearer token", statusCode = response.statusCode)
-        }
-        return AltinnToken(token, expiresAt)
+        return AltinnToken(token, expiresAt(token))
     }
 
     private fun expiresAt(token: String): Instant = try {
