@@ -79,6 +79,9 @@ internal class MaskinportenClient(
         if (parsed.accessToken.isBlank()) {
             throw MaskinportenException("The response from Maskinporten had no access_token")
         }
+        if (!isValidBearerToken(parsed.accessToken)) {
+            throw MaskinportenException("The access_token from Maskinporten is not a valid bearer token")
+        }
         val lifetimeSeconds = parsed.expiresIn
             ?: throw MaskinportenException("The response from Maskinporten had no expires_in")
         return MaskinportenToken(parsed.accessToken, clock.instant().plusSeconds(lifetimeSeconds))

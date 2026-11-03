@@ -97,4 +97,16 @@ class AltinnTokenExchangerTest {
 
         assertNoTokenIn(e, "secret.altinn.token")
     }
+
+    @Test
+    fun `fails without the token in the error when the token is not a valid bearer token`() = runBlocking {
+        val jwt = signedJwt(NOW.plusSeconds(300))
+        val split = jwt.indexOf('.') + 5
+        server.on(path) { TestResponse(body = jwt.substring(0, split) + "\n" + jwt.substring(split)) }
+
+        val e = assertFailsWith<AltinnException> { exchanger().exchange(maskinportenToken) }
+
+        assertContains(e.message!!, "bearer token")
+        assertNoTokenIn(e, jwt.substring(split))
+    }
 }

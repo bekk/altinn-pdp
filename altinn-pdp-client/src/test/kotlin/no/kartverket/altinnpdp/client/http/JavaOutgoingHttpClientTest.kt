@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import no.kartverket.altinnpdp.client.support.assertNoTokenIn
 import java.net.InetSocketAddress
 import java.net.URI
 import java.net.http.HttpClient
@@ -72,6 +73,19 @@ class JavaOutgoingHttpClientTest {
         assertEquals("POST", method)
         assertEquals("Bearer test-token", authorization)
         assertContentEquals(body, receivedBody)
+    }
+
+    @Test
+    fun `keeps a header value the JDK rejects out of the error`() {
+        val url = URI("http://localhost/authorization/api/v1/authorize")
+        val request = OutgoingRequest(HttpMethod.GET, url, mapOf("Authorization" to "Bearer secret-mp\ntoken"))
+
+        val e = assertFailsWith<IllegalArgumentException> {
+            runBlocking { JavaOutgoingHttpClient(noRedirects, Duration.ofSeconds(3)).send(request) }
+        }
+
+        assertContains(e.message!!, "Authorization")
+        assertNoTokenIn(e, "secret-mp")
     }
 
     @Test
