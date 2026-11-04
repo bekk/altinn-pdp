@@ -30,6 +30,9 @@ internal class AltinnTokenExchanger(
                 responseBody = body,
             )
         }
+        if (!isValidBearerToken(token)) {
+            throw AltinnException("The token from Altinn is not a valid bearer token", statusCode = response.statusCode)
+        }
         return AltinnToken(token, expiresAt(token))
     }
 
