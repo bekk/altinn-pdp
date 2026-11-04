@@ -59,6 +59,7 @@ dependencies {
     implementation(ktorLibs.server.routingOpenapi)
     implementation(ktorLibs.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.coroutines.slf4j)
     implementation(libs.logback.classic)
     implementation(libs.logstash.logback.encoder)
     // logstash-logback-encoder pulls in an older Jackson 3 with known vulnerabilities.

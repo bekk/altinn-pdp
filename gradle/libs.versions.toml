@@ -23,6 +23,7 @@ jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jackson" }
 netty-bom = { module = "io.netty:netty-bom", version.ref = "netty" }
 logstash-logback-encoder = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstash-logback-encoder" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-slf4j = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-slf4j", version.ref = "kotlinx-coroutines" }
 jedis = { module = "redis.clients:jedis", version.ref = "jedis" }
 jedis-mock = { module = "com.github.fppt:jedis-mock", version.ref = "jedis-mock" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }

@@ -6,8 +6,12 @@ import ch.qos.logback.core.read.ListAppender
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.server.application.log
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
@@ -15,7 +19,9 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import org.slf4j.LoggerFactory
+import java.time.Duration
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -197,6 +203,36 @@ class LoggingTest {
         events.forEach {
             assertNotNull(it.requestId, "for: $it")
             assertNotEquals("id\" level=ERROR", it.requestId, "for: $it")
+        }
+    }
+
+    private fun outgoingEventsFor(decisionCache: PdpDecisionCache): List<ILoggingEvent> {
+        val altinn = LoggingOutgoingHttpClient(OutgoingHttpClient { error("Maskinporten is down") })
+        testServer(altinn, decisionCache = decisionCache) {
+            client.post("/authorize") {
+                contentType(ContentType.Application.Json)
+                header(CLIENT_CERTIFICATE_HEADER, certificate)
+                header(HttpHeaders.XRequestId, "3f2a1c9e-7b4d-4e8f-9a6b-2c1d0e9f8a7b")
+                setBody(authorizeBody())
+            }
+        }
+        return appender.list.filter { it.loggerName == "outgoing" }
+    }
+
+    @Test
+    fun `outgoing calls are logged with the request id and workload`() {
+        listOf(
+            NoPdpDecisionCache,
+            InMemoryPdpDecisionCache(Duration.ofMinutes(5), Duration.ofMinutes(1), maximumSize = 10),
+        ).forEach { cache ->
+            appender.list.clear()
+            val events = outgoingEventsFor(cache)
+
+            assertTrue(events.isNotEmpty(), "expected the outgoing call to be logged, with $cache")
+            events.forEach {
+                assertEquals("3f2a1c9e-7b4d-4e8f-9a6b-2c1d0e9f8a7b", it.requestId, "with $cache, for: $it")
+                assertEquals(workload, it.mdcPropertyMap["workload"], "with $cache, for: $it")
+            }
         }
     }
 
