@@ -105,6 +105,11 @@ access of its own, give its rule an action that the resource's other rules do no
         val id: String? = null,
     )
 
+    override fun toString(): String =
+        "AuthorizeRequest(systemuserId=$systemuserId, pid=${pid?.let { "***********" }}, resourceId=$resourceId, " +
+            "customerOrganizationNumber=$customerOrganizationNumber, action=$action, " +
+            "resourceAttributes=$resourceAttributes)"
+
     fun parse(): Parsed {
         val attributes = resourceAttributes.orEmpty()
         val errors = PdpRequestValidation.validate(systemuserId, pid, resourceId, customerOrganizationNumber, action) +
