@@ -19,6 +19,9 @@ public class MaskinportenKey private constructor(internal val rsaKey: RSAKey) {
             if (!parsed.isPrivate) {
                 throw MaskinportenException("The JWK has no private key material and cannot sign")
             }
+            if (parsed.keyID.isNullOrBlank()) {
+                throw MaskinportenException("The JWK has no kid, so Maskinporten cannot tell which registered key to check the signature with")
+            }
             return MaskinportenKey(parsed)
         }
     }
