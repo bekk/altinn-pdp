@@ -136,8 +136,10 @@ class RedisPdpDecisionCache(
             is PersonId -> "person:${subject.value}"
             is SystemUserId -> "systemuser:${subject.value}"
         }
+        // parse() sorts the resource attributes, so the same attributes in another order give the same key.
         val question = Json.encodeToString(
-            listOf(subject, key.resourceId.value, key.customerOrganizationNumber.value, key.action.value),
+            listOf(subject, key.resourceId.value, key.customerOrganizationNumber.value, key.action.value) +
+                key.resourceAttributes.flatMap { listOf(it.type, it.id) },
         )
         val hmac = Mac.getInstance(HMAC_ALGORITHM).apply { init(keySpec) }.doFinal(question.toByteArray())
         return KEY_PREFIX + HexFormat.of().formatHex(hmac)

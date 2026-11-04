@@ -185,8 +185,21 @@ class RedisPdpDecisionCacheTest {
         lookup(key = key(resourceId = "another-resource"))
         lookup(key = key(customerOrganizationNumber = "974760673"))
         lookup(key = key(action = "write"))
+        lookup(key = key(resourceAttributes = listOf("urn:kv:geonorge" to "dataset")))
+        lookup(key = key(resourceAttributes = listOf("urn:kv:geonorge" to "service")))
+        lookup(key = key(resourceAttributes = listOf("urn:kv:geonorge" to "dataset", "urn:altinn:subresource" to "metadata")))
 
-        assertEquals(7, loads.get())
+        assertEquals(10, loads.get())
+    }
+
+    @Test
+    fun `shares a decision between questions that list the same resource attributes in another order`() = runBlocking {
+        val geonorge = "urn:kv:geonorge" to "dataset"
+        val subresource = "urn:altinn:subresource" to "metadata"
+        lookup(key = key(resourceAttributes = listOf(geonorge, subresource)))
+        lookup(key = key(resourceAttributes = listOf(subresource, geonorge)))
+
+        assertEquals(1, loads.get())
     }
 
     @Test
@@ -194,7 +207,7 @@ class RedisPdpDecisionCacheTest {
         // A field added to Parsed must also be added to redisKey(), or two questions would share a decision.
         // The JVM returns declared fields in no particular order, so compare them as a set.
         assertEquals(
-            setOf("subject", "resourceId", "customerOrganizationNumber", "action"),
+            setOf("subject", "resourceId", "customerOrganizationNumber", "action", "resourceAttributes"),
             AuthorizeRequest.Parsed::class.java.declaredFields
                 .filterNot { it.isSynthetic || Modifier.isStatic(it.modifiers) }
                 .map { it.name }
@@ -205,10 +218,10 @@ class RedisPdpDecisionCacheTest {
     @Test
     fun `Redis sees neither the national identity number nor any other value from the request`() = runBlocking {
         configurePidValidation(AltinnEnvironment.TT02)
-        lookup(key = key(pid = SAMPLE_PID))
+        lookup(key = key(pid = SAMPLE_PID, resourceAttributes = listOf("urn:kv:geonorge" to "dataset")))
 
         val stored = redisContents()
-        for (value in listOf(SAMPLE_PID, "test-resource", "923609016", "read")) {
+        for (value in listOf(SAMPLE_PID, "test-resource", "923609016", "read", "urn:kv:geonorge", "dataset")) {
             assertFalse(stored.contains(value), "found $value in $stored")
         }
     }
@@ -371,12 +384,14 @@ class RedisPdpDecisionCacheTest {
         resourceId: String = "test-resource",
         customerOrganizationNumber: String = "923609016",
         action: String = "read",
+        resourceAttributes: List<Pair<String, String>> = emptyList(),
     ) = AuthorizeRequest(
         systemuserId = systemuserId.takeIf { pid == null },
         pid = pid,
         resourceId = resourceId,
         customerOrganizationNumber = customerOrganizationNumber,
         action = action,
+        resourceAttributes = resourceAttributes.map { (type, id) -> AuthorizeRequest.ResourceAttribute(type, id) },
     ).parse()
 
     private fun overwriteEveryValue(value: String) {

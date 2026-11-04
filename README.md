@@ -262,7 +262,7 @@ person, only in `TT02`. In `PROD`, only real persons pass.
 | Variable                                      | Required     | Default     | What it is                                                                           |
 | :-------------------------------------------- | :----------- | :---------- | :----------------------------------------------------------------------------------- |
 | `MASKINPORTEN_CLIENT_ID`                      | yes          | -           | Our Maskinporten client                                                              |
-| `MASKINPORTEN_CLIENT_JWK`                     | yes          | -           | The client's private key, as JWK on one line                                         |
+| `MASKINPORTEN_CLIENT_JWK`                     | yes          | -           | The client's private key, as JWK on one line, with its registered `kid`              |
 | `ALTINN_ENVIRONMENT`                          | yes          | -           | Which Altinn and Maskinporten to call: `TT02` or `PROD`                              |
 | `ALTINN_SUBSCRIPTION_KEY`                     | yes          | -           | The subscription key for Altinn's API gateway                                        |
 | `PORT`                                        | no           | `8080`      | The port the server listens on                                                       |
