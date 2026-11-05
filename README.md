@@ -179,7 +179,7 @@ The answer is a `PdpAuthorization`:
 | `obligations`                   | Every obligation Altinn attached, unfiltered, including ones this library does not model                                                                   |
 | `minimumAuthenticationLevel`    | The `urn:altinn:minimum-authenticationlevel` obligation as an `Int`, or null                                                                               |
 | `minimumAuthenticationLevelOrg` | The same for `urn:altinn:minimum-authenticationlevel-org`. Altinn only applies it to its service owners, never to a system user or person                  |
-| `statusCode`                    | Altinn's XACML status URN, or null                                                                                                                         |
+| `status`                        | `PdpStatus`: `Ok`, `ProcessingError` (the PDP could not evaluate the request) or `Other`. `value` is the XACML status URN. Null if Altinn sends none       |
 
 > [!WARNING]
 > A `PERMIT` that carries a `minimumAuthenticationLevel` is **conditional**: it only holds if your

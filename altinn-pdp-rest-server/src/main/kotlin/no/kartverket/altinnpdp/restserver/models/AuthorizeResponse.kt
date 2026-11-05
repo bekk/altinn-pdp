@@ -28,8 +28,8 @@ data class AuthorizeResponse(
     @JsonSchema.Description(
         """Tells "no access" apart from "could not answer". Both come with `permit` `false`.
 
-- `$OK_STATUS`: Altinn evaluated the request.
-- `$PROCESSING_ERROR_STATUS`: Altinn could not evaluate it, for example because
+- `urn:oasis:names:tc:xacml:1.0:status:ok`: Altinn evaluated the request.
+- `urn:oasis:names:tc:xacml:1.0:status:processing-error`: Altinn could not evaluate it, for example because
   `resourceId` does not exist. This points to a mistake in the request, not a refusal.
 
 Not always present.""",
@@ -43,9 +43,4 @@ Not always present.""",
             "Altinn sets such a requirement.",
     )
     val minimumAuthenticationLevel: Int? = null,
-) {
-    companion object {
-        const val OK_STATUS = "urn:oasis:names:tc:xacml:1.0:status:ok"
-        const val PROCESSING_ERROR_STATUS = "urn:oasis:names:tc:xacml:1.0:status:processing-error"
-    }
-}
+)

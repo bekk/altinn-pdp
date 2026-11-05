@@ -55,6 +55,7 @@ internal suspend fun HttpResponse.authorizeResponse(): AuthorizeResponse =
 internal fun authorizeTest(
     altinnEnvironment: AltinnEnvironment = AltinnEnvironment.TT02,
     decision: String = "Permit",
+    status: String = OK_STATUS,
     statusCode: Int = 200,
     obligations: Boolean = false,
     maskinportenStatus: Int = 200,
@@ -70,7 +71,7 @@ internal fun authorizeTest(
         when (request.url.path) {
             "/token" -> response(maskinportenStatus, "application/json", """{"access_token":"mp-token","expires_in":3600}""")
             "/authentication/api/v1/exchange/maskinporten" -> response(exchangeStatus, "text/plain", altinnToken())
-            "/authorization/api/v1/authorize" -> response(statusCode, "application/json", pdpBody(decision, obligations))
+            "/authorization/api/v1/authorize" -> response(statusCode, "application/json", pdpBody(decision, status, obligations))
             else -> error("unexpected call to ${request.url}")
         }
     }
@@ -84,7 +85,7 @@ private fun altinnToken(): String {
     return "$header.$claims."
 }
 
-private fun pdpBody(decision: String, obligations: Boolean): String {
+private fun pdpBody(decision: String, status: String, obligations: Boolean): String {
     val obligationsJson = if (obligations) {
         """[{"id":"urn:altinn:obligation:authenticationLevel1","attributeAssignment":[
            {"attributeId":"urn:altinn:obligation1-assignment1","value":"3",
@@ -97,7 +98,7 @@ private fun pdpBody(decision: String, obligations: Boolean): String {
         "null"
     }
     return """{"response":[{"decision":"$decision","status":{"statusMessage":null,"statusDetails":null,
-        "statusCode":{"value":"$OK_STATUS","statusCode":null}},"obligations":$obligationsJson,
+        "statusCode":{"value":"$status","statusCode":null}},"obligations":$obligationsJson,
         "associateAdvice":null,"category":null,"policyIdentifierList":null}]}"""
         .trimIndent().replace("\n", "")
 }

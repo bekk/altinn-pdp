@@ -8,7 +8,7 @@ public data class PdpObligation(
 
 public data class PdpAuthorization(
     val decision: PdpDecision,
-    val statusCode: String? = null,
+    val status: PdpStatus? = null,
     val obligations: List<PdpObligation> = emptyList(),
 ) {
     val isPermit: Boolean get() = decision.isPermit

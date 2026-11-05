@@ -110,7 +110,7 @@ public class PdpClient internal constructor(
         }
         return PdpAuthorization(
             decision = parsedDecision,
-            statusCode = result.status?.statusCode?.value,
+            status = result.status?.statusCode?.value?.let(PdpStatus::of),
             obligations = obligationsOf(result),
         )
     }

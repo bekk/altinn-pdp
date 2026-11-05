@@ -89,7 +89,7 @@ fun Application.module(
                 AuthorizeResponse(
                     permit = authorization.isPermit,
                     decision = authorization.decision,
-                    status = authorization.statusCode,
+                    status = authorization.status?.value,
                     minimumAuthenticationLevel = authorization.minimumAuthenticationLevel,
                 ),
             )
