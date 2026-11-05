@@ -2,6 +2,7 @@ package no.kartverket.altinnpdp.client.http
 
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import no.kartverket.altinnpdp.client.support.assertNoTokenIn
@@ -117,6 +118,24 @@ class JavaOutgoingHttpClientTest {
                     runBlocking {
                         withTimeout(5_000) {
                             JavaOutgoingHttpClient(noRedirects, Duration.ofMillis(100)).send(OutgoingRequest(HttpMethod.GET, url, emptyMap()))
+                        }
+                    }
+                }
+            } finally {
+                answer.countDown()
+            }
+        }
+    }
+
+    @Test
+    fun `a caller's own withTimeout cuts the call short, before the request timeout`() {
+        val answer = CountDownLatch(1)
+        serving({ exchange -> answer.await().also { exchange.close() } }) { url ->
+            try {
+                assertFailsWith<TimeoutCancellationException> {
+                    runBlocking {
+                        withTimeout(100) {
+                            JavaOutgoingHttpClient(noRedirects, Duration.ofSeconds(10)).send(OutgoingRequest(HttpMethod.GET, url, emptyMap()))
                         }
                     }
                 }
