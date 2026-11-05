@@ -16,7 +16,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.PdpStatus
-import no.kartverket.altinnpdp.client.ResourceAttribute
 import no.kartverket.altinnpdp.restserver.problem.ErrorResponse
 import no.kartverket.altinnpdp.restserver.problem.FieldError
 import no.kartverket.altinnpdp.restserver.problem.ProblemType

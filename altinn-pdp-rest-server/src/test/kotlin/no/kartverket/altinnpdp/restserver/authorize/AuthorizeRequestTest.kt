@@ -1,6 +1,5 @@
 package no.kartverket.altinnpdp.restserver.authorize
 
-import no.kartverket.altinnpdp.client.ResourceAttribute
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFalse
