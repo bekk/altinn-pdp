@@ -9,12 +9,13 @@ import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.client.auth.AccessToken
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 
+internal const val PLATFORM_URL = "https://platform.test"
+
 internal fun testPdpClient(
-    baseUrl: String,
+    httpClient: OutgoingHttpClient,
     subscriptionKey: String = "subscription-key",
-    httpClient: OutgoingHttpClient = testHttpClient,
 ) = PdpClient(
-    platformBaseUrl = baseUrl,
+    platformBaseUrl = PLATFORM_URL,
     tokenProvider = { AccessToken.of("altinn-token") },
     subscriptionKey = subscriptionKey,
     httpClient = httpClient,
@@ -37,8 +38,3 @@ internal suspend fun PdpClient.authorizeSamplePerson() =
     )
 
 internal fun pdpDecisionResponse(decision: String = "Permit") = """{"response":[{"decision":"$decision"}]}"""
-
-internal fun slowly(millis: Long, response: TestResponse): (RecordedRequest) -> TestResponse = {
-    Thread.sleep(millis)
-    response
-}

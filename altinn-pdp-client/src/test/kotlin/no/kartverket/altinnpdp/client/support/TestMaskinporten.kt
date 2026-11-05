@@ -4,6 +4,9 @@ import no.kartverket.altinnpdp.client.auth.AltinnTokenExchanger
 import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenClient
 import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
+import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
+import no.kartverket.altinnpdp.client.http.OutgoingRequest
+import no.kartverket.altinnpdp.client.http.OutgoingResponse
 import java.time.Clock
 import java.time.Duration
 
@@ -21,20 +24,19 @@ internal fun maskinportenTokenResponse(accessToken: String = "mp-token", expires
         """{"access_token":"$accessToken","token_type":"Bearer","expires_in":$expiresIn}"""
     }
 
-internal fun TestHttpServer.serveBothTokens(altinnTokenLifetime: Duration = Duration.ofSeconds(300)) = apply {
-    on(TOKEN_PATH) { TestResponse(body = maskinportenTokenResponse()) }
-    on(AltinnTokenExchanger.EXCHANGE_PATH) { TestResponse(body = signedJwt(NOW.plus(altinnTokenLifetime))) }
+internal fun bothTokens(altinnTokenLifetime: Duration = Duration.ofSeconds(300)): (OutgoingRequest) -> OutgoingResponse = { request ->
+    when (request.url.path) {
+        TOKEN_PATH -> response(200, "application/json", maskinportenTokenResponse())
+        AltinnTokenExchanger.EXCHANGE_PATH -> response(200, "text/plain", signedJwt(NOW.plus(altinnTokenLifetime)))
+        else -> error("unexpected call to ${request.url}")
+    }
 }
 
 internal fun maskinportenAltinnTokenProvider(
-    server: TestHttpServer,
+    httpClient: OutgoingHttpClient,
     clock: Clock = MutableClock(),
 ) = MaskinportenAltinnTokenProvider(
-    maskinportenClient = MaskinportenClient(
-        maskinportenConfig(tokenUrl = server.baseUrl + TOKEN_PATH),
-        testHttpClient,
-        clock = clock,
-    ),
-    exchanger = AltinnTokenExchanger(server.baseUrl, testHttpClient),
+    maskinportenClient = MaskinportenClient(maskinportenConfig(), httpClient, clock = clock),
+    exchanger = AltinnTokenExchanger(PLATFORM_URL, httpClient),
     clock = clock,
 )
