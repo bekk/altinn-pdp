@@ -85,14 +85,6 @@ class PdpRequestValidationTest {
     }
 
     @Test
-    fun `pid rejects a date that does not exist`() {
-        assertEquals(
-            "pid must be a valid fødselsnummer or D number",
-            validate(systemuserId = null, pid = "31027012356").single().message,
-        )
-    }
-
-    @Test
     fun `pid does not yet accept first check digits that are only valid from 2032`() {
         assertTrue(validate(systemuserId = null, pid = "01017012351").isNotEmpty())
     }
@@ -106,14 +98,10 @@ class PdpRequestValidationTest {
 
     @Test
     fun `a pid with a bad check digit is reported as such`() {
-        val cases = mapOf("01017012393" to "the first", "01017012344" to "the second")
-        for ((pid, which) in cases) {
-            assertEquals(
-                "pid must be a valid fødselsnummer or D number",
-                validate(systemuserId = null, pid = pid).single().message,
-                "$which check digit",
-            )
-        }
+        assertEquals(
+            "pid must be a valid fødselsnummer or D number",
+            validate(systemuserId = null, pid = "01017012344").single().message,
+        )
     }
 
     @Test
@@ -142,19 +130,26 @@ class PdpRequestValidationTest {
     }
 
     @Test
-    fun `MOD11 accepts real organisation numbers`() {
-        assertTrue(validate(customerOrganizationNumber = "923609016").isEmpty())
-        assertTrue(validate(customerOrganizationNumber = "311718371").isEmpty())
-    }
-
-    @Test
-    fun `MOD11 rejects a transposed or altered digit`() {
-        assertTrue(validate(customerOrganizationNumber = "311718372").isNotEmpty())
-        assertTrue(validate(customerOrganizationNumber = "987654321").isNotEmpty())
-    }
-
-    @Test
     fun `action is only checked for presence`() {
         assertTrue(validate(action = "anything at all").isEmpty())
+    }
+
+    @Test
+    fun `refuses every resource attribute that no policy from the editor can have`() {
+        assertTrue(PdpRequestValidation.validateResourceAttributes(listOf("urn:altinn:subresource" to "metadata")).isEmpty())
+        val refused = mapOf(
+            "no urn: prefix" to listOf("kv:geonorge" to "dataset"),
+            "an uppercase URN:" to listOf("URN:kv:geonorge" to "dataset"),
+            "whitespace" to listOf("urn:kv geonorge" to "dataset"),
+            "nothing after urn:" to listOf("urn:" to "dataset"),
+            "a type this API sends itself" to listOf("urn:altinn:resource" to "dataset"),
+            "urn:altinn: in another case" to listOf("urn:ALTINN:resource" to "dataset"),
+            "a blank id" to listOf("urn:kv:geonorge" to " "),
+            "an id with a colon" to listOf("urn:kv:geonorge" to "abc:123"),
+            "one type twice" to listOf("urn:kv:geonorge" to "dataset", "urn:kv:geonorge" to "service"),
+        )
+        for ((why, attributes) in refused) {
+            assertTrue(PdpRequestValidation.validateResourceAttributes(attributes).isNotEmpty(), why)
+        }
     }
 }

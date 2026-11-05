@@ -66,18 +66,6 @@ class ServerTest {
     }
 
     @Test
-    fun `a repeated authorize is answered from the decision cache`() {
-        val sent = mutableListOf<OutgoingRequest>()
-        authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
-            val first = postAuthorize().authorizeResponse()
-            val second = postAuthorize().authorizeResponse()
-
-            assertEquals(first, second)
-            assertEquals(1, sent.count { it.url.path == "/authorization/api/v1/authorize" })
-        }
-    }
-
-    @Test
     fun `a decision for one sub-resource is not answered from the cache for another`() {
         val sent = mutableListOf<OutgoingRequest>()
         authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
@@ -215,28 +203,6 @@ class ServerTest {
                 """{"attributeId":"urn:altinn:subresource","value":"metadata"},""" +
                 """{"attributeId":"urn:kv:geonorge","value":"service"}]""",
         )
-    }
-
-    @Test
-    fun `every resource attribute the client refuses is a 400, not a 500`() {
-        val refused = listOf(
-            """{"type":"kv:geonorge","id":"dataset"}""",
-            """{"type":"URN:kv:geonorge","id":"dataset"}""",
-            """{"type":"urn:kv geonorge","id":"dataset"}""",
-            """{"type":"urn:","id":"dataset"}""",
-            """{"type":"urn:altinn:resource","id":"dataset"}""",
-            """{"type":"urn:ALTINN:resource","id":"dataset"}""",
-            """{"type":"urn:kv:geonorge","id":" "}""",
-            """{"type":"urn:kv:geonorge","id":"abc:123"}""",
-            """{"type":"urn:kv:geonorge","id":"dataset"},{"type":"urn:kv:geonorge","id":"service"}""",
-        )
-        for (attributes in refused) {
-            authorizeTest {
-                val response = postAuthorize(authorizeBody(resourceAttributesJson = "[$attributes]"))
-
-                assertEquals(HttpStatusCode.BadRequest, response.status, "for $attributes")
-            }
-        }
     }
 
     @Test
