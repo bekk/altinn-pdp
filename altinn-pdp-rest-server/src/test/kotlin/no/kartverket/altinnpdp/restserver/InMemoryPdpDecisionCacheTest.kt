@@ -11,15 +11,21 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.slf4j.MDCContext
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import no.kartverket.altinnpdp.client.PdpAuthorization
 import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
+import org.slf4j.MDC
 import java.time.Duration
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.time.Duration.Companion.seconds
 
 class InMemoryPdpDecisionCacheTest {
 
@@ -205,6 +211,52 @@ class InMemoryPdpDecisionCacheTest {
         release.complete(Unit)
 
         assertEquals(PdpDecision.PERMIT, waiting.await().authorization.decision)
+        assertEquals(1, loads.get())
+    }
+
+    @Test
+    fun `a load logs with the logging context of the lookup that started it`() = runBlocking {
+        var seen: String? = null
+        withContext(MDCContext(mapOf("request_id" to "a"))) {
+            lookup { seen = MDC.get("request_id"); permit() }
+        }
+
+        assertEquals("a", seen)
+    }
+
+    @Test
+    fun `concurrent loads each keep the logging context of their own lookup`() = runBlocking {
+        val seen = ConcurrentHashMap<String, String>()
+        val started = AtomicInteger()
+        val bothStarted = CompletableDeferred<Unit>()
+        withTimeout(5.seconds) {
+            listOf("read", "write").map { action ->
+                async(Dispatchers.Default + MDCContext(mapOf("request_id" to action))) {
+                    lookup(key = key(action)) {
+                        if (started.incrementAndGet() == 2) bothStarted.complete(Unit)
+                        bothStarted.await()
+                        seen[action] = MDC.get("request_id") ?: "none"
+                        permit()
+                    }
+                }
+            }.awaitAll()
+        }
+
+        assertEquals(mapOf("read" to "read", "write" to "write"), seen)
+    }
+
+    @Test
+    fun `a load shared by several lookups logs with the context of the one that started it`() = runBlocking {
+        val release = CompletableDeferred<Unit>()
+        var seen: String? = null
+        val load: suspend () -> PdpAuthorization = { release.await(); seen = MDC.get("request_id"); permit() }
+
+        val first = async(MDCContext(mapOf("request_id" to "first")), CoroutineStart.UNDISPATCHED) { lookup(load = load) }
+        val second = async(MDCContext(mapOf("request_id" to "second")), CoroutineStart.UNDISPATCHED) { lookup(load = load) }
+        release.complete(Unit)
+        awaitAll(first, second)
+
+        assertEquals("first", seen)
         assertEquals(1, loads.get())
     }
 

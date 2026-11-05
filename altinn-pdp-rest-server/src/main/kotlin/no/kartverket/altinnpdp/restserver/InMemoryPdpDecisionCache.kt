@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.future.asDeferred
 import kotlinx.coroutines.future.future
+import kotlinx.coroutines.slf4j.MDCContext
 import no.kartverket.altinnpdp.client.PdpAuthorization
 import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
@@ -55,7 +56,7 @@ class InMemoryPdpDecisionCache internal constructor(
     }
 
     private fun start(load: suspend () -> PdpAuthorization): Load =
-        Load(startedAt = ticker.read(), result = loadScope.future { load() })
+        Load(startedAt = ticker.read(), result = loadScope.future(MDCContext()) { load() })
 
     private fun Load.age(): Duration = Duration.ofNanos(ticker.read() - startedAt)
 
