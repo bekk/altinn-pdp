@@ -2,16 +2,19 @@ package no.kartverket.altinnpdp.client
 
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.exception.PdpException
+import no.kartverket.altinnpdp.client.http.HttpMethod
+import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
+import no.kartverket.altinnpdp.client.http.OutgoingRequest
+import no.kartverket.altinnpdp.client.support.PLATFORM_URL
 import no.kartverket.altinnpdp.client.support.SAMPLE_PID
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
-import no.kartverket.altinnpdp.client.support.TestHttpServer
-import no.kartverket.altinnpdp.client.support.TestResponse
 import no.kartverket.altinnpdp.client.support.authorizeSample
 import no.kartverket.altinnpdp.client.support.authorizeSamplePerson
 import no.kartverket.altinnpdp.client.support.pdpDecisionResponse
+import no.kartverket.altinnpdp.client.support.recording
+import no.kartverket.altinnpdp.client.support.response
 import no.kartverket.altinnpdp.client.support.testPdpClient
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
+import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -20,64 +23,48 @@ import kotlin.test.assertTrue
 
 class PdpClientTest {
 
-    private lateinit var server: TestHttpServer
+    private val sent = mutableListOf<OutgoingRequest>()
 
-    @BeforeTest
-    fun startServer() {
-        server = TestHttpServer.start()
-    }
+    private fun pdpAnswering(status: Int = 200, body: String = pdpDecisionResponse()) =
+        testPdpClient(recording(sent) { response(status, "application/json", body) })
 
-    @AfterTest
-    fun stopServer() = server.close()
-
-    private val path = PdpClient.AUTHORIZE_PATH
-
-    private fun serverAnswers(decision: String = "Permit") {
-        server.on(path) { TestResponse(body = pdpDecisionResponse(decision)) }
-    }
+    private val sentBody get() = sent.single().body!!.decodeToString()
 
     @Test
     fun `sends the bearer token and the subscription key the gateway requires`() = runBlocking {
-        serverAnswers()
+        pdpAnswering().authorizeSample()
 
-        testPdpClient(server.baseUrl).authorizeSample()
-
-        val request = server.lastRequest(path)
-        assertEquals("POST", request.method)
-        assertEquals("Bearer altinn-token", request.header("Authorization"))
-        assertEquals("subscription-key", request.header(PdpClient.SUBSCRIPTION_KEY_HEADER))
-        assertEquals("application/json", request.header("Content-Type"))
+        val request = sent.single()
+        assertEquals(HttpMethod.POST, request.method)
+        assertEquals("$PLATFORM_URL${PdpClient.AUTHORIZE_PATH}", request.url.toString())
+        assertEquals("Bearer altinn-token", request.headers["Authorization"])
+        assertEquals("subscription-key", request.headers[PdpClient.SUBSCRIPTION_KEY_HEADER])
+        assertEquals("application/json", request.headers["Content-Type"])
     }
 
     @Test
     fun `sends the exact XACML body Altinn's PDP expects`() = runBlocking {
-        serverAnswers()
-
-        testPdpClient(server.baseUrl).authorizeSample()
+        pdpAnswering().authorizeSample()
 
         val expected = """
             {"request":{"returnPolicyIdList":true,"accessSubject":[{"attribute":[{"attributeId":"urn:altinn:systemuser:uuid","value":"$SAMPLE_SYSTEMUSER_ID"}]}],"action":[{"attribute":[{"attributeId":"urn:oasis:names:tc:xacml:1.0:action:action-id","value":"read"}]}],"resource":[{"attribute":[{"attributeId":"urn:altinn:resource","value":"test-resource"},{"attributeId":"urn:altinn:organization:identifier-no","value":"923609016"}]}]}}
         """.trimIndent()
-        assertEquals(expected, server.lastRequest(path).body)
+        assertEquals(expected, sentBody)
     }
 
     @Test
     fun `sends a pid as the person asking, with the rest of the body unchanged`() = runBlocking {
-        serverAnswers()
-
-        testPdpClient(server.baseUrl).authorizeSamplePerson()
+        pdpAnswering().authorizeSamplePerson()
 
         val expected = """
             {"request":{"returnPolicyIdList":true,"accessSubject":[{"attribute":[{"attributeId":"urn:altinn:person:identifier-no","value":"$SAMPLE_PID"}]}],"action":[{"attribute":[{"attributeId":"urn:oasis:names:tc:xacml:1.0:action:action-id","value":"read"}]}],"resource":[{"attribute":[{"attributeId":"urn:altinn:resource","value":"test-resource"},{"attributeId":"urn:altinn:organization:identifier-no","value":"923609016"}]}]}}
         """.trimIndent()
-        assertEquals(expected, server.lastRequest(path).body)
+        assertEquals(expected, sentBody)
     }
 
     @Test
     fun `sends resource attributes in the resource category, after the customer`() = runBlocking {
-        serverAnswers()
-
-        testPdpClient(server.baseUrl).authorize(
+        pdpAnswering().authorize(
             SystemUserId.parse(SAMPLE_SYSTEMUSER_ID),
             ResourceId.parse("test-resource"),
             OrganizationNumber.parse("923609016"),
@@ -91,15 +78,13 @@ class PdpClientTest {
         val expected = """
             {"request":{"returnPolicyIdList":true,"accessSubject":[{"attribute":[{"attributeId":"urn:altinn:systemuser:uuid","value":"$SAMPLE_SYSTEMUSER_ID"}]}],"action":[{"attribute":[{"attributeId":"urn:oasis:names:tc:xacml:1.0:action:action-id","value":"download"}]}],"resource":[{"attribute":[{"attributeId":"urn:altinn:resource","value":"test-resource"},{"attributeId":"urn:altinn:organization:identifier-no","value":"923609016"},{"attributeId":"urn:altinn:subresource","value":"metadata"},{"attributeId":"urn:kv:geonorge","value":"service"}]}]}}
         """.trimIndent()
-        assertEquals(expected, server.lastRequest(path).body)
+        assertEquals(expected, sentBody)
     }
 
     @Test
     fun `refuses two resource attributes of one type without asking the PDP`() = runBlocking {
-        serverAnswers()
-
         assertFailsWith<IllegalArgumentException> {
-            testPdpClient(server.baseUrl).authorize(
+            pdpAnswering().authorize(
                 SystemUserId.parse(SAMPLE_SYSTEMUSER_ID),
                 ResourceId.parse("test-resource"),
                 OrganizationNumber.parse("923609016"),
@@ -107,7 +92,7 @@ class PdpClientTest {
                 listOf(ResourceAttribute.parse("urn:kv:geonorge", "dataset"), ResourceAttribute.parse("urn:kv:geonorge", "service")),
             )
         }
-        assertEquals(0, server.requestCount(path))
+        assertTrue(sent.isEmpty())
     }
 
     @Test
@@ -119,24 +104,18 @@ class PdpClientTest {
             "Indeterminate" to PdpDecision.INDETERMINATE,
         )
         for ((value, expectedDecision) in expected) {
-            serverAnswers(value)
-
-            assertEquals(expectedDecision, testPdpClient(server.baseUrl).authorizeSample().decision, "for $value")
+            assertEquals(expectedDecision, pdpAnswering(body = pdpDecisionResponse(value)).authorizeSample().decision, "for $value")
         }
     }
 
     @Test
     fun `reads the PascalCase spelling from Altinn's documentation too`() = runBlocking {
-        server.on(path) { TestResponse(body = """{"Response":[{"Decision":"Deny"}]}""") }
-
-        assertEquals(PdpDecision.DENY, testPdpClient(server.baseUrl).authorizeSample().decision)
+        assertEquals(PdpDecision.DENY, pdpAnswering(body = """{"Response":[{"Decision":"Deny"}]}""").authorizeSample().decision)
     }
 
     @Test
     fun `surfaces a non-200 with the status and body on the exception`() = runBlocking {
-        server.on(path) { TestResponse(status = 403, body = "forbidden") }
-
-        val e = assertFailsWith<PdpException> { testPdpClient(server.baseUrl).authorizeSample() }
+        val e = assertFailsWith<PdpException> { pdpAnswering(status = 403, body = "forbidden").authorizeSample() }
 
         assertEquals(403, e.statusCode)
         assertEquals("forbidden", e.responseBody)
@@ -153,9 +132,8 @@ class PdpClientTest {
         )
         for ((why, case) in cases) {
             val (body, expectedInMessage) = case
-            server.on(path) { TestResponse(body = body) }
 
-            val e = assertFailsWith<PdpException>(why) { testPdpClient(server.baseUrl).authorizeSample() }
+            val e = assertFailsWith<PdpException>(why) { pdpAnswering(body = body).authorizeSample() }
 
             assertContains(e.message!!, expectedInMessage, message = "for $why")
         }
@@ -163,10 +141,9 @@ class PdpClientTest {
 
     @Test
     fun `wraps a connection failure rather than leaking an IOException`() = runBlocking {
-        assertContains(
-            assertFailsWith<PdpException> { testPdpClient("http://127.0.0.1:1").authorizeSample() }.message!!,
-            "Altinn PDP",
-        )
+        val unreachable = testPdpClient(OutgoingHttpClient { throw IOException("Connection refused") })
+
+        assertContains(assertFailsWith<PdpException> { unreachable.authorizeSample() }.message!!, "Altinn PDP")
     }
 
     @Test
@@ -184,9 +161,8 @@ class PdpClientTest {
             "dataType":"http://www.w3.org/2001/XMLSchema#integer","issuer":null}]}],
             "associateAdvice":null,"category":null,"policyIdentifierList":null}]}
         """.trimIndent().replace("\n", "")
-        server.on(path) { TestResponse(body = body) }
 
-        val authorization = testPdpClient(server.baseUrl).authorizeSample()
+        val authorization = pdpAnswering(body = body).authorizeSample()
 
         assertEquals(PdpDecision.PERMIT, authorization.decision)
         assertEquals("urn:oasis:names:tc:xacml:1.0:status:ok", authorization.statusCode)
@@ -202,9 +178,8 @@ class PdpClientTest {
             "statusCode":{"value":"urn:oasis:names:tc:xacml:1.0:status:processing-error","statusCode":null}},
             "obligations":null,"associateAdvice":null,"category":null,"policyIdentifierList":null}]}
         """.trimIndent().replace("\n", "")
-        server.on(path) { TestResponse(body = body) }
 
-        val authorization = testPdpClient(server.baseUrl).authorizeSample()
+        val authorization = pdpAnswering(body = body).authorizeSample()
 
         assertEquals(PdpDecision.INDETERMINATE, authorization.decision)
         assertEquals("urn:oasis:names:tc:xacml:1.0:status:processing-error", authorization.statusCode)
