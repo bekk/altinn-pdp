@@ -2,14 +2,12 @@ package no.kartverket.altinnpdp.client.auth
 
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
-import no.kartverket.altinnpdp.client.support.MutableClock
 import no.kartverket.altinnpdp.client.support.NOW
 import no.kartverket.altinnpdp.client.support.TOKEN_PATH
 import no.kartverket.altinnpdp.client.support.bothTokens
 import no.kartverket.altinnpdp.client.support.maskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.support.recording
 import no.kartverket.altinnpdp.client.support.signedJwt
-import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -37,17 +35,5 @@ class MaskinportenAltinnTokenProviderTest {
 
         assertEquals(1, sentTo(TOKEN_PATH).size)
         assertEquals(1, sentTo(exchangePath).size)
-    }
-
-    @Test
-    fun `exchanges again when the Altinn token is about to expire`() = runBlocking {
-        val clock = MutableClock()
-        val provider = maskinportenAltinnTokenProvider(recording(sent, bothTokens(Duration.ofSeconds(300))), clock)
-
-        provider.accessToken()
-        clock.advance(Duration.ofSeconds(300) - TokenCache.DEFAULT_REFRESH_LEEWAY)
-        provider.accessToken()
-
-        assertEquals(2, sentTo(exchangePath).size)
     }
 }

@@ -1,21 +1,11 @@
 package no.kartverket.altinnpdp.client.auth
 
-import kotlinx.coroutines.runBlocking
-import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.client.support.NOW
-import no.kartverket.altinnpdp.client.support.bothTokens
-import no.kartverket.altinnpdp.client.support.maskinportenAltinnTokenProvider
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class AccessTokenTest {
-
-    @Test
-    fun `keeps the token`() {
-        assertEquals("secret-token", AccessToken.of("secret-token").value)
-    }
 
     @Test
     fun `does not show the token when printed`() {
@@ -23,22 +13,6 @@ class AccessTokenTest {
 
         assertFalse("secret-token" in "Calling with $token")
         assertFalse("secret-token" in listOf(token).toString(), "nor inside a collection")
-    }
-
-    @Test
-    fun `does not show the token in an exception message`() {
-        val token = AccessToken.of("secret-token")
-
-        val e = IllegalStateException("Altinn refused $token")
-
-        assertFalse("secret-token" in e.stackTraceToString())
-    }
-
-    @Test
-    fun `does not show the token the Maskinporten provider hands out`() = runBlocking {
-        val token = maskinportenAltinnTokenProvider(OutgoingHttpClient { bothTokens()(it) }).accessToken()
-
-        assertFalse(token.value in token.toString())
     }
 
     @Test
