@@ -3,7 +3,7 @@ package no.kartverket.altinnpdp.restserver.config
 import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.yaml.YamlConfig
 import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
-import no.kartverket.altinnpdp.restserver.decisionCache
+import no.kartverket.altinnpdp.restserver.authorize.cache.decisionCache
 import kotlin.test.Test
 import kotlin.test.assertFails
 import kotlin.test.assertSame

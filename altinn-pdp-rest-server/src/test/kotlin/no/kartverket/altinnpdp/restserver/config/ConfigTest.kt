@@ -6,7 +6,7 @@ import no.kartverket.altinnpdp.client.support.testJwk
 import no.kartverket.altinnpdp.restserver.authorize.cache.InMemoryPdpDecisionCache
 import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
 import no.kartverket.altinnpdp.restserver.authorize.cache.RedisPdpDecisionCache
-import no.kartverket.altinnpdp.restserver.decisionCache
+import no.kartverket.altinnpdp.restserver.authorize.cache.decisionCache
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertContains

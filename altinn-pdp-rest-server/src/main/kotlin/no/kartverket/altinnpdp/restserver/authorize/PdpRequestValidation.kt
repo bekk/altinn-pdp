@@ -2,6 +2,7 @@ package no.kartverket.altinnpdp.restserver.authorize
 
 import no.bekk.bekkopen.org.OrganisasjonsnummerValidator
 import no.bekk.bekkopen.person.FodselsnummerValidator
+import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.restserver.problem.FieldError
 import no.kartverket.altinnpdp.restserver.problem.ValidationCode
 import kotlin.uuid.Uuid
@@ -130,4 +131,8 @@ internal object PdpRequestValidation {
         }
         return problem(value)?.let { FieldError(field, ValidationCode.INVALID_FORMAT, "$field $it") }
     }
+}
+
+internal fun configurePidValidation(environment: AltinnEnvironment) {
+    FodselsnummerValidator.ALLOW_SYNTHETIC_NUMBERS = environment == AltinnEnvironment.TT02
 }

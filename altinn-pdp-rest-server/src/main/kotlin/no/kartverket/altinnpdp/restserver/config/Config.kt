@@ -5,7 +5,7 @@ import io.ktor.server.config.yaml.YamlConfig
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.MaskinportenKey
 import no.kartverket.altinnpdp.restserver.authorize.cache.PdpDecisionCache
-import no.kartverket.altinnpdp.restserver.decisionCache
+import no.kartverket.altinnpdp.restserver.authorize.cache.decisionCache
 import java.io.File
 
 internal class AppConfig(

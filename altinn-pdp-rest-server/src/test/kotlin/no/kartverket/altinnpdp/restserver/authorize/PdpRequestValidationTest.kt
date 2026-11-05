@@ -1,7 +1,6 @@
 package no.kartverket.altinnpdp.restserver.authorize
 
 import no.kartverket.altinnpdp.client.AltinnEnvironment
-import no.kartverket.altinnpdp.restserver.configurePidValidation
 import no.kartverket.altinnpdp.restserver.problem.ValidationCode
 import kotlin.test.Test
 import kotlin.test.assertEquals

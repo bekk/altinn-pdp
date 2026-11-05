@@ -6,8 +6,11 @@ person has access to a resource. See [README.md](README.md) for the background, 
 ## Modules
 
 - `altinn-pdp-client`: the library. It talks to Maskinporten and the Altinn PDP. It uses Kotlin's explicit API
-  mode and is meant for other teams, so keep its public API small and deliberate.
-- `altinn-pdp-rest-server`: a Ktor server that offers a simple JSON API on top of the client.
+  mode and is meant for other teams, so keep its public API small and deliberate. The public API is in `client`
+  and `client.http`. The rest is in `client.internal`: `maskinporten`, `token` and `xacml`.
+- `altinn-pdp-rest-server`: a Ktor server that offers a simple JSON API on top of the client. The code is grouped by
+  feature: `authorize` (with `authorize.cache`), `problem`, `observability` and `config`. `Main.kt` only wires them
+  together.
 
 ## Commands
 
@@ -31,8 +34,8 @@ person has access to a resource. See [README.md](README.md) for the background, 
   pid has 11 digits, so it never depends on the flag. Organisation numbers are checked with MOD11 only, in both
   environments, so Tenor organisations pass in `PROD` too. NoCommons does not yet handle the check digit rule for
   numbers issued from 2032.
-- The OpenAPI spec is generated from the routes, the `@JsonSchema` annotations on the models, and `OpenApi.kt`. A
-  test fails if the checked-in `openapi.json` is out of date.
+- The OpenAPI spec is generated from the routes, the `@JsonSchema` annotations on the models, `OpenApi.kt` and
+  each route's operation, like `AuthorizeOpenApi.kt`. A test fails if the checked-in `openapi.json` is out of date.
 - Errors follow Problem Details (RFC 9457), as `application/problem+json`. Build them with `ErrorResponse.of(...)`:
   `type` is a `tag:kartverket.no,2026:` name for each kind of error, from `ProblemType`, and `title` comes from the
   type. Leave out `detail` when the title says it all.
