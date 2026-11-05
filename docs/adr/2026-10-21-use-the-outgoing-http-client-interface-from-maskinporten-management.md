@@ -44,8 +44,9 @@ handles binary responses, and adds no dependency.
   `OutgoingRequest` and `OutgoingResponse`, in `no.kartverket.altinnpdp.client.http`.
 - `JavaPdpHttpClient` is renamed to `JavaOutgoingHttpClient`. It still refuses an `HttpClient` that
   follows redirects and a request timeout that is not positive.
-- `HttpMethod` has only `GET` and `POST`. Only the library builds an `OutgoingRequest`, since its
-  constructor is `internal`, and it uses no other methods.
+- `HttpMethod` has only `GET` and `POST`, since the library uses no other methods. As in
+  maskinporten-management, `OutgoingRequest` has a public constructor, so a wrapper like a logging
+  client can be tested on its own.
 
 ### Positive Consequences
 

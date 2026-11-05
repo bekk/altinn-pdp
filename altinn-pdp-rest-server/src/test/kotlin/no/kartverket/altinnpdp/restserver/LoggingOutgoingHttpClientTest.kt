@@ -4,23 +4,19 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import kotlinx.coroutines.runBlocking
-import no.kartverket.altinnpdp.client.ActionId
-import no.kartverket.altinnpdp.client.OrganizationNumber
-import no.kartverket.altinnpdp.client.ResourceId
-import no.kartverket.altinnpdp.client.SystemUserId
-import no.kartverket.altinnpdp.client.exception.AltinnException
-import no.kartverket.altinnpdp.client.exception.MaskinportenException
-import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
-import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
+import no.kartverket.altinnpdp.client.http.HttpMethod
+import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import no.kartverket.altinnpdp.client.support.response
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import java.net.URI
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class LoggingOutgoingHttpClientTest {
@@ -42,40 +38,35 @@ class LoggingOutgoingHttpClientTest {
         outgoing.detachAppender(appender)
     }
 
-    private fun authorizeThrough(altinn: OutgoingHttpClient) = runBlocking {
-        testPdpClient(httpClient = LoggingOutgoingHttpClient(altinn)).authorize(
-            SystemUserId.parse(SAMPLE_SYSTEMUSER_ID),
-            ResourceId.parse("test-resource"),
-            OrganizationNumber.parse("923609016"),
-            ActionId.parse("read"),
-        )
-    }
+    private val request = OutgoingRequest(
+        method = HttpMethod.POST,
+        url = URI("https://altinn.test/authorize"),
+        headers = mapOf("Authorization" to "Bearer secret-token"),
+        body = "secret-body".toByteArray(),
+    )
 
     @Test
-    fun `logs each call before it is sent and its status after, but not its headers or body`() {
-        assertFailsWith<AltinnException> {
-            authorizeThrough { request ->
-                assertEquals("Calling ${request.method} ${request.url}", lines.last())
-                when (request.url.path) {
-                    "/token" -> response(200, "application/json", """{"access_token":"mp-token","expires_in":3600}""")
-                    else -> response(500, "text/plain", "boom")
-                }
-            }
+    fun `logs the call before it is sent and its status after, but not its headers or body`() = runBlocking {
+        val client = LoggingOutgoingHttpClient {
+            assertEquals(listOf("Calling POST https://altinn.test/authorize"), lines)
+            response(200, "application/json", "{}")
         }
 
-        assertEquals(4, lines.size, "$lines")
-        assertTrue(lines[1].startsWith("POST https://test.maskinporten.no/token answered 200 in "), lines[1])
-        assertTrue(lines[3].startsWith("GET https://platform.tt02.altinn.no/authentication/api/v1/exchange/maskinporten answered 500 in "), lines[3])
-        assertTrue(lines.none { "mp-token" in it || "assertion" in it }, "a header or body was logged: $lines")
+        client.send(request)
+
+        assertEquals(2, lines.size, "$lines")
+        assertTrue(lines[1].startsWith("POST https://altinn.test/authorize answered 200 in "), lines[1])
+        assertTrue(lines.none { "secret" in it }, "a header or body was logged: $lines")
     }
 
     @Test
     fun `logs a call that got no answer, and passes the failure on`() {
-        assertFailsWith<MaskinportenException> {
-            authorizeThrough { throw IOException("Connection refused") }
-        }
+        val failure = IOException("Connection refused")
+        val client = LoggingOutgoingHttpClient { throw failure }
 
-        assertTrue(lines.last().startsWith("POST https://test.maskinporten.no/token failed after "), lines.last())
+        assertSame(failure, assertFailsWith<IOException> { runBlocking { client.send(request) } })
+
+        assertTrue(lines.last().startsWith("POST https://altinn.test/authorize failed after "), lines.last())
         assertContains(lines.last(), "Connection refused")
     }
 }

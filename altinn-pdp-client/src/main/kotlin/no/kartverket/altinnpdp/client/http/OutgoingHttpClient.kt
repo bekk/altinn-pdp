@@ -6,7 +6,7 @@ public fun interface OutgoingHttpClient {
     public suspend fun send(request: OutgoingRequest): OutgoingResponse
 }
 
-public class OutgoingRequest internal constructor(
+public class OutgoingRequest(
     public val method: HttpMethod,
     public val url: URI,
     public val headers: Map<String, String>,
