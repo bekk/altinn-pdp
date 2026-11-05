@@ -520,4 +520,10 @@ class ServerTest {
             }
         }
     }
+
+    @Test
+    fun `authorize passes on a status Altinn sends that this API does not know`() =
+        authorizeTest(decision = "Indeterminate", status = "urn:oasis:names:tc:xacml:1.0:status:missing-attribute") {
+            assertEquals("urn:oasis:names:tc:xacml:1.0:status:missing-attribute", postAuthorize().authorizeResponse().status)
+        }
 }

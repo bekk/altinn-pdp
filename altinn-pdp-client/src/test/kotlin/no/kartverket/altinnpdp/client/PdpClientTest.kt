@@ -147,7 +147,7 @@ class PdpClientTest {
     }
 
     @Test
-    fun `surfaces the obligations and status URN of a real Permit from TT02`() = runBlocking {
+    fun `surfaces the obligations and status of a real Permit from TT02`() = runBlocking {
         val body = """
             {"response":[{"decision":"Permit","status":{"statusMessage":null,"statusDetails":null,
             "statusCode":{"value":"urn:oasis:names:tc:xacml:1.0:status:ok","statusCode":null}},
@@ -165,7 +165,7 @@ class PdpClientTest {
         val authorization = pdpAnswering(body = body).authorizeSample()
 
         assertEquals(PdpDecision.PERMIT, authorization.decision)
-        assertEquals("urn:oasis:names:tc:xacml:1.0:status:ok", authorization.statusCode)
+        assertEquals(PdpStatus.Ok, authorization.status)
         assertEquals(3, authorization.minimumAuthenticationLevel)
         assertEquals(3, authorization.minimumAuthenticationLevelOrg)
         assertEquals(2, authorization.obligations.size)
@@ -182,7 +182,20 @@ class PdpClientTest {
         val authorization = pdpAnswering(body = body).authorizeSample()
 
         assertEquals(PdpDecision.INDETERMINATE, authorization.decision)
-        assertEquals("urn:oasis:names:tc:xacml:1.0:status:processing-error", authorization.statusCode)
+        assertEquals(PdpStatus.ProcessingError, authorization.status)
         assertTrue(authorization.obligations.isEmpty())
+    }
+
+    @Test
+    fun `keeps a status it does not know as Altinn sent it`() = runBlocking {
+        val body = """
+            {"response":[{"decision":"Indeterminate","status":{"statusMessage":null,"statusDetails":null,
+            "statusCode":{"value":"urn:oasis:names:tc:xacml:1.0:status:missing-attribute","statusCode":null}},
+            "obligations":null,"associateAdvice":null,"category":null,"policyIdentifierList":null}]}
+        """.trimIndent().replace("\n", "")
+
+        val authorization = pdpAnswering(body = body).authorizeSample()
+
+        assertEquals(PdpStatus.Other("urn:oasis:names:tc:xacml:1.0:status:missing-attribute"), authorization.status)
     }
 }

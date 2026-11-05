@@ -22,6 +22,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import no.kartverket.altinnpdp.client.PdpDecision
+import no.kartverket.altinnpdp.client.PdpStatus
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
@@ -171,20 +172,20 @@ internal val authorizeOperation: Operation.Builder.() -> Unit = {
                     AuthorizeResponse(
                         permit = true,
                         decision = PdpDecision.PERMIT,
-                        status = AuthorizeResponse.OK_STATUS,
+                        status = PdpStatus.Ok.value,
                         minimumAuthenticationLevel = 3,
                     ),
                 )
                 example(
                     "NoAccess",
-                    AuthorizeResponse(permit = false, decision = PdpDecision.NOT_APPLICABLE, status = AuthorizeResponse.OK_STATUS),
+                    AuthorizeResponse(permit = false, decision = PdpDecision.NOT_APPLICABLE, status = PdpStatus.Ok.value),
                 )
                 example(
                     "UnknownResource",
                     AuthorizeResponse(
                         permit = false,
                         decision = PdpDecision.INDETERMINATE,
-                        status = AuthorizeResponse.PROCESSING_ERROR_STATUS,
+                        status = PdpStatus.ProcessingError.value,
                     ),
                 )
             }

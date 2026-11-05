@@ -11,6 +11,7 @@ import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpAuthorization
 import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.PdpObligation
+import no.kartverket.altinnpdp.client.PdpStatus
 import no.kartverket.altinnpdp.client.support.SAMPLE_PID
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
@@ -137,10 +138,10 @@ class RedisPdpDecisionCacheTest {
     }
 
     @Test
-    fun `keeps the status code and obligations`() = runBlocking {
+    fun `keeps the status and obligations`() = runBlocking {
         val authorization = PdpAuthorization(
             decision = PdpDecision.PERMIT,
-            statusCode = "urn:oasis:names:tc:xacml:1.0:status:ok",
+            status = PdpStatus.Ok,
             obligations = listOf(PdpObligation("level", "urn:altinn:minimum-authenticationlevel", "3")),
         )
         lookup { authorization }

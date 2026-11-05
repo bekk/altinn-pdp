@@ -8,6 +8,7 @@ import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.PdpAuthorization
 import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.PdpObligation
+import no.kartverket.altinnpdp.client.PdpStatus
 import no.kartverket.altinnpdp.client.PersonId
 import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
@@ -157,14 +158,14 @@ class RedisPdpDecisionCache(
     ) {
         fun toAuthorization() = PdpAuthorization(
             decision = decision,
-            statusCode = statusCode,
+            status = statusCode?.let(PdpStatus::of),
             obligations = obligations.map { PdpObligation(it.id, it.category, it.value) },
         )
 
         companion object {
             fun of(authorization: PdpAuthorization, startedAt: Instant) = CachedDecision(
                 decision = authorization.decision,
-                statusCode = authorization.statusCode,
+                statusCode = authorization.status?.value,
                 obligations = authorization.obligations.map { CachedObligation(it.id, it.category, it.value) },
                 startedAt = startedAt.toEpochMilli(),
             )
