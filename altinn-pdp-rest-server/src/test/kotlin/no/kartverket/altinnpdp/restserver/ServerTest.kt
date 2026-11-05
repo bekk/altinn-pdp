@@ -11,12 +11,19 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import no.kartverket.altinnpdp.client.ActionId
 import no.kartverket.altinnpdp.client.AltinnEnvironment
+import no.kartverket.altinnpdp.client.OrganizationNumber
 import no.kartverket.altinnpdp.client.PdpAuthorization
 import no.kartverket.altinnpdp.client.PdpDecision
-import no.kartverket.altinnpdp.client.http.OutgoingRequest
+import no.kartverket.altinnpdp.client.PersonId
+import no.kartverket.altinnpdp.client.ResourceAttribute
+import no.kartverket.altinnpdp.client.ResourceId
+import no.kartverket.altinnpdp.client.SystemUserId
+import no.kartverket.altinnpdp.client.support.FakeAltinn
 import no.kartverket.altinnpdp.client.support.SAMPLE_PID
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
+import no.kartverket.altinnpdp.client.support.SentAuthorization
 import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.models.ErrorResponse
@@ -26,7 +33,6 @@ import no.kartverket.altinnpdp.restserver.models.ValidationCode
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import kotlin.test.Test
-import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -52,11 +58,11 @@ class ServerTest {
     @Test
     fun `authorize returns Altinn's decision, and permit only for a Permit`() {
         val expected = mapOf(
-            "Permit" to AuthorizeResponse(permit = true, decision = PdpDecision.PERMIT, status = OK_STATUS),
-            "Deny" to AuthorizeResponse(permit = false, decision = PdpDecision.DENY, status = OK_STATUS),
+            PdpDecision.PERMIT to AuthorizeResponse(permit = true, decision = PdpDecision.PERMIT, status = OK_STATUS),
+            PdpDecision.DENY to AuthorizeResponse(permit = false, decision = PdpDecision.DENY, status = OK_STATUS),
         )
         for ((decision, expectedResponse) in expected) {
-            authorizeTest(decision = decision) {
+            authorizeTest(altinn = FakeAltinn(decision = decision)) {
                 val response = postAuthorize()
 
                 assertEquals(HttpStatusCode.OK, response.status, "for $decision")
@@ -67,45 +73,45 @@ class ServerTest {
 
     @Test
     fun `a decision for one sub-resource is not answered from the cache for another`() {
-        val sent = mutableListOf<OutgoingRequest>()
-        authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
+        val altinn = FakeAltinn()
+        authorizeTest(altinn = altinn, decisionCache = cacheForAMinute()) {
             postAuthorize()
             postAuthorize(authorizeBody(resourceAttributesJson = """[{"type":"urn:kv:geonorge","id":"dataset"}]"""))
             postAuthorize(authorizeBody(resourceAttributesJson = """[{"type":"urn:kv:geonorge","id":"service"}]"""))
 
-            assertEquals(3, sent.count { it.url.path == "/authorization/api/v1/authorize" })
+            assertEquals(3, altinn.authorizations.size)
         }
     }
 
     @Test
     fun `the same resource attributes in another order are answered from the cache`() {
-        val sent = mutableListOf<OutgoingRequest>()
+        val altinn = FakeAltinn()
         val metadata = """{"type":"urn:altinn:subresource","id":"metadata"}"""
         val service = """{"type":"urn:kv:geonorge","id":"service"}"""
-        authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
+        authorizeTest(altinn = altinn, decisionCache = cacheForAMinute()) {
             postAuthorize(authorizeBody(resourceAttributesJson = "[$metadata,$service]"))
             postAuthorize(authorizeBody(resourceAttributesJson = "[$service,$metadata]"))
 
-            assertEquals(1, sent.count { it.url.path == "/authorization/api/v1/authorize" })
+            assertEquals(1, altinn.authorizations.size)
         }
     }
 
     @Test
     fun `Cache-Control max-age=0 asks Altinn even when the decision is cached`() {
-        val sent = mutableListOf<OutgoingRequest>()
-        authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
+        val altinn = FakeAltinn()
+        authorizeTest(altinn = altinn, decisionCache = cacheForAMinute()) {
             postAuthorize()
             val response = postAuthorize(cacheControl = "max-age=0")
 
             assertEquals(HttpStatusCode.OK, response.status)
-            assertEquals(2, sent.count { it.url.path == "/authorization/api/v1/authorize" })
+            assertEquals(2, altinn.authorizations.size)
         }
     }
 
     @Test
     fun `an invalid max-age is rejected before Altinn is asked`() {
-        val sent = mutableListOf<OutgoingRequest>()
-        authorizeTest(sent = sent, decisionCache = cacheForAMinute()) {
+        val altinn = FakeAltinn()
+        authorizeTest(altinn = altinn, decisionCache = cacheForAMinute()) {
             val response = postAuthorize(cacheControl = "max-age=-1")
 
             assertEquals(HttpStatusCode.BadRequest, response.status)
@@ -113,7 +119,7 @@ class ServerTest {
                 listOf(FieldError(HttpHeaders.CacheControl, ValidationCode.INVALID_FORMAT, "max-age in Cache-Control must be a whole number of seconds, 0 or more")),
                 response.errorResponse().errors,
             )
-            assertEquals(emptyList(), sent)
+            assertEquals(emptyList(), altinn.authorizations)
         }
     }
 
@@ -173,35 +179,45 @@ class ServerTest {
     }
 
     @Test
-    fun `the subject reaches Altinn as the attribute for its kind`() {
+    fun `authorize asks Altinn about the subject, resource, customer and action it was sent`() {
         val cases = mapOf(
-            authorizeBody() to """{"attributeId":"urn:altinn:systemuser:uuid","value":"$SAMPLE_SYSTEMUSER_ID"}""",
-            authorizeBody(systemuserId = null, pid = SAMPLE_PID) to
-                """{"attributeId":"urn:altinn:person:identifier-no","value":"$SAMPLE_PID"}""",
+            authorizeBody() to SystemUserId.parse(SAMPLE_SYSTEMUSER_ID),
+            authorizeBody(systemuserId = null, pid = SAMPLE_PID) to PersonId.parse(SAMPLE_PID),
         )
         for ((body, subject) in cases) {
-            val sent = mutableListOf<OutgoingRequest>()
-            authorizeTest(sent = sent) {
+            val altinn = FakeAltinn()
+            authorizeTest(altinn = altinn) {
                 assertEquals(HttpStatusCode.OK, postAuthorize(body).status, "for $body")
             }
-            assertContains(sent.single { it.url.path == "/authorization/api/v1/authorize" }.body!!.decodeToString(), subject)
+            assertEquals(
+                SentAuthorization(
+                    subject = subject,
+                    resourceId = ResourceId.parse("test-resource"),
+                    customerOrganizationNumber = OrganizationNumber.parse("923609016"),
+                    action = ActionId.parse("read"),
+                    resourceAttributes = emptyList(),
+                ),
+                altinn.authorizations.single(),
+                "for $body",
+            )
         }
     }
 
     @Test
-    fun `resource attributes reach Altinn in the resource category, after the customer`() {
-        val sent = mutableListOf<OutgoingRequest>()
+    fun `resource attributes are passed on to Altinn`() {
+        val altinn = FakeAltinn()
         val body = authorizeBody(
-            resourceAttributesJson = """[{"type":"urn:altinn:subresource","id":"metadata"},{"type":"urn:kv:geonorge","id":"service"}]""",
+            resourceAttributesJson = """[{"type":"urn:kv:geonorge","id":"service"},{"type":"urn:altinn:subresource","id":"metadata"}]""",
         )
-        authorizeTest(sent = sent) {
+        authorizeTest(altinn = altinn) {
             assertEquals(HttpStatusCode.OK, postAuthorize(body).status)
         }
-        assertContains(
-            sent.single { it.url.path == "/authorization/api/v1/authorize" }.body!!.decodeToString(),
-            """{"attributeId":"urn:altinn:organization:identifier-no","value":"923609016"},""" +
-                """{"attributeId":"urn:altinn:subresource","value":"metadata"},""" +
-                """{"attributeId":"urn:kv:geonorge","value":"service"}]""",
+        assertEquals(
+            setOf(
+                ResourceAttribute.parse("urn:kv:geonorge", "service"),
+                ResourceAttribute.parse("urn:altinn:subresource", "metadata"),
+            ),
+            altinn.authorizations.single().resourceAttributes.toSet(),
         )
     }
 
@@ -281,7 +297,7 @@ class ServerTest {
 
     @Test
     fun `authorize passes the minimum authentication level through to the caller`() =
-        authorizeTest(obligations = true) {
+        authorizeTest(altinn = FakeAltinn(minimumAuthenticationLevel = 3)) {
             val response = postAuthorize()
 
             assertEquals(HttpStatusCode.OK, response.status)
@@ -394,7 +410,7 @@ class ServerTest {
         authorizeTest {
             assertEquals(ContentType.Application.ProblemJson, postAuthorize(malformedBody).contentType()?.withoutParameters())
         }
-        authorizeTest(statusCode = 500) {
+        authorizeTest(altinn = FakeAltinn(pdpStatus = 500)) {
             assertEquals(ContentType.Application.ProblemJson, postAuthorize().contentType()?.withoutParameters())
         }
         testServer {
@@ -450,7 +466,7 @@ class ServerTest {
         )
 
         for (case in cases) {
-            authorizeTest(statusCode = case.upstream) {
+            authorizeTest(altinn = FakeAltinn(pdpStatus = case.upstream)) {
                 val response = postAuthorize()
 
                 assertEquals(case.expected, response.status, case.describe())
@@ -462,10 +478,11 @@ class ServerTest {
     @Test
     fun `a 400 while fetching our own token is not blamed on the caller`() {
         for (where in listOf("Maskinporten", "the token exchange")) {
-            authorizeTest(
+            val altinn = FakeAltinn(
                 maskinportenStatus = if (where == "Maskinporten") 400 else 200,
                 exchangeStatus = if (where == "the token exchange") 400 else 200,
-            ) {
+            )
+            authorizeTest(altinn = altinn) {
                 val response = postAuthorize()
 
                 assertEquals(HttpStatusCode.BadGateway, response.status, "for $where")
@@ -476,7 +493,7 @@ class ServerTest {
 
     @Test
     fun `an unexpected IllegalArgumentException is our fault, not the caller's`() =
-        authorizeTest(failure = IllegalArgumentException("internal detail")) {
+        testServer(altinn = { throw IllegalArgumentException("internal detail") }) {
             val response = postAuthorize()
 
             assertEquals(HttpStatusCode.InternalServerError, response.status)
