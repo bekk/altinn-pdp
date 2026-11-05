@@ -39,7 +39,9 @@ person has access to a resource. See [README.md](README.md) for the background, 
 - Errors follow Problem Details (RFC 9457), as `application/problem+json`. Build them with `ErrorResponse.of(...)`:
   `type` is a `tag:kartverket.no,2026:` name for each kind of error, from `ProblemType`, and `title` comes from the
   type. Leave out `detail` when the title says it all.
-- The `type` names and the response fields are a contract with callers. Change them only on purpose.
+- The `type` names and the response fields are a contract with callers. Change them only on purpose. The API has
+  users, so agree a breaking change with the product owner before it is merged: a path, field, type or value
+  removed or changed, a changed status or error type, or a request that worked before now refused.
 - Never log request bodies, national identity numbers or tokens.
 
 ## Decisions (ADRs)
