@@ -64,7 +64,7 @@ never need to be split.
 - Each `type` may only be sent once. XACML would treat two values as a bag, and a rule naming
   either of them would match. A repeated type is a `CONFLICTING` error on every entry that has it.
 - The checks follow [#28](https://github.com/bekk/altinn-pdp/pull/28): `ResourceAttribute.parse`
-  and `authorize` refuse bad input with `ValidationException`, and the server checks the same
+  and `authorize` refuse bad input with `IllegalArgumentException`, and the server checks the same
   rules first, so the caller gets a `400` with `resourceAttributes[<index>].type` or `.id` in
   `errors`.
 - `resourceAttributes` is part of the decision cache's key, so a decision for one sub-resource is

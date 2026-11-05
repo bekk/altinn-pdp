@@ -24,6 +24,11 @@ person has access to a resource. See [README.md](README.md) for the background, 
   client instead of the real Altinn.
 - All configuration is read once, into `AppConfig`. A new setting belongs in `application.yaml`, `.env.example`
   and the environment variable table in the README.
+- NoCommons' `FodselsnummerValidator.ALLOW_SYNTHETIC_NUMBERS` is a static flag for the whole JVM. Only the server
+  sets it, once at startup in `configurePidValidation`: on for `TT02`, off for `PROD`. The client only checks that a
+  pid has 11 digits, so it never depends on the flag. Organisation numbers are checked with MOD11 only, in both
+  environments, so Tenor organisations pass in `PROD` too. NoCommons does not yet handle the check digit rule for
+  numbers issued from 2032.
 - The OpenAPI spec is generated from the routes, the `@JsonSchema` annotations on the models, and `OpenApi.kt`. A
   test fails if the checked-in `openapi.json` is out of date.
 - Errors follow Problem Details (RFC 9457), as `application/problem+json`. Build them with `ErrorResponse.of(...)`:

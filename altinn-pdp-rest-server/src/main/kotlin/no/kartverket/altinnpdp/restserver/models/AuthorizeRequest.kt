@@ -9,8 +9,8 @@ import no.kartverket.altinnpdp.client.PdpSubject
 import no.kartverket.altinnpdp.client.PersonId
 import no.kartverket.altinnpdp.client.ResourceId
 import no.kartverket.altinnpdp.client.SystemUserId
-import no.kartverket.altinnpdp.client.exception.ValidationException
-import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
+import no.kartverket.altinnpdp.restserver.InvalidRequestException
+import no.kartverket.altinnpdp.restserver.PdpRequestValidation
 import no.kartverket.altinnpdp.client.ResourceAttribute as PdpResourceAttribute
 
 // Properties are nullable so that nulls or missing fields result in VALIDATION_ERROR rather than MALFORMED_REQUEST.
@@ -114,7 +114,7 @@ access of its own, give its rule an action that the resource's other rules do no
         val attributes = resourceAttributes.orEmpty()
         val errors = PdpRequestValidation.validate(systemuserId, pid, resourceId, customerOrganizationNumber, action) +
             PdpRequestValidation.validateResourceAttributes(attributes.map { it.type to it.id })
-        if (errors.isNotEmpty()) throw ValidationException(errors)
+        if (errors.isNotEmpty()) throw InvalidRequestException(errors)
         return Parsed(
             if (pid.isNullOrBlank()) SystemUserId.parse(systemuserId!!) else PersonId.parse(pid),
             ResourceId.parse(resourceId!!),
