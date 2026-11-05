@@ -6,8 +6,8 @@ import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.PersonId
 import no.kartverket.altinnpdp.client.ResourceId
 import no.kartverket.altinnpdp.client.SystemUserId
-import no.kartverket.altinnpdp.client.auth.AccessToken
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
+import no.kartverket.altinnpdp.client.internal.token.AccessToken
 
 internal const val PLATFORM_URL = "https://platform.test"
 

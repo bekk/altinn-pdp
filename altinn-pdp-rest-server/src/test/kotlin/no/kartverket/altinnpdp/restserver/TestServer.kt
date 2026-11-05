@@ -9,7 +9,9 @@ import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.client.support.testMaskinportenKey
-import no.kartverket.altinnpdp.restserver.models.ErrorResponse
+import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
+import no.kartverket.altinnpdp.restserver.authorize.cache.PdpDecisionCache
+import no.kartverket.altinnpdp.restserver.problem.ErrorResponse
 
 internal fun testServer(
     altinn: OutgoingHttpClient = unexpectedCall,

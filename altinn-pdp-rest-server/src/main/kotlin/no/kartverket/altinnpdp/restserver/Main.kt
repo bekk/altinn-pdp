@@ -26,8 +26,18 @@ import io.ktor.server.routing.routing
 import io.ktor.utils.io.ExperimentalKtorApi
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.PdpClient
-import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
-import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
+import no.kartverket.altinnpdp.restserver.authorize.AuthorizeRequest
+import no.kartverket.altinnpdp.restserver.authorize.AuthorizeResponse
+import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
+import no.kartverket.altinnpdp.restserver.authorize.cache.PdpDecisionCache
+import no.kartverket.altinnpdp.restserver.authorize.maxAge
+import no.kartverket.altinnpdp.restserver.config.AppConfig
+import no.kartverket.altinnpdp.restserver.config.file
+import no.kartverket.altinnpdp.restserver.config.loadApplicationConfig
+import no.kartverket.altinnpdp.restserver.observability.CLIENT_CERTIFICATE_HEADER
+import no.kartverket.altinnpdp.restserver.observability.isSafeRequestId
+import no.kartverket.altinnpdp.restserver.observability.workloadFrom
+import no.kartverket.altinnpdp.restserver.problem.errorResponses
 import org.slf4j.LoggerFactory
 import java.util.UUID
 

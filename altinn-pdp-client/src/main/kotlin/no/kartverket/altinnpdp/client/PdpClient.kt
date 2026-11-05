@@ -1,18 +1,16 @@
 package no.kartverket.altinnpdp.client
 
 import kotlinx.serialization.SerializationException
-import no.kartverket.altinnpdp.client.auth.AccessTokenProvider
-import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
-import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
-import no.kartverket.altinnpdp.client.auth.MaskinportenKey
-import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.HttpMethod
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import no.kartverket.altinnpdp.client.http.OutgoingResponse
-import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
-import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
+import no.kartverket.altinnpdp.client.internal.maskinporten.MaskinportenConfig
+import no.kartverket.altinnpdp.client.internal.token.AccessTokenProvider
+import no.kartverket.altinnpdp.client.internal.token.MaskinportenAltinnTokenProvider
+import no.kartverket.altinnpdp.client.internal.xacml.XacmlAuthorizationRequest
+import no.kartverket.altinnpdp.client.internal.xacml.XacmlAuthorizationResponse
 import java.net.URI
 
 public class PdpClient internal constructor(

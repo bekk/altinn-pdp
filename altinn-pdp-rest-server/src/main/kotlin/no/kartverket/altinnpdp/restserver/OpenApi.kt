@@ -23,12 +23,13 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.PdpStatus
-import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
-import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
-import no.kartverket.altinnpdp.restserver.models.ErrorResponse
-import no.kartverket.altinnpdp.restserver.models.FieldError
-import no.kartverket.altinnpdp.restserver.models.ProblemType
-import no.kartverket.altinnpdp.restserver.models.ValidationCode
+import no.kartverket.altinnpdp.client.ResourceAttribute
+import no.kartverket.altinnpdp.restserver.authorize.AuthorizeRequest
+import no.kartverket.altinnpdp.restserver.authorize.AuthorizeResponse
+import no.kartverket.altinnpdp.restserver.problem.ErrorResponse
+import no.kartverket.altinnpdp.restserver.problem.FieldError
+import no.kartverket.altinnpdp.restserver.problem.ProblemType
+import no.kartverket.altinnpdp.restserver.problem.ValidationCode
 
 private val openApiJson = Json { prettyPrint = true }
 

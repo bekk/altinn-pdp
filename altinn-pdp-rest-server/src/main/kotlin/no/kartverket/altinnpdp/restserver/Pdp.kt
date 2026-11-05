@@ -6,6 +6,17 @@ import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.http.JavaOutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
+import no.kartverket.altinnpdp.restserver.authorize.cache.DecisionCacheFailureMode
+import no.kartverket.altinnpdp.restserver.authorize.cache.InMemoryPdpDecisionCache
+import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
+import no.kartverket.altinnpdp.restserver.authorize.cache.PdpDecisionCache
+import no.kartverket.altinnpdp.restserver.authorize.cache.RedisPdpDecisionCache
+import no.kartverket.altinnpdp.restserver.config.AppConfig
+import no.kartverket.altinnpdp.restserver.config.boolean
+import no.kartverket.altinnpdp.restserver.config.enum
+import no.kartverket.altinnpdp.restserver.config.long
+import no.kartverket.altinnpdp.restserver.config.required
+import no.kartverket.altinnpdp.restserver.observability.LoggingOutgoingHttpClient
 import java.net.http.HttpClient
 import java.time.Duration
 
