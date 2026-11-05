@@ -128,6 +128,32 @@ class JavaOutgoingHttpClientTest {
     }
 
     @Test
+    fun `gives up when the server stalls in the middle of the body`() {
+        val finish = CountDownLatch(1)
+        serving(
+            { exchange ->
+                exchange.sendResponseHeaders(200, 100)
+                exchange.responseBody.write("""{"Response":""".toByteArray())
+                exchange.responseBody.flush()
+                finish.await()
+                exchange.close()
+            },
+        ) { url ->
+            try {
+                assertFailsWith<HttpTimeoutException> {
+                    runBlocking {
+                        withTimeout(5_000) {
+                            JavaOutgoingHttpClient(noRedirects, Duration.ofMillis(100)).send(OutgoingRequest(HttpMethod.GET, url, emptyMap()))
+                        }
+                    }
+                }
+            } finally {
+                finish.countDown()
+            }
+        }
+    }
+
+    @Test
     fun `a caller's own withTimeout cuts the call short, before the request timeout`() {
         val answer = CountDownLatch(1)
         serving({ exchange -> answer.await().also { exchange.close() } }) { url ->
