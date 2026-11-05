@@ -23,7 +23,9 @@ person has access to a resource. See [README.md](README.md) for the background, 
 - Server tests start the app with `testServer(...)` from `TestServer.kt`, which runs `module(...)` with a fake HTTP
   client instead of the real Altinn.
 - All configuration is read once, into `AppConfig`. A new setting belongs in `application.yaml`, `.env.example`
-  and the environment variable table in the README.
+  and the environment variable table in the README. The Logback path (`logback.configFile`) is the exception:
+  `main()` sets it before `AppConfig.load(...)`, since Logback only reads it when the first logger is created, and
+  ignores it after that without an error.
 - NoCommons' `FodselsnummerValidator.ALLOW_SYNTHETIC_NUMBERS` is a static flag for the whole JVM. Only the server
   sets it, once at startup in `configurePidValidation`: on for `TT02`, off for `PROD`. The client only checks that a
   pid has 11 digits, so it never depends on the flag. Organisation numbers are checked with MOD11 only, in both
