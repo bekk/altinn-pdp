@@ -1,7 +1,6 @@
 package no.kartverket.altinnpdp.restserver
 
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -9,27 +8,30 @@ import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import io.ktor.server.plugins.callid.CallId
-import io.ktor.server.plugins.callid.callIdMdc
-import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
-import io.ktor.server.request.receive
-import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
-import io.ktor.server.routing.openapi.describe
 import io.ktor.server.routing.openapi.hide
-import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.utils.io.ExperimentalKtorApi
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.PdpClient
-import no.kartverket.altinnpdp.restserver.models.AuthorizeRequest
-import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
-import org.slf4j.LoggerFactory
-import java.util.UUID
+import no.kartverket.altinnpdp.client.http.JavaOutgoingHttpClient
+import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
+import no.kartverket.altinnpdp.restserver.authorize.authorize
+import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
+import no.kartverket.altinnpdp.restserver.authorize.cache.PdpDecisionCache
+import no.kartverket.altinnpdp.restserver.authorize.configurePidValidation
+import no.kartverket.altinnpdp.restserver.config.AppConfig
+import no.kartverket.altinnpdp.restserver.config.file
+import no.kartverket.altinnpdp.restserver.config.loadApplicationConfig
+import no.kartverket.altinnpdp.restserver.observability.LoggingOutgoingHttpClient
+import no.kartverket.altinnpdp.restserver.observability.installCallLogging
+import no.kartverket.altinnpdp.restserver.problem.errorResponses
+import java.net.http.HttpClient
+import java.time.Duration
 
 fun main() {
     val applicationConfig = loadApplicationConfig()
@@ -49,19 +51,7 @@ fun Application.module(
     accessLog: Boolean = true,
     decisionCache: PdpDecisionCache = NoPdpDecisionCache,
 ) {
-    install(CallId) {
-        header(HttpHeaders.XRequestId)
-        generate { UUID.randomUUID().toString() }
-        verify(::isSafeRequestId)
-    }
-    install(CallLogging) {
-        mdc("workload") { workloadFrom(it.request.headers[CLIENT_CERTIFICATE_HEADER]) }
-        callIdMdc("request_id")
-
-        logger = LoggerFactory.getLogger("access")
-        disableDefaultColors()
-        filter { accessLog }
-    }
+    installCallLogging(accessLog)
     install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
     install(StatusPages) { errorResponses() }
     monitor.subscribe(ApplicationStopped) { decisionCache.close() }
@@ -71,28 +61,27 @@ fun Application.module(
     routing {
         get("/health/live") { call.respond(HttpStatusCode.OK) }.hide()
         get("/openapi") { call.respondText(spec, ContentType.Application.Json) }.hide()
-        post("/authorize") {
-            val request = call.receive<AuthorizeRequest>().parse()
-            val maxAge = call.request.headers.maxAge()
-            val (authorization, age) = decisionCache.get(request, maxAge) {
-                pdpClient.authorize(
-                    subject = request.subject,
-                    resourceId = request.resourceId,
-                    customerOrganizationNumber = request.customerOrganizationNumber,
-                    action = request.action,
-                    resourceAttributes = request.resourceAttributes,
-                )
-            }
-
-            call.response.header(HttpHeaders.Age, age.seconds)
-            call.respond(
-                AuthorizeResponse(
-                    permit = authorization.isPermit,
-                    decision = authorization.decision,
-                    status = authorization.status?.value,
-                    minimumAuthenticationLevel = authorization.minimumAuthenticationLevel,
-                ),
-            )
-        }.describe(authorizeOperation)
+        authorize(pdpClient, decisionCache)
     }
 }
+
+private fun pdpClient(config: AppConfig): PdpClient = PdpClient(
+    environment = config.altinnEnvironment,
+    subscriptionKey = config.altinnSubscriptionKey,
+    maskinportenClientId = config.maskinportenClientId,
+    maskinportenKey = config.maskinportenKey,
+    httpClient = httpClient(),
+)
+
+private fun httpClient(): OutgoingHttpClient = LoggingOutgoingHttpClient(
+    JavaOutgoingHttpClient(
+        HttpClient.newBuilder()
+            .connectTimeout(CONNECT_TIMEOUT)
+            .followRedirects(HttpClient.Redirect.NEVER)
+            .build(),
+        REQUEST_TIMEOUT,
+    ),
+)
+
+private val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(2)
+private val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(3)

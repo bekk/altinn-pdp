@@ -1,7 +1,6 @@
 package no.kartverket.altinnpdp.client
 
 import kotlinx.coroutines.runBlocking
-import no.kartverket.altinnpdp.client.exception.PdpException
 import no.kartverket.altinnpdp.client.http.HttpMethod
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingRequest

@@ -1,8 +1,8 @@
 package no.kartverket.altinnpdp.client
 
 import kotlinx.coroutines.runBlocking
-import no.kartverket.altinnpdp.client.auth.AltinnTokenExchanger
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
+import no.kartverket.altinnpdp.client.internal.token.AltinnTokenExchanger
 import no.kartverket.altinnpdp.client.support.authorizeSample
 import no.kartverket.altinnpdp.client.support.maskinportenTokenResponse
 import no.kartverket.altinnpdp.client.support.pdpDecisionResponse

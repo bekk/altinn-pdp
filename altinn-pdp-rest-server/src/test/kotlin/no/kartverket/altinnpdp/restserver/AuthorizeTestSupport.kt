@@ -15,7 +15,9 @@ import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.client.support.response
-import no.kartverket.altinnpdp.restserver.models.AuthorizeResponse
+import no.kartverket.altinnpdp.restserver.authorize.AuthorizeResponse
+import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
+import no.kartverket.altinnpdp.restserver.authorize.cache.PdpDecisionCache
 import java.time.Instant
 import java.util.Base64
 

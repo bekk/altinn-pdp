@@ -2,7 +2,7 @@ package no.kartverket.altinnpdp.client.support
 
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
-import no.kartverket.altinnpdp.client.auth.MaskinportenKey
+import no.kartverket.altinnpdp.client.MaskinportenKey
 
 internal object TestKeys {
     val rsa: RSAKey = RSAKeyGenerator(2048).keyID("test-key").generate()
