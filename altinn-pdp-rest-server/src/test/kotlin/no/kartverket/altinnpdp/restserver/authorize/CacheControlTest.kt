@@ -2,6 +2,8 @@ package no.kartverket.altinnpdp.restserver.authorize
 
 import io.ktor.http.HttpHeaders
 import io.ktor.http.headersOf
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -54,11 +56,10 @@ class CacheControlTest {
         assertEquals(Duration.ofSeconds(30), cacheControl("foo=\"x,max-age=60\", max-age=30").maxAge())
     }
 
-    @Test
-    fun `refuses a max-age that is not a whole number of seconds, 0 or more`() {
-        for (directive in listOf("max-age", "max-age=", "max-age=ten", "max-age=-1", "max-age=1.5", "max-age=\"30")) {
-            assertFailsWith<InvalidCacheControlException>(directive) { cacheControl(directive).maxAge() }
-        }
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["max-age", "max-age=", "max-age=ten", "max-age=-1", "max-age=1.5", "max-age=\"30"])
+    fun `refuses a max-age that is not a whole number of seconds, 0 or more`(directive: String) {
+        assertFailsWith<InvalidCacheControlException> { cacheControl(directive).maxAge() }
     }
 
     private fun cacheControl(vararg values: String) = headersOf(HttpHeaders.CacheControl, values.toList())

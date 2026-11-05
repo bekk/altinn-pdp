@@ -9,6 +9,8 @@ import no.kartverket.altinnpdp.client.support.pdpDecisionResponse
 import no.kartverket.altinnpdp.client.support.response
 import no.kartverket.altinnpdp.client.support.signedJwt
 import no.kartverket.altinnpdp.client.support.testMaskinportenKey
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.net.URI
 import java.time.Instant
 import kotlin.test.Test
@@ -50,30 +52,27 @@ class PdpClientConstructorTest {
         )
     }
 
-    @Test
-    fun `sends every call to the given URLs, with or without a trailing slash`() = runBlocking {
-        for (platformBaseUrl in listOf("https://platform.altinn.test", "https://platform.altinn.test/")) {
-            urls.clear()
-            val client = PdpClient(
-                platformBaseUrl = URI(platformBaseUrl),
-                maskinportenTokenUrl = URI("https://maskinporten.test/token"),
-                subscriptionKey = "subscription-key",
-                maskinportenClientId = "my-client-id",
-                maskinportenKey = testMaskinportenKey,
-                httpClient = http,
-            )
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["https://platform.altinn.test", "https://platform.altinn.test/"])
+    fun `sends every call to the given URLs, with or without a trailing slash`(platformBaseUrl: String): Unit = runBlocking {
+        val client = PdpClient(
+            platformBaseUrl = URI(platformBaseUrl),
+            maskinportenTokenUrl = URI("https://maskinporten.test/token"),
+            subscriptionKey = "subscription-key",
+            maskinportenClientId = "my-client-id",
+            maskinportenKey = testMaskinportenKey,
+            httpClient = http,
+        )
 
-            client.authorizeSample()
+        client.authorizeSample()
 
-            assertEquals(
-                listOf(
-                    "https://maskinporten.test/token",
-                    "https://platform.altinn.test" + AltinnTokenExchanger.EXCHANGE_PATH,
-                    "https://platform.altinn.test" + PdpClient.AUTHORIZE_PATH,
-                ),
-                urls,
-                platformBaseUrl,
-            )
-        }
+        assertEquals(
+            listOf(
+                "https://maskinporten.test/token",
+                "https://platform.altinn.test" + AltinnTokenExchanger.EXCHANGE_PATH,
+                "https://platform.altinn.test" + PdpClient.AUTHORIZE_PATH,
+            ),
+            urls,
+        )
     }
 }

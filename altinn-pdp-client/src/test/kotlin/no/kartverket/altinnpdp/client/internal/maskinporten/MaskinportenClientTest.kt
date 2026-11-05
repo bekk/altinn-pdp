@@ -15,6 +15,9 @@ import no.kartverket.altinnpdp.client.support.maskinportenConfig
 import no.kartverket.altinnpdp.client.support.maskinportenTokenResponse
 import no.kartverket.altinnpdp.client.support.recording
 import no.kartverket.altinnpdp.client.support.response
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets.UTF_8
 import kotlin.test.Test
@@ -88,21 +91,12 @@ class MaskinportenClientTest {
         assertEquals(NOW.plusSeconds(120), token.expiresAt)
     }
 
-    @Test
-    fun `fails on an answer it cannot take a token from`() = runBlocking {
-        val cases = mapOf(
-            "no expires_in" to (maskinportenTokenResponse(expiresIn = null) to "expires_in"),
-            "no access_token" to ("""{"token_type":"Bearer"}""" to "access_token"),
-            "an access_token with a newline" to ("""{"access_token":"mp\ntoken","expires_in":3600}""" to "bearer token"),
-            "a body that is not JSON" to ("<html>gateway error</html>" to ""),
-        )
-        for ((why, case) in cases) {
-            val (body, expectedInMessage) = case
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unusableAnswers")
+    fun `fails on an answer it cannot take a token from`(why: String, body: String, expectedInMessage: String): Unit = runBlocking {
+        val e = assertFailsWith<MaskinportenException>(why) { clientAnswering(body).getToken() }
 
-            val e = assertFailsWith<MaskinportenException>(why) { clientAnswering(body).getToken() }
-
-            assertContains(e.message!!, expectedInMessage, message = "for $why")
-        }
+        assertContains(e.message!!, expectedInMessage)
     }
 
     @Test
@@ -121,5 +115,15 @@ class MaskinportenClientTest {
         }
 
         assertNoTokenIn(e, "secret-mp")
+    }
+
+    companion object {
+        @JvmStatic
+        fun unusableAnswers(): List<Arguments> = listOf(
+            Arguments.of("no expires_in", maskinportenTokenResponse(expiresIn = null), "expires_in"),
+            Arguments.of("no access_token", """{"token_type":"Bearer"}""", "access_token"),
+            Arguments.of("an access_token with a newline", """{"access_token":"mp\ntoken","expires_in":3600}""", "bearer token"),
+            Arguments.of("a body that is not JSON", "<html>gateway error</html>", ""),
+        )
     }
 }
