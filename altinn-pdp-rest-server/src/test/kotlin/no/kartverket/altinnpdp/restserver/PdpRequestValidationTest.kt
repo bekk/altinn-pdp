@@ -1,10 +1,16 @@
-package no.kartverket.altinnpdp.client.validation
+package no.kartverket.altinnpdp.restserver
 
+import no.kartverket.altinnpdp.client.AltinnEnvironment
+import no.kartverket.altinnpdp.restserver.models.ValidationCode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class PdpRequestValidationTest {
+
+    init {
+        configurePidValidation(AltinnEnvironment.TT02)
+    }
 
     private val uuid = "1725580f-70f4-4ace-a748-4f912497a0d7"
 

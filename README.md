@@ -165,9 +165,10 @@ val authorization = client.authorize(
 )
 ```
 
-`PersonId.parse` only accepts real persons by default. Against TT02, set NoCommons'
-`FodselsnummerValidator.ALLOW_SYNTHETIC_NUMBERS = true` at startup to accept Tenor test persons
-too. The switch is global for the whole application, so the library leaves it alone.
+`PersonId.parse` only checks that the number has 11 digits. Whether it is a valid fødselsnummer or
+D number is up to your app, for example with NoCommons' `FodselsnummerValidator`, as the server
+does. Its switch for Tenor test persons, `ALLOW_SYNTHETIC_NUMBERS`, is global for the whole
+application, so the library leaves the check to you.
 
 The answer is a `PdpAuthorization`:
 

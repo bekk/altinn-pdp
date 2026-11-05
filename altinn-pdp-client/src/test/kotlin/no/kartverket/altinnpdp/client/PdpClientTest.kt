@@ -2,7 +2,6 @@ package no.kartverket.altinnpdp.client
 
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.exception.PdpException
-import no.kartverket.altinnpdp.client.exception.ValidationException
 import no.kartverket.altinnpdp.client.support.SAMPLE_PID
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.client.support.TestHttpServer
@@ -99,7 +98,7 @@ class PdpClientTest {
     fun `refuses two resource attributes of one type without asking the PDP`() = runBlocking {
         serverAnswers()
 
-        assertFailsWith<ValidationException> {
+        assertFailsWith<IllegalArgumentException> {
             testPdpClient(server.baseUrl).authorize(
                 SystemUserId.parse(SAMPLE_SYSTEMUSER_ID),
                 ResourceId.parse("test-resource"),

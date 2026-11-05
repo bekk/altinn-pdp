@@ -6,7 +6,6 @@ import no.kartverket.altinnpdp.client.auth.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.auth.MaskinportenConfig
 import no.kartverket.altinnpdp.client.auth.MaskinportenKey
 import no.kartverket.altinnpdp.client.exception.PdpException
-import no.kartverket.altinnpdp.client.exception.ValidationException
 import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.HttpMethod
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
@@ -14,7 +13,6 @@ import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import no.kartverket.altinnpdp.client.http.OutgoingResponse
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationRequest
 import no.kartverket.altinnpdp.client.model.XacmlAuthorizationResponse
-import no.kartverket.altinnpdp.client.validation.PdpRequestValidation
 import java.net.URI
 
 public class PdpClient internal constructor(
@@ -65,8 +63,8 @@ public class PdpClient internal constructor(
         action: ActionId,
         resourceAttributes: List<ResourceAttribute> = emptyList(),
     ): PdpAuthorization {
-        val errors = PdpRequestValidation.validateResourceAttributes(resourceAttributes.map { it.type to it.id })
-        if (errors.isNotEmpty()) throw ValidationException(errors)
+        val repeatedTypes = resourceAttributes.groupingBy { it.type }.eachCount().filterValues { it > 1 }.keys
+        require(repeatedTypes.isEmpty()) { "Expected each resource attribute type only once, but got $repeatedTypes more than once" }
         val token = tokenProvider.accessToken()
         val body = Http.json.encodeToString(
             XacmlAuthorizationRequest.serializer(),
