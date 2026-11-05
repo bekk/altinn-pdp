@@ -36,6 +36,9 @@ internal fun StatusPagesConfig.errorResponses() {
         call.application.log.error("Call to Maskinporten or Altinn failed: statusCode=${cause.statusCode}", cause)
         call.respondUpstream(cause)
     }
+    exception<DecisionCacheUnavailableException> { call, _ ->
+        call.respondProblem(ProblemType.DECISION_CACHE_UNAVAILABLE, HttpStatusCode.ServiceUnavailable)
+    }
     exception<Throwable> { call, cause ->
         call.application.log.error("Unhandled exception", cause)
         call.respondProblem(ProblemType.INTERNAL_ERROR, HttpStatusCode.InternalServerError)

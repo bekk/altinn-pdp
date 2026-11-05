@@ -1,0 +1,8 @@
+# A local Redis for DECISION_CACHE_TYPE=REDIS. Start it with `docker compose up -d`. Like the cache it backs, it
+# keeps nothing on disk and has no password, so it only listens on localhost.
+services:
+  redis:
+    image: redis:8.10.2-alpine
+    command: redis-server --save "" --appendonly no --maxmemory 64mb --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:6379:6379"

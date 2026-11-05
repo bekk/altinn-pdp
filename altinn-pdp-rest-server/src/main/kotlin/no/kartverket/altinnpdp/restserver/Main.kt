@@ -5,6 +5,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
@@ -31,8 +32,10 @@ import org.slf4j.LoggerFactory
 import java.util.UUID
 
 fun main() {
-    val config = AppConfig.load()
-    config.logbackConfigFile?.let { System.setProperty("logback.configurationFile", it) }
+    val applicationConfig = loadApplicationConfig()
+    // Logback reads this when the first logger is created, so it is set before AppConfig builds anything that logs.
+    applicationConfig.file("logback.configFile")?.let { System.setProperty("logback.configurationFile", it) }
+    val config = AppConfig.load(applicationConfig)
     configurePidValidation(config.altinnEnvironment)
 
     embeddedServer(Netty, port = config.port) {
@@ -61,6 +64,7 @@ fun Application.module(
     }
     install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
     install(StatusPages) { errorResponses() }
+    monitor.subscribe(ApplicationStopped) { decisionCache.close() }
 
     val spec by lazy { openApiSpec() }
 
