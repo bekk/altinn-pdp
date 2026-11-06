@@ -7,6 +7,9 @@ import no.kartverket.altinnpdp.restserver.authorize.cache.InMemoryPdpDecisionCac
 import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
 import no.kartverket.altinnpdp.restserver.authorize.cache.RedisPdpDecisionCache
 import no.kartverket.altinnpdp.restserver.authorize.cache.decisionCache
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.ValueSource
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -50,15 +53,14 @@ class ConfigTest {
         assertContains(e.message!!, "Missing required configuration key")
     }
 
-    @Test
-    fun `a port must be a number from 1 to 65535`() {
-        for (raw in listOf("http", "0", "65536")) {
-            val e = assertFailsWith<IllegalStateException>(raw) {
-                MapApplicationConfig("server.port" to raw).port("server.port")
-            }
-
-            assertContains(e.message!!, "server.port", message = raw)
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["http", "0", "65536"])
+    fun `a port must be a number from 1 to 65535`(raw: String) {
+        val e = assertFailsWith<IllegalStateException> {
+            MapApplicationConfig("server.port" to raw).port("server.port")
         }
+
+        assertContains(e.message!!, "server.port")
     }
 
     @Test
@@ -91,15 +93,18 @@ class ConfigTest {
     }
 
     @Test
-    fun `a number must be a whole number of at least the minimum`() {
+    fun `a number may be the minimum`() {
         assertEquals(0, MapApplicationConfig("seconds" to "0").long("seconds", default = 60, minimum = 0))
-        for (raw in listOf("ten", "-1", "1.5")) {
-            val e = assertFailsWith<IllegalStateException>(raw) {
-                MapApplicationConfig("seconds" to raw).long("seconds", default = 60, minimum = 0)
-            }
+    }
 
-            assertContains(e.message!!, "seconds must be a whole number of at least 0", message = raw)
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["ten", "-1", "1.5"])
+    fun `a number must be a whole number of at least the minimum`(raw: String) {
+        val e = assertFailsWith<IllegalStateException> {
+            MapApplicationConfig("seconds" to raw).long("seconds", default = 60, minimum = 0)
         }
+
+        assertContains(e.message!!, "seconds must be a whole number of at least 0")
     }
 
     @Test
@@ -121,21 +126,20 @@ class ConfigTest {
         assertContains(e.message!!, "decisionCache.redis.timeoutMillis")
     }
 
-    @Test
-    fun `an invalid Redis URL is refused without showing the password`() {
-        for (url in listOf("redis://user:hunter2@local host:6379", "redis://user:hunter2@")) {
-            val config = MapApplicationConfig(
-                "decisionCache.enabled" to "true",
-                "decisionCache.type" to "REDIS",
-                "decisionCache.redis.url" to url,
-                "decisionCache.redis.keySecret" to KEY_SECRET,
-            )
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["redis://user:hunter2@local host:6379", "redis://user:hunter2@"])
+    fun `an invalid Redis URL is refused without showing the password`(url: String) {
+        val config = MapApplicationConfig(
+            "decisionCache.enabled" to "true",
+            "decisionCache.type" to "REDIS",
+            "decisionCache.redis.url" to url,
+            "decisionCache.redis.keySecret" to KEY_SECRET,
+        )
 
-            val e = assertFailsWith<IllegalStateException>(url) { config.decisionCache() }
+        val e = assertFailsWith<IllegalStateException> { config.decisionCache() }
 
-            assertContains(e.message!!, "decisionCache.redis.url", message = url)
-            assertFalse(e.stackTraceToString().contains("hunter2"), url)
-        }
+        assertContains(e.message!!, "decisionCache.redis.url")
+        assertFalse(e.stackTraceToString().contains("hunter2"))
     }
 
     @Test
@@ -159,38 +163,38 @@ class ConfigTest {
         assertIs<InMemoryPdpDecisionCache>(inMemory.decisionCache())
     }
 
-    @Test
-    fun `a Redis decision cache needs a URL and a key secret`() {
-        for (path in listOf("decisionCache.redis.url", "decisionCache.redis.keySecret")) {
-            val config = MapApplicationConfig(
-                "decisionCache.enabled" to "true",
-                "decisionCache.type" to "REDIS",
-                "decisionCache.redis.url" to "redis://localhost:6379",
-                "decisionCache.redis.keySecret" to KEY_SECRET,
-                ).apply { put(path, "") }
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["decisionCache.redis.url", "decisionCache.redis.keySecret"])
+    fun `a Redis decision cache needs a URL and a key secret`(path: String) {
+        val config = MapApplicationConfig(
+            "decisionCache.enabled" to "true",
+            "decisionCache.type" to "REDIS",
+            "decisionCache.redis.url" to "redis://localhost:6379",
+            "decisionCache.redis.keySecret" to KEY_SECRET,
+        ).apply { put(path, "") }
 
-            val e = assertFailsWith<IllegalStateException>(path) { config.decisionCache() }
+        val e = assertFailsWith<IllegalStateException> { config.decisionCache() }
 
-            assertContains(e.message!!, path, message = path)
-        }
+        assertContains(e.message!!, path)
     }
 
-    @Test
-    fun `the decision cache refuses invalid settings even when disabled`() {
-        val invalid = mapOf(
-            "decisionCache.timeToLiveSeconds" to "0",
-            "decisionCache.maximumSize" to "0",
-            "decisionCache.type" to "redis",
-            "decisionCache.redis.timeoutMillis" to "0",
-            "decisionCache.redis.failureMode" to "IGNORE",
-        )
-        for ((path, value) in invalid) {
-            val config = MapApplicationConfig("decisionCache.enabled" to "false", path to value)
+    @ParameterizedTest(name = "{0} = {1}")
+    @CsvSource(
+        delimiter = '|',
+        value = [
+            "decisionCache.timeToLiveSeconds | 0",
+            "decisionCache.maximumSize | 0",
+            "decisionCache.type | redis",
+            "decisionCache.redis.timeoutMillis | 0",
+            "decisionCache.redis.failureMode | IGNORE",
+        ],
+    )
+    fun `the decision cache refuses invalid settings even when disabled`(path: String, value: String) {
+        val config = MapApplicationConfig("decisionCache.enabled" to "false", path to value)
 
-            val e = assertFailsWith<IllegalStateException>(path) { config.decisionCache() }
+        val e = assertFailsWith<IllegalStateException> { config.decisionCache() }
 
-            assertContains(e.message!!, path, message = path)
-        }
+        assertContains(e.message!!, path)
     }
 
     @Test

@@ -15,9 +15,12 @@ jedis-mock = "1.1.19"
 nimbus-jose-jwt = "10.10"
 nocommons = "0.17.0"
 zstd-jni = "1.5.7-24"
+junit = "5.10.1"
 
 [libraries]
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jackson" }
 netty-bom = { module = "io.netty:netty-bom", version.ref = "netty" }

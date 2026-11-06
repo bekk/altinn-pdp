@@ -13,6 +13,10 @@ import no.kartverket.altinnpdp.client.support.pdpDecisionResponse
 import no.kartverket.altinnpdp.client.support.recording
 import no.kartverket.altinnpdp.client.support.response
 import no.kartverket.altinnpdp.client.support.testPdpClient
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.MethodSource
 import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -94,17 +98,13 @@ class PdpClientTest {
         assertTrue(sent.isEmpty())
     }
 
-    @Test
-    fun `maps every XACML decision Altinn can answer with`() = runBlocking {
-        val expected = mapOf(
-            "Permit" to PdpDecision.PERMIT,
-            "Deny" to PdpDecision.DENY,
-            "NotApplicable" to PdpDecision.NOT_APPLICABLE,
-            "Indeterminate" to PdpDecision.INDETERMINATE,
-        )
-        for ((value, expectedDecision) in expected) {
-            assertEquals(expectedDecision, pdpAnswering(body = pdpDecisionResponse(value)).authorizeSample().decision, "for $value")
-        }
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(
+        delimiter = '|',
+        value = ["Permit | PERMIT", "Deny | DENY", "NotApplicable | NOT_APPLICABLE", "Indeterminate | INDETERMINATE"],
+    )
+    fun `maps every XACML decision Altinn can answer with`(value: String, expected: PdpDecision): Unit = runBlocking {
+        assertEquals(expected, pdpAnswering(body = pdpDecisionResponse(value)).authorizeSample().decision)
     }
 
     @Test
@@ -120,23 +120,14 @@ class PdpClientTest {
         assertEquals("forbidden", e.responseBody)
     }
 
-    @Test
-    fun `fails loudly on an answer it cannot use, rather than treating it as a deny`() = runBlocking {
-        val cases = mapOf(
-            "a body that is not JSON" to ("<html>gateway error</html>" to "parse"),
-            "no decision at all" to ("""{"response":[]}""" to "no Response entries"),
-            "a decision it does not recognise" to (pdpDecisionResponse("Maybe") to "Maybe"),
-            "more decisions than were asked for" to
-                ("""{"response":[{"decision":"Permit"},{"decision":"Deny"}]}""" to "2 Response entries"),
-        )
-        for ((why, case) in cases) {
-            val (body, expectedInMessage) = case
-
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unusableAnswers")
+    fun `fails loudly on an answer it cannot use, rather than treating it as a deny`(why: String, body: String, expectedInMessage: String): Unit =
+        runBlocking {
             val e = assertFailsWith<PdpException>(why) { pdpAnswering(body = body).authorizeSample() }
 
-            assertContains(e.message!!, expectedInMessage, message = "for $why")
+            assertContains(e.message!!, expectedInMessage)
         }
-    }
 
     @Test
     fun `wraps a connection failure rather than leaking an IOException`() = runBlocking {
@@ -196,5 +187,15 @@ class PdpClientTest {
         val authorization = pdpAnswering(body = body).authorizeSample()
 
         assertEquals(PdpStatus.Other("urn:oasis:names:tc:xacml:1.0:status:missing-attribute"), authorization.status)
+    }
+
+    companion object {
+        @JvmStatic
+        fun unusableAnswers(): List<Arguments> = listOf(
+            Arguments.of("a body that is not JSON", "<html>gateway error</html>", "parse"),
+            Arguments.of("no decision at all", """{"response":[]}""", "no Response entries"),
+            Arguments.of("a decision it does not recognise", pdpDecisionResponse("Maybe"), "Maybe"),
+            Arguments.of("more decisions than were asked for", """{"response":[{"decision":"Permit"},{"decision":"Deny"}]}""", "2 Response entries"),
+        )
     }
 }

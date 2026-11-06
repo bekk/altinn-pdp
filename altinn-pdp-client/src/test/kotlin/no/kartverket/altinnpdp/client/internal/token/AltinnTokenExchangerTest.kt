@@ -10,6 +10,9 @@ import no.kartverket.altinnpdp.client.support.assertNoTokenIn
 import no.kartverket.altinnpdp.client.support.recording
 import no.kartverket.altinnpdp.client.support.response
 import no.kartverket.altinnpdp.client.support.signedJwt
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -50,21 +53,12 @@ class AltinnTokenExchangerTest {
         assertEquals(jwt, exchangerAnswering("  $jwt\n").exchange(maskinportenToken).value)
     }
 
-    @Test
-    fun `fails on an answer that is not a token it can use`() = runBlocking {
-        val cases = mapOf(
-            "no exp claim" to (signedJwt(expiresAt = null) to "exp"),
-            "an empty body" to ("" to "empty"),
-            "a body that is not a bearer token" to ("<html>gateway error</html>" to "bearer token"),
-            "a body that is not a JWT" to ("not-a-jwt" to "JWT"),
-        )
-        for ((why, case) in cases) {
-            val (body, expectedInMessage) = case
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unusableAnswers")
+    fun `fails on an answer that is not a token it can use`(why: String, body: String, expectedInMessage: String): Unit = runBlocking {
+        val e = assertFailsWith<AltinnException>(why) { exchangerAnswering(body).exchange(maskinportenToken) }
 
-            val e = assertFailsWith<AltinnException>(why) { exchangerAnswering(body).exchange(maskinportenToken) }
-
-            assertContains(e.message!!, expectedInMessage, message = "for $why")
-        }
+        assertContains(e.message!!, expectedInMessage)
     }
 
     @Test
@@ -94,5 +88,15 @@ class AltinnTokenExchangerTest {
 
         assertContains(e.message!!, "bearer token")
         assertNoTokenIn(e, jwt.substring(split))
+    }
+
+    companion object {
+        @JvmStatic
+        fun unusableAnswers(): List<Arguments> = listOf(
+            Arguments.of("no exp claim", signedJwt(expiresAt = null), "exp"),
+            Arguments.of("an empty body", "", "empty"),
+            Arguments.of("a body that is not a bearer token", "<html>gateway error</html>", "bearer token"),
+            Arguments.of("a body that is not a JWT", "not-a-jwt", "JWT"),
+        )
     }
 }

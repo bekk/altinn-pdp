@@ -27,6 +27,11 @@ import no.kartverket.altinnpdp.restserver.problem.ErrorResponse
 import no.kartverket.altinnpdp.restserver.problem.FieldError
 import no.kartverket.altinnpdp.restserver.problem.ProblemType
 import no.kartverket.altinnpdp.restserver.problem.ValidationCode
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.MethodSource
+import org.junit.jupiter.params.provider.ValueSource
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import kotlin.test.Test
@@ -53,19 +58,14 @@ class ServerTest {
         assertFalse(spec.containsKey("servers"), "the host differs per environment, so the spec names none")
     }
 
-    @Test
-    fun `authorize returns Altinn's decision, and permit only for a Permit`() {
-        val expected = mapOf(
-            "Permit" to AuthorizeResponse(permit = true, decision = PdpDecision.PERMIT, status = OK_STATUS),
-            "Deny" to AuthorizeResponse(permit = false, decision = PdpDecision.DENY, status = OK_STATUS),
-        )
-        for ((decision, expectedResponse) in expected) {
-            authorizeTest(decision = decision) {
-                val response = postAuthorize()
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(delimiter = '|', value = ["Permit | true | PERMIT", "Deny | false | DENY"])
+    fun `authorize returns Altinn's decision, and permit only for a Permit`(decision: String, permit: Boolean, expected: PdpDecision) {
+        authorizeTest(decision = decision) {
+            val response = postAuthorize()
 
-                assertEquals(HttpStatusCode.OK, response.status, "for $decision")
-                assertEquals(expectedResponse, response.authorizeResponse(), "for $decision")
-            }
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals(AuthorizeResponse(permit = permit, decision = expected, status = OK_STATUS), response.authorizeResponse())
         }
     }
 
@@ -176,20 +176,14 @@ class ServerTest {
         }
     }
 
-    @Test
-    fun `the subject reaches Altinn as the attribute for its kind`() {
-        val cases = mapOf(
-            authorizeBody() to """{"attributeId":"urn:altinn:systemuser:uuid","value":"$SAMPLE_SYSTEMUSER_ID"}""",
-            authorizeBody(systemuserId = null, pid = SAMPLE_PID) to
-                """{"attributeId":"urn:altinn:person:identifier-no","value":"$SAMPLE_PID"}""",
-        )
-        for ((body, subject) in cases) {
-            val sent = mutableListOf<OutgoingRequest>()
-            authorizeTest(sent = sent) {
-                assertEquals(HttpStatusCode.OK, postAuthorize(body).status, "for $body")
-            }
-            assertContains(sent.single { it.url.path == "/authorization/api/v1/authorize" }.body!!.decodeToString(), subject)
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("subjects")
+    fun `the subject reaches Altinn as the attribute for its kind`(kind: String, body: String, subject: String) {
+        val sent = mutableListOf<OutgoingRequest>()
+        authorizeTest(sent = sent) {
+            assertEquals(HttpStatusCode.OK, postAuthorize(body).status, kind)
         }
+        assertContains(sent.single { it.url.path == "/authorization/api/v1/authorize" }.body!!.decodeToString(), subject)
     }
 
     @Test
@@ -209,59 +203,9 @@ class ServerTest {
         )
     }
 
-    @Test
-    fun `resource attributes are rejected per entry, with the index in the field`() {
-        val cases = listOf(
-            ValidationCase(
-                why = "a missing type and an id with a colon",
-                body = authorizeBody(resourceAttributesJson = """[{"type":"urn:kv:geonorge","id":"dataset"},{"id":"abc:123"}]"""),
-                errors = listOf(
-                    FieldError("resourceAttributes[1].type", ValidationCode.MISSING, "resourceAttributes[1].type is required"),
-                    FieldError(
-                        "resourceAttributes[1].id",
-                        ValidationCode.INVALID_FORMAT,
-                        "resourceAttributes[1].id must not contain a colon",
-                    ),
-                ),
-            ),
-            ValidationCase(
-                why = "a type that this API sends itself",
-                body = authorizeBody(resourceAttributesJson = """[{"type":"urn:altinn:resource","id":"other-resource"}]"""),
-                errors = listOf(
-                    FieldError(
-                        "resourceAttributes[0].type",
-                        ValidationCode.INVALID_FORMAT,
-                        "resourceAttributes[0].type must not start with urn:altinn:, other than urn:altinn:subresource",
-                    ),
-                ),
-            ),
-            ValidationCase(
-                why = "one type twice",
-                body = authorizeBody(
-                    resourceAttributesJson = """[{"type":"urn:kv:geonorge","id":"dataset"},""" +
-                        """{"type":"urn:altinn:subresource","id":"metadata"},{"type":"urn:kv:geonorge","id":"service"}]""",
-                ),
-                errors = listOf(
-                    FieldError("resourceAttributes[0].type", ValidationCode.CONFLICTING, "send each type only once"),
-                    FieldError("resourceAttributes[2].type", ValidationCode.CONFLICTING, "send each type only once"),
-                ),
-            ),
-            ValidationCase(
-                why = "an invalid resource attribute next to a missing field",
-                body = authorizeBody(action = null, resourceAttributesJson = """[{"type":"geonorge","id":"dataset"}]"""),
-                errors = listOf(
-                    FieldError("action", ValidationCode.MISSING, "action is required"),
-                    FieldError(
-                        "resourceAttributes[0].type",
-                        ValidationCode.INVALID_FORMAT,
-                        "resourceAttributes[0].type must be urn:<name> or urn:<name>:<name>, with names of lowercase letters, hyphen or underscore",
-                    ),
-                ),
-            ),
-        )
-
-        assertRejected(cases)
-    }
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("resourceAttributeCases")
+    fun `resource attributes are rejected per entry, with the index in the field`(case: ValidationCase) = assertRejected(case)
 
     @Test
     fun `a synthetic person is accepted against TT02, but only a real person in PROD`() {
@@ -307,60 +251,9 @@ class ServerTest {
         assertFalse(body.contains("minimumAuthenticationLevel"), "expected no level fields in: $body")
     }
 
-    @Test
-    fun `authorize reports every field it rejects, in one response`() {
-        val cases = listOf(
-            ValidationCase(
-                why = "neither systemuserId nor pid",
-                body = authorizeBody(systemuserId = null),
-                errors = listOf(
-                    FieldError("systemuserId", ValidationCode.MISSING, "systemuserId or pid is required"),
-                    FieldError("pid", ValidationCode.MISSING, "systemuserId or pid is required"),
-                ),
-            ),
-            ValidationCase(
-                why = "both systemuserId and pid",
-                body = authorizeBody(pid = SAMPLE_PID),
-                errors = listOf(
-                    FieldError("systemuserId", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
-                    FieldError("pid", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
-                ),
-            ),
-            ValidationCase(
-                why = "a pid with a bad check digit",
-                body = authorizeBody(systemuserId = null, pid = "31827012312"),
-                errors = listOf(FieldError("pid", ValidationCode.INVALID_FORMAT, "pid must be a valid fødselsnummer or D number")),
-            ),
-            ValidationCase(
-                why = "an explicit null",
-                body = """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
-                    """"customerOrganizationNumber":null,"action":"read"}""",
-                errors = listOf(
-                    FieldError("customerOrganizationNumber", ValidationCode.MISSING, "customerOrganizationNumber is required"),
-                ),
-            ),
-            ValidationCase(
-                why = "every field at once",
-                body = """{"systemuserId":"nope","resourceId":"ab","customerOrganizationNumber":"12345"}""",
-                errors = listOf(
-                    FieldError("systemuserId", ValidationCode.INVALID_FORMAT, "systemuserId must be a UUID"),
-                    FieldError(
-                        "resourceId",
-                        ValidationCode.INVALID_FORMAT,
-                        "resourceId must be at least 4 characters of lowercase letters, digits, underscore or hyphen",
-                    ),
-                    FieldError(
-                        "customerOrganizationNumber",
-                        ValidationCode.INVALID_FORMAT,
-                        "customerOrganizationNumber must be exactly 9 digits",
-                    ),
-                    FieldError("action", ValidationCode.MISSING, "action is required"),
-                ),
-            ),
-        )
-
-        assertRejected(cases)
-    }
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("rejectedRequestCases")
+    fun `authorize reports every field it rejects, in one response`(case: ValidationCase) = assertRejected(case)
 
     @Test
     fun `authorize without a Content-Type header returns 400, not 500`() = authorizeTest {
@@ -446,35 +339,39 @@ class ServerTest {
         }
     }
 
-    @Test
-    fun `the upstream status decides whether the caller or Altinn is to blame`() {
-        val cases = listOf(
-            UpstreamCase(400, HttpStatusCode.BadRequest, ProblemType.UPSTREAM_REJECTED, "only Altinn's own 400 is the caller's fault"),
-            UpstreamCase(500, HttpStatusCode.BadGateway, ProblemType.UPSTREAM_ERROR, "anything else is not the caller's fault"),
-        )
+    @ParameterizedTest(name = "upstream {0}: {3}")
+    @CsvSource(
+        delimiter = '|',
+        value = [
+            "400 | 400 | UPSTREAM_REJECTED | only Altinn's own 400 is the caller's fault",
+            "500 | 502 | UPSTREAM_ERROR | anything else is not the caller's fault",
+        ],
+    )
+    fun `the upstream status decides whether the caller or Altinn is to blame`(
+        upstream: Int,
+        expected: Int,
+        expectedType: ProblemType,
+        why: String,
+    ) {
+        authorizeTest(statusCode = upstream) {
+            val response = postAuthorize()
 
-        for (case in cases) {
-            authorizeTest(statusCode = case.upstream) {
-                val response = postAuthorize()
-
-                assertEquals(case.expected, response.status, case.describe())
-                assertEquals(case.expectedType, response.errorResponse().type, case.describe())
-            }
+            assertEquals(HttpStatusCode.fromValue(expected), response.status, why)
+            assertEquals(expectedType, response.errorResponse().type, why)
         }
     }
 
-    @Test
-    fun `a 400 while fetching our own token is not blamed on the caller`() {
-        for (where in listOf("Maskinporten", "the token exchange")) {
-            authorizeTest(
-                maskinportenStatus = if (where == "Maskinporten") 400 else 200,
-                exchangeStatus = if (where == "the token exchange") 400 else 200,
-            ) {
-                val response = postAuthorize()
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["Maskinporten", "the token exchange"])
+    fun `a 400 while fetching our own token is not blamed on the caller`(where: String) {
+        authorizeTest(
+            maskinportenStatus = if (where == "Maskinporten") 400 else 200,
+            exchangeStatus = if (where == "the token exchange") 400 else 200,
+        ) {
+            val response = postAuthorize()
 
-                assertEquals(HttpStatusCode.BadGateway, response.status, "for $where")
-                assertEquals(ProblemType.UPSTREAM_ERROR, response.errorResponse().type, "for $where")
-            }
+            assertEquals(HttpStatusCode.BadGateway, response.status)
+            assertEquals(ProblemType.UPSTREAM_ERROR, response.errorResponse().type)
         }
     }
 
@@ -499,29 +396,19 @@ class ServerTest {
     private fun cacheForAMinute() =
         InMemoryPdpDecisionCache(Duration.ofMinutes(1), defaultMaxAge = Duration.ofMinutes(1), maximumSize = 100)
 
-    private data class ValidationCase(val why: String, val body: String, val errors: List<FieldError>)
-
-    private data class UpstreamCase(
-        val upstream: Int,
-        val expected: HttpStatusCode,
-        val expectedType: ProblemType,
-        val why: String,
-    ) {
-        fun describe() = "upstream $upstream: $why"
+    data class ValidationCase(val why: String, val body: String, val errors: List<FieldError>) {
+        override fun toString() = why
     }
 
-    private fun assertRejected(cases: List<ValidationCase>) {
-        for (case in cases) {
-            authorizeTest {
-                val response = postAuthorize(case.body)
+    private fun assertRejected(case: ValidationCase) {
+        authorizeTest {
+            val response = postAuthorize(case.body)
 
-                assertEquals(HttpStatusCode.BadRequest, response.status, "for ${case.why}")
-                assertEquals(
-                    ErrorResponse.of(ProblemType.VALIDATION_ERROR, HttpStatusCode.BadRequest, errors = case.errors),
-                    response.errorResponse(),
-                    "for ${case.why}",
-                )
-            }
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertEquals(
+                ErrorResponse.of(ProblemType.VALIDATION_ERROR, HttpStatusCode.BadRequest, errors = case.errors),
+                response.errorResponse(),
+            )
         }
     }
 
@@ -530,4 +417,121 @@ class ServerTest {
         authorizeTest(decision = "Indeterminate", status = "urn:oasis:names:tc:xacml:1.0:status:missing-attribute") {
             assertEquals("urn:oasis:names:tc:xacml:1.0:status:missing-attribute", postAuthorize().authorizeResponse().status)
         }
+
+    companion object {
+        @JvmStatic
+        fun subjects(): List<Arguments> = listOf(
+            Arguments.of(
+                "a system user",
+                authorizeBody(),
+                """{"attributeId":"urn:altinn:systemuser:uuid","value":"$SAMPLE_SYSTEMUSER_ID"}""",
+            ),
+            Arguments.of(
+                "a person",
+                authorizeBody(systemuserId = null, pid = SAMPLE_PID),
+                """{"attributeId":"urn:altinn:person:identifier-no","value":"$SAMPLE_PID"}""",
+            ),
+        )
+
+        @JvmStatic
+        fun resourceAttributeCases(): List<ValidationCase> = listOf(
+            ValidationCase(
+                why = "a missing type and an id with a colon",
+                body = authorizeBody(resourceAttributesJson = """[{"type":"urn:kv:geonorge","id":"dataset"},{"id":"abc:123"}]"""),
+                errors = listOf(
+                    FieldError("resourceAttributes[1].type", ValidationCode.MISSING, "resourceAttributes[1].type is required"),
+                    FieldError(
+                        "resourceAttributes[1].id",
+                        ValidationCode.INVALID_FORMAT,
+                        "resourceAttributes[1].id must not contain a colon",
+                    ),
+                ),
+            ),
+            ValidationCase(
+                why = "a type that this API sends itself",
+                body = authorizeBody(resourceAttributesJson = """[{"type":"urn:altinn:resource","id":"other-resource"}]"""),
+                errors = listOf(
+                    FieldError(
+                        "resourceAttributes[0].type",
+                        ValidationCode.INVALID_FORMAT,
+                        "resourceAttributes[0].type must not start with urn:altinn:, other than urn:altinn:subresource",
+                    ),
+                ),
+            ),
+            ValidationCase(
+                why = "one type twice",
+                body = authorizeBody(
+                    resourceAttributesJson = """[{"type":"urn:kv:geonorge","id":"dataset"},""" +
+                        """{"type":"urn:altinn:subresource","id":"metadata"},{"type":"urn:kv:geonorge","id":"service"}]""",
+                ),
+                errors = listOf(
+                    FieldError("resourceAttributes[0].type", ValidationCode.CONFLICTING, "send each type only once"),
+                    FieldError("resourceAttributes[2].type", ValidationCode.CONFLICTING, "send each type only once"),
+                ),
+            ),
+            ValidationCase(
+                why = "an invalid resource attribute next to a missing field",
+                body = authorizeBody(action = null, resourceAttributesJson = """[{"type":"geonorge","id":"dataset"}]"""),
+                errors = listOf(
+                    FieldError("action", ValidationCode.MISSING, "action is required"),
+                    FieldError(
+                        "resourceAttributes[0].type",
+                        ValidationCode.INVALID_FORMAT,
+                        "resourceAttributes[0].type must be urn:<name> or urn:<name>:<name>, with names of lowercase letters, hyphen or underscore",
+                    ),
+                ),
+            ),
+        )
+
+        @JvmStatic
+        fun rejectedRequestCases(): List<ValidationCase> = listOf(
+            ValidationCase(
+                why = "neither systemuserId nor pid",
+                body = authorizeBody(systemuserId = null),
+                errors = listOf(
+                    FieldError("systemuserId", ValidationCode.MISSING, "systemuserId or pid is required"),
+                    FieldError("pid", ValidationCode.MISSING, "systemuserId or pid is required"),
+                ),
+            ),
+            ValidationCase(
+                why = "both systemuserId and pid",
+                body = authorizeBody(pid = SAMPLE_PID),
+                errors = listOf(
+                    FieldError("systemuserId", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
+                    FieldError("pid", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
+                ),
+            ),
+            ValidationCase(
+                why = "a pid with a bad check digit",
+                body = authorizeBody(systemuserId = null, pid = "31827012312"),
+                errors = listOf(FieldError("pid", ValidationCode.INVALID_FORMAT, "pid must be a valid fødselsnummer or D number")),
+            ),
+            ValidationCase(
+                why = "an explicit null",
+                body = """{"systemuserId":"$SAMPLE_SYSTEMUSER_ID","resourceId":"test-resource",""" +
+                    """"customerOrganizationNumber":null,"action":"read"}""",
+                errors = listOf(
+                    FieldError("customerOrganizationNumber", ValidationCode.MISSING, "customerOrganizationNumber is required"),
+                ),
+            ),
+            ValidationCase(
+                why = "every field at once",
+                body = """{"systemuserId":"nope","resourceId":"ab","customerOrganizationNumber":"12345"}""",
+                errors = listOf(
+                    FieldError("systemuserId", ValidationCode.INVALID_FORMAT, "systemuserId must be a UUID"),
+                    FieldError(
+                        "resourceId",
+                        ValidationCode.INVALID_FORMAT,
+                        "resourceId must be at least 4 characters of lowercase letters, digits, underscore or hyphen",
+                    ),
+                    FieldError(
+                        "customerOrganizationNumber",
+                        ValidationCode.INVALID_FORMAT,
+                        "customerOrganizationNumber must be exactly 9 digits",
+                    ),
+                    FieldError("action", ValidationCode.MISSING, "action is required"),
+                ),
+            ),
+        )
+    }
 }

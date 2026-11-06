@@ -2,6 +2,11 @@ package no.kartverket.altinnpdp.restserver.authorize
 
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.restserver.problem.ValidationCode
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.MethodSource
+import org.junit.jupiter.params.provider.ValueSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -72,16 +77,17 @@ class PdpRequestValidationTest {
         assertTrue(errors.all { it.code == ValidationCode.CONFLICTING })
     }
 
-    @Test
-    fun `pid accepts fødselsnummer, D numbers and Tenor test persons`() {
-        val accepted = mapOf(
-            "01017012343" to "a fødselsnummer",
-            "41017012337" to "a D number, with 40 added to the day",
-            "01817012309" to "a Tenor test person, with 80 added to the month",
-        )
-        for ((pid, why) in accepted) {
-            assertTrue(validate(systemuserId = null, pid = pid).isEmpty(), why)
-        }
+    @ParameterizedTest(name = "{1}")
+    @CsvSource(
+        delimiter = '|',
+        value = [
+            "01017012343 | a fødselsnummer",
+            "41017012337 | a D number, with 40 added to the day",
+            "01817012309 | a Tenor test person, with 80 added to the month",
+        ],
+    )
+    fun `pid accepts fødselsnummer, D numbers and Tenor test persons`(pid: String, why: String) {
+        assertTrue(validate(systemuserId = null, pid = pid).isEmpty(), why)
     }
 
     @Test
@@ -89,11 +95,10 @@ class PdpRequestValidationTest {
         assertTrue(validate(systemuserId = null, pid = "01017012351").isNotEmpty())
     }
 
-    @Test
-    fun `a pid that is not 11 digits is reported as such`() {
-        for (pid in listOf("3102701235", "310270123560", "3102701235a")) {
-            assertEquals("pid must be exactly 11 digits", validate(systemuserId = null, pid = pid).single().message, pid)
-        }
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["3102701235", "310270123560", "3102701235a"])
+    fun `a pid that is not 11 digits is reported as such`(pid: String) {
+        assertEquals("pid must be exactly 11 digits", validate(systemuserId = null, pid = pid).single().message)
     }
 
     @Test
@@ -135,21 +140,28 @@ class PdpRequestValidationTest {
     }
 
     @Test
-    fun `refuses every resource attribute that no policy from the editor can have`() {
+    fun `accepts a resource attribute from the policy editor`() {
         assertTrue(PdpRequestValidation.validateResourceAttributes(listOf("urn:altinn:subresource" to "metadata")).isEmpty())
-        val refused = mapOf(
-            "no urn: prefix" to listOf("kv:geonorge" to "dataset"),
-            "an uppercase URN:" to listOf("URN:kv:geonorge" to "dataset"),
-            "whitespace" to listOf("urn:kv geonorge" to "dataset"),
-            "nothing after urn:" to listOf("urn:" to "dataset"),
-            "a type this API sends itself" to listOf("urn:altinn:resource" to "dataset"),
-            "urn:altinn: in another case" to listOf("urn:ALTINN:resource" to "dataset"),
-            "a blank id" to listOf("urn:kv:geonorge" to " "),
-            "an id with a colon" to listOf("urn:kv:geonorge" to "abc:123"),
-            "one type twice" to listOf("urn:kv:geonorge" to "dataset", "urn:kv:geonorge" to "service"),
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("refusedResourceAttributes")
+    fun `refuses every resource attribute that no policy from the editor can have`(why: String, attributes: List<Pair<String, String>>) {
+        assertTrue(PdpRequestValidation.validateResourceAttributes(attributes).isNotEmpty(), why)
+    }
+
+    companion object {
+        @JvmStatic
+        fun refusedResourceAttributes(): List<Arguments> = listOf(
+            Arguments.of("no urn: prefix", listOf("kv:geonorge" to "dataset")),
+            Arguments.of("an uppercase URN:", listOf("URN:kv:geonorge" to "dataset")),
+            Arguments.of("whitespace", listOf("urn:kv geonorge" to "dataset")),
+            Arguments.of("nothing after urn:", listOf("urn:" to "dataset")),
+            Arguments.of("a type this API sends itself", listOf("urn:altinn:resource" to "dataset")),
+            Arguments.of("urn:altinn: in another case", listOf("urn:ALTINN:resource" to "dataset")),
+            Arguments.of("a blank id", listOf("urn:kv:geonorge" to " ")),
+            Arguments.of("an id with a colon", listOf("urn:kv:geonorge" to "abc:123")),
+            Arguments.of("one type twice", listOf("urn:kv:geonorge" to "dataset", "urn:kv:geonorge" to "service")),
         )
-        for ((why, attributes) in refused) {
-            assertTrue(PdpRequestValidation.validateResourceAttributes(attributes).isNotEmpty(), why)
-        }
     }
 }
