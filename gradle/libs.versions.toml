@@ -14,7 +14,7 @@ jedis = "8.0.2"
 jedis-mock = "1.1.19"
 nimbus-jose-jwt = "10.10"
 nocommons = "0.17.0"
-zstd-jni = "1.5.7-24"
+zstd-jni = "1.5.7-25"
 junit = "5.10.1"
 
 [libraries]
