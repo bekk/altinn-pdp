@@ -19,6 +19,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.nimbus.jose.jwt)
     implementation(libs.nocommons)
+    testFixturesImplementation(libs.kotlinx.serialization.json)
     testFixturesImplementation(libs.nimbus.jose.jwt)
 
     testImplementation(kotlin("test"))

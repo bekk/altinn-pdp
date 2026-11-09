@@ -11,15 +11,11 @@ import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.AltinnEnvironment
-import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
-import no.kartverket.altinnpdp.client.http.OutgoingRequest
+import no.kartverket.altinnpdp.client.support.FakeAltinn
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
-import no.kartverket.altinnpdp.client.support.response
 import no.kartverket.altinnpdp.restserver.authorize.AuthorizeResponse
 import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
 import no.kartverket.altinnpdp.restserver.authorize.cache.PdpDecisionCache
-import java.time.Instant
-import java.util.Base64
 
 internal const val OK_STATUS = "urn:oasis:names:tc:xacml:1.0:status:ok"
 
@@ -56,51 +52,7 @@ internal suspend fun HttpResponse.authorizeResponse(): AuthorizeResponse =
 
 internal fun authorizeTest(
     altinnEnvironment: AltinnEnvironment = AltinnEnvironment.TT02,
-    decision: String = "Permit",
-    status: String = OK_STATUS,
-    statusCode: Int = 200,
-    obligations: Boolean = false,
-    maskinportenStatus: Int = 200,
-    exchangeStatus: Int = 200,
-    failure: Exception? = null,
-    sent: MutableList<OutgoingRequest> = mutableListOf(),
+    altinn: FakeAltinn = FakeAltinn(),
     decisionCache: PdpDecisionCache = NoPdpDecisionCache,
     block: suspend ApplicationTestBuilder.() -> Unit,
-) {
-    val altinn = OutgoingHttpClient { request ->
-        sent += request
-        if (failure != null) throw failure
-        when (request.url.path) {
-            "/token" -> response(maskinportenStatus, "application/json", """{"access_token":"mp-token","expires_in":3600}""")
-            "/authentication/api/v1/exchange/maskinporten" -> response(exchangeStatus, "text/plain", altinnToken())
-            "/authorization/api/v1/authorize" -> response(statusCode, "application/json", pdpBody(decision, status, obligations))
-            else -> error("unexpected call to ${request.url}")
-        }
-    }
-    testServer(altinn, altinnEnvironment, decisionCache, block)
-}
-
-private fun altinnToken(): String {
-    val encoder = Base64.getUrlEncoder().withoutPadding()
-    val header = encoder.encodeToString("""{"alg":"none"}""".toByteArray())
-    val claims = encoder.encodeToString("""{"exp":${Instant.now().plusSeconds(300).epochSecond}}""".toByteArray())
-    return "$header.$claims."
-}
-
-private fun pdpBody(decision: String, status: String, obligations: Boolean): String {
-    val obligationsJson = if (obligations) {
-        """[{"id":"urn:altinn:obligation:authenticationLevel1","attributeAssignment":[
-           {"attributeId":"urn:altinn:obligation1-assignment1","value":"3",
-            "category":"urn:altinn:minimum-authenticationlevel"}]},
-           {"id":"urn:altinn:obligation:authenticationLevel2","attributeAssignment":[
-           {"attributeId":"urn:altinn:obligation2-assignment2","value":"3",
-            "category":"urn:altinn:minimum-authenticationlevel-org"}]}]"""
-            .trimIndent().replace("\n", "").replace(" ", "")
-    } else {
-        "null"
-    }
-    return """{"response":[{"decision":"$decision","status":{"statusMessage":null,"statusDetails":null,
-        "statusCode":{"value":"$status","statusCode":null}},"obligations":$obligationsJson,
-        "associateAdvice":null,"category":null,"policyIdentifierList":null}]}"""
-        .trimIndent().replace("\n", "")
-}
+) = testServer(altinn, altinnEnvironment, decisionCache, block)
