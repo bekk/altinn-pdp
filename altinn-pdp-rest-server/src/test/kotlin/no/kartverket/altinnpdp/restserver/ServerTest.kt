@@ -267,10 +267,10 @@ class ServerTest {
         }
 
     @Test
-    fun `the added fields are omitted when Altinn sends nothing for them`() = authorizeTest {
+    fun `minimumAuthenticationLevel is left out when Altinn sends no level`() = authorizeTest {
         val body = postAuthorize().bodyAsText()
 
-        assertFalse(body.contains("minimumAuthenticationLevel"), "expected no level fields in: $body")
+        assertFalse(body.contains("minimumAuthenticationLevel"), "expected no minimumAuthenticationLevel in: $body")
     }
 
     @ParameterizedTest(name = "{0}")
