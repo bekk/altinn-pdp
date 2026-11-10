@@ -350,27 +350,33 @@ class RedisPdpDecisionCacheTest {
     @Test
     fun `logs once when Redis refuses to save decisions, and once when it saves them again`() = runBlocking {
         val refuseWrites = AtomicBoolean(true)
-        val readOnly = RedisServer.newRedisServer()
+        val full = RedisServer.newRedisServer()
             .setOptions(
                 ServiceOptions.withInterceptor { state, command, params ->
                     if (refuseWrites.get() && command.equals("set", ignoreCase = true)) {
-                        Response.error("READONLY You can't write against a read only replica.")
+                        Response.error("OOM command not allowed when used memory > 'maxmemory'.")
                     } else {
                         MockExecutor.proceed(state, command, params)
                     }
                 },
             )
             .start()
+        val indeterminate: suspend () -> PdpAuthorization = {
+            loads.incrementAndGet()
+            PdpAuthorization(PdpDecision.INDETERMINATE)
+        }
         val levels = try {
             logLevels {
-                val cache = cache(url = "redis://${readOnly.host}:${readOnly.bindPort}")
-                repeat(3) { cache.get(key(), maxAge = null, load = permit) }
+                val cache = cache(url = "redis://${full.host}:${full.bindPort}")
+                cache.get(key(), maxAge = null, load = permit)
+                cache.get(key(), maxAge = null, load = indeterminate)
+                cache.get(key(), maxAge = null, load = permit)
 
                 refuseWrites.set(false)
                 repeat(3) { cache.get(key(), maxAge = null, load = permit) }
             }
         } finally {
-            readOnly.stop()
+            full.stop()
         }
         assertEquals(listOf(Level.WARN, Level.INFO), levels)
         assertEquals(4, loads.get(), "three while Redis refused to save, then one that was saved")
