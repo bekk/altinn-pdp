@@ -373,7 +373,7 @@
                     },
                     "customerOrganizationNumber": {
                         "type": "string",
-                        "description": "The customer: the organisation the system user or person acts on behalf of when calling your API.\n\n- For a system user, it is the org number in `authorization_details[].systemuser_org` in the\n  Maskinporten token. Do not use the `consumer` claim. That is the vendor's own org number.\n- For a person, it is the organisation they chose when logging in, in\n  `authorization_details[].authorized_parties[].orgno` in the Ansattporten token.\n\nSend the 9 digits without the `0192:` prefix: `311718371`, not `0192:311718371`. The last digit\nmust be a valid check digit.",
+                        "description": "The customer: the organisation the system user or person acts on behalf of when calling your API.\n\n- For a system user, it is the org number in `authorization_details[].systemuser_org.ID` in the\n  Maskinporten token. Do not use the `consumer` claim. That is the vendor's own org number.\n- For a person, it is the organisation they chose when logging in, in\n  `authorization_details[].authorized_parties[].orgno.ID` in the Ansattporten token.\n\nSend the 9 digits without the `0192:` prefix: `311718371`, not `0192:311718371`. The last digit\nmust be a valid check digit.",
                         "pattern": "^[0-9]{9}$"
                     },
                     "action": {
