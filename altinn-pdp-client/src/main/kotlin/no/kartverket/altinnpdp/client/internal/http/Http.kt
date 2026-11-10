@@ -1,7 +1,10 @@
-package no.kartverket.altinnpdp.client.http
+package no.kartverket.altinnpdp.client.internal.http
 
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.AltinnPdpException
+import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
+import no.kartverket.altinnpdp.client.http.OutgoingRequest
+import no.kartverket.altinnpdp.client.http.OutgoingResponse
 import java.io.IOException
 import java.net.URI
 

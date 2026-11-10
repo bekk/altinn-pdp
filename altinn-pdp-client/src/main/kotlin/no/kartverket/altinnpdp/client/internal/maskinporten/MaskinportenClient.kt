@@ -10,10 +10,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import no.kartverket.altinnpdp.client.MaskinportenException
-import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.HttpMethod
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
+import no.kartverket.altinnpdp.client.internal.http.Http
 import no.kartverket.altinnpdp.client.internal.token.MaskinportenToken
 import no.kartverket.altinnpdp.client.internal.token.TokenCache
 import no.kartverket.altinnpdp.client.internal.token.isValidBearerToken

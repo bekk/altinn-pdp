@@ -11,10 +11,10 @@ import no.kartverket.altinnpdp.client.PersonId
 import no.kartverket.altinnpdp.client.ResourceAttribute
 import no.kartverket.altinnpdp.client.ResourceId
 import no.kartverket.altinnpdp.client.SystemUserId
-import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import no.kartverket.altinnpdp.client.http.OutgoingResponse
+import no.kartverket.altinnpdp.client.internal.http.Http
 import no.kartverket.altinnpdp.client.internal.token.AltinnTokenExchanger
 import no.kartverket.altinnpdp.client.internal.xacml.XacmlAuthorizationRequest
 import no.kartverket.altinnpdp.client.internal.xacml.XacmlAuthorizationRequest.Companion.ATTRIBUTE_ACTION_ID
