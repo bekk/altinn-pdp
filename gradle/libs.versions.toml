@@ -15,7 +15,7 @@ jedis-mock = "1.1.21"
 nimbus-jose-jwt = "10.10"
 nocommons = "0.17.0"
 zstd-jni = "1.5.7-25"
-junit = "5.10.1"
+junit = "5.14.4"
 
 [libraries]
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
