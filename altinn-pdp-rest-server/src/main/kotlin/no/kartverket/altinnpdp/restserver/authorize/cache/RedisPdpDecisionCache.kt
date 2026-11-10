@@ -44,6 +44,10 @@ class RedisPdpDecisionCache(
     private val clock: Clock = Clock.systemUTC(),
 ) : PdpDecisionCache {
 
+    init {
+        check(keySecret.length >= 32) { "decisionCache.redis.keySecret must be at least 32 characters (see .env.example)" }
+    }
+
     private val redis: RedisClient = redisUri(url).let { uri ->
         RedisClient.builder()
             .hostAndPort(JedisURIHelper.getHostAndPort(uri))

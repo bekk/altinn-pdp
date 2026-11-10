@@ -178,6 +178,21 @@ class ConfigTest {
         assertContains(e.message!!, path)
     }
 
+    @Test
+    fun `a Redis key secret needs at least 32 characters`() {
+        fun config(keySecret: String) = MapApplicationConfig(
+            "decisionCache.enabled" to "true",
+            "decisionCache.type" to "REDIS",
+            "decisionCache.redis.url" to "redis://localhost:6379",
+            "decisionCache.redis.keySecret" to keySecret,
+        )
+
+        val e = assertFailsWith<IllegalStateException> { config("k".repeat(31)).decisionCache() }
+
+        assertContains(e.message!!, "decisionCache.redis.keySecret")
+        assertIs<RedisPdpDecisionCache>(config("k".repeat(32)).decisionCache()).close()
+    }
+
     @ParameterizedTest(name = "{0} = {1}")
     @CsvSource(
         delimiter = '|',
