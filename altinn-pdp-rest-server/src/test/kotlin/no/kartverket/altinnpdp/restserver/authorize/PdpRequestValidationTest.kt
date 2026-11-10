@@ -1,17 +1,22 @@
 package no.kartverket.altinnpdp.restserver.authorize
 
+import no.kartverket.altinnpdp.client.ActionId
 import no.kartverket.altinnpdp.client.AltinnEnvironment
+import no.kartverket.altinnpdp.client.OrganizationNumber
+import no.kartverket.altinnpdp.client.ResourceId
+import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.restserver.problem.FieldError
 import no.kartverket.altinnpdp.restserver.problem.ValidationCode
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.MethodSource
-import org.junit.jupiter.params.provider.ValueSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import no.kartverket.altinnpdp.client.ResourceAttribute as PdpResourceAttribute
 
+/** The rules themselves are the client's, and tested there. This tests what the server adds to them. */
 class PdpRequestValidationTest {
 
     init {
@@ -20,17 +25,41 @@ class PdpRequestValidationTest {
 
     private val uuid = "1725580f-70f4-4ace-a748-4f912497a0d7"
 
+    private fun parse(
+        systemuserId: String? = uuid,
+        pid: String? = null,
+        resourceId: String? = "fleks-pdp-demo",
+        customerOrganizationNumber: String? = "311718371",
+        action: String? = "read",
+        resourceAttributes: List<Pair<String?, String?>> = emptyList(),
+    ) = PdpRequestValidation.parse(systemuserId, pid, resourceId, customerOrganizationNumber, action, resourceAttributes)
+
     private fun validate(
         systemuserId: String? = uuid,
         pid: String? = null,
         resourceId: String? = "fleks-pdp-demo",
         customerOrganizationNumber: String? = "311718371",
         action: String? = "read",
-    ) = PdpRequestValidation.validate(systemuserId, pid, resourceId, customerOrganizationNumber, action)
+        resourceAttributes: List<Pair<String?, String?>> = emptyList(),
+    ): List<FieldError> = try {
+        parse(systemuserId, pid, resourceId, customerOrganizationNumber, action, resourceAttributes)
+        emptyList()
+    } catch (e: InvalidRequestException) {
+        e.errors
+    }
 
     @Test
-    fun `a valid request produces no errors`() {
-        assertTrue(validate().isEmpty())
+    fun `a valid request is parsed into the client's types, with the resource attributes sorted by type`() {
+        assertEquals(
+            AuthorizeRequest.Parsed(
+                SystemUserId.parse(uuid),
+                ResourceId.parse("fleks-pdp-demo"),
+                OrganizationNumber.parse("311718371"),
+                ActionId.parse("read"),
+                listOf(PdpResourceAttribute.parse("urn:altinn:subresource", "metadata"), PdpResourceAttribute.parse("urn:kv:geonorge", "dataset")),
+            ),
+            parse(resourceAttributes = listOf("urn:kv:geonorge" to "dataset", "urn:altinn:subresource" to "metadata")),
+        )
     }
 
     @Test
@@ -50,11 +79,11 @@ class PdpRequestValidationTest {
     }
 
     @Test
-    fun `systemuserId must be a uuid`() {
-        assertTrue(validate(systemuserId = "not-a-uuid").isNotEmpty())
-        assertTrue(validate(systemuserId = "1725580f70f44acea7484f912497a0d7").isNotEmpty())
-        assertTrue(validate(systemuserId = "1-1-1-1-1").isNotEmpty(), "java.util.UUID would accept this")
-        assertTrue(validate(systemuserId = uuid.uppercase()).isEmpty())
+    fun `a systemuserId the client refuses is reported as not a UUID`() {
+        assertEquals(
+            FieldError("systemuserId", ValidationCode.INVALID_FORMAT, "systemuserId must be a UUID"),
+            validate(systemuserId = "not-a-uuid").single(),
+        )
     }
 
     @Test
@@ -96,10 +125,9 @@ class PdpRequestValidationTest {
         assertTrue(validate(systemuserId = null, pid = "01017012351").isNotEmpty())
     }
 
-    @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = ["3102701235", "310270123560", "3102701235a"])
-    fun `a pid that is not 11 digits is reported as such`(pid: String) {
-        assertEquals("pid must be exactly 11 digits", validate(systemuserId = null, pid = pid).single().message)
+    @Test
+    fun `a pid that is not 11 digits is reported as such`() {
+        assertEquals("pid must be exactly 11 digits", validate(systemuserId = null, pid = "3102701235").single().message)
     }
 
     @Test
@@ -111,12 +139,11 @@ class PdpRequestValidationTest {
     }
 
     @Test
-    fun `resourceId follows the resource registry's own rule`() {
-        assertTrue(validate(resourceId = "app_ttd_apps-test").isEmpty())
-        assertTrue(validate(resourceId = "fleks-pdp-demo").isEmpty())
-        assertTrue(validate(resourceId = "abc").isNotEmpty(), "under 4 characters")
-        assertTrue(validate(resourceId = "FLEKS-PDP-DEMO").isNotEmpty(), "uppercase")
-        assertTrue(validate(resourceId = "fleks pdp demo").isNotEmpty(), "space")
+    fun `a resourceId the client refuses is reported with the resource registry's rule`() {
+        assertEquals(
+            "resourceId must be at least 4 characters of lowercase letters, digits, underscore or hyphen",
+            validate(resourceId = "abc").single().message,
+        )
     }
 
     @Test
@@ -140,60 +167,120 @@ class PdpRequestValidationTest {
         assertTrue(validate(action = "anything at all").isEmpty())
     }
 
-    @Test
-    fun `accepts a resource attribute from the policy editor`() {
-        assertTrue(PdpRequestValidation.validateResourceAttributes(listOf("urn:altinn:subresource" to "metadata")).isEmpty())
-    }
-
-    @Test
-    fun `each resource attribute is reported by its index`() {
-        val errors = PdpRequestValidation.validateResourceAttributes(
-            listOf(
-                "urn:kv:geonorge" to "dataset",
-                null to "abc:123",
-                "urn:altinn:resource" to "other-resource",
-                "urn:kv:geonorge" to "service",
-            ),
-        )
-
-        assertEquals(
-            listOf(
-                FieldError("resourceAttributes[0].type", ValidationCode.CONFLICTING, "send each type only once"),
-                FieldError("resourceAttributes[1].type", ValidationCode.MISSING, "resourceAttributes[1].type is required"),
-                FieldError(
-                    "resourceAttributes[1].id",
-                    ValidationCode.INVALID_FORMAT,
-                    "resourceAttributes[1].id must not contain a colon",
-                ),
-                FieldError(
-                    "resourceAttributes[2].type",
-                    ValidationCode.INVALID_FORMAT,
-                    "resourceAttributes[2].type must not start with urn:altinn:, other than urn:altinn:subresource",
-                ),
-                FieldError("resourceAttributes[3].type", ValidationCode.CONFLICTING, "send each type only once"),
-            ),
-            errors,
-        )
+    /**
+     * The reasons describe the client's rules in words, and the tests above give a value each reason refuses. These are
+     * values at the edges of what the reasons allow, so a stricter client fails here instead of getting the wrong reason.
+     * pid and action have tests of their own above.
+     */
+    @ParameterizedTest(name = "{0} {1}")
+    @CsvSource(
+        delimiter = '|',
+        value = [
+            "systemuserId | 00000000-0000-0000-0000-000000000000",
+            "systemuserId | FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF",
+            "resourceId | abcd",
+            "resourceId | ____",
+            "resourceId | abcdefghijklmnopqrstuvwxyz0123456789_-",
+            "customerOrganizationNumber | 100000008",
+            "customerOrganizationNumber | 923609016",
+            "type | urn:a",
+            "type | urn:abcdefghijklmnopqrstuvwxyz_-:abcdefghijklmnopqrstuvwxyz_-",
+            "type | urn:altinn",
+            "type | urn:altinn-x:y",
+            "type | urn:altinn:subresource",
+            "id | -",
+            "id | ' Datasett 1/ÆØÅ.* '",
+        ],
+    )
+    fun `the client accepts what the reasons allow`(field: String, value: String) {
+        val errors = when (field) {
+            "systemuserId" -> validate(systemuserId = value)
+            "resourceId" -> validate(resourceId = value)
+            "customerOrganizationNumber" -> validate(customerOrganizationNumber = value)
+            "type" -> validate(resourceAttributes = listOf(value to "dataset"))
+            "id" -> validate(resourceAttributes = listOf("urn:kv:geonorge" to value))
+            else -> error("No such field: $field")
+        }
+        assertEquals(emptyList(), errors)
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("refusedResourceAttributes")
-    fun `refuses every resource attribute that no policy from the editor can have`(why: String, attributes: List<Pair<String, String>>) {
-        assertTrue(PdpRequestValidation.validateResourceAttributes(attributes).isNotEmpty(), why)
+    fun `a refused resource attribute is reported on the field the client refused, with the reason`(
+        why: String,
+        attributes: List<Pair<String?, String?>>,
+        errors: List<FieldError>,
+    ) {
+        assertEquals(errors, validate(resourceAttributes = attributes), why)
     }
 
     companion object {
+        private fun typeError(index: Int, code: ValidationCode, message: String) =
+            FieldError("resourceAttributes[$index].type", code, "resourceAttributes[$index].type $message")
+
+        private fun idError(index: Int, code: ValidationCode, message: String) =
+            FieldError("resourceAttributes[$index].id", code, "resourceAttributes[$index].id $message")
+
+        private const val NOT_A_URN = "must be urn:<name> or urn:<name>:<name>, with names of lowercase letters, hyphen or underscore"
+
+        private const val UNDER_URN_ALTINN = "must not start with urn:altinn:, other than urn:altinn:subresource"
+
         @JvmStatic
         fun refusedResourceAttributes(): List<Arguments> = listOf(
-            Arguments.of("no urn: prefix", listOf("kv:geonorge" to "dataset")),
-            Arguments.of("an uppercase URN:", listOf("URN:kv:geonorge" to "dataset")),
-            Arguments.of("whitespace", listOf("urn:kv geonorge" to "dataset")),
-            Arguments.of("nothing after urn:", listOf("urn:" to "dataset")),
-            Arguments.of("a type this API sends itself", listOf("urn:altinn:resource" to "dataset")),
-            Arguments.of("urn:altinn: in another case", listOf("urn:ALTINN:resource" to "dataset")),
-            Arguments.of("a blank id", listOf("urn:kv:geonorge" to " ")),
-            Arguments.of("an id with a colon", listOf("urn:kv:geonorge" to "abc:123")),
-            Arguments.of("one type twice", listOf("urn:kv:geonorge" to "dataset", "urn:kv:geonorge" to "service")),
+            Arguments.of(
+                "a type that is not a URN",
+                listOf("kv:geonorge" to "dataset"),
+                listOf(typeError(0, ValidationCode.INVALID_FORMAT, NOT_A_URN)),
+            ),
+            Arguments.of(
+                "a type under urn:altinn:",
+                listOf("urn:altinn:resource" to "dataset"),
+                listOf(typeError(0, ValidationCode.INVALID_FORMAT, UNDER_URN_ALTINN)),
+            ),
+            Arguments.of(
+                "an id with a colon",
+                listOf("urn:kv:geonorge" to "abc:123"),
+                listOf(idError(0, ValidationCode.INVALID_FORMAT, "must not contain a colon")),
+            ),
+            Arguments.of(
+                "a blank id",
+                listOf("urn:kv:geonorge" to " "),
+                listOf(idError(0, ValidationCode.MISSING, "is required")),
+            ),
+            Arguments.of(
+                "a refused type, also when the id is missing",
+                listOf("urn:altinn:resource" to null),
+                listOf(typeError(0, ValidationCode.INVALID_FORMAT, UNDER_URN_ALTINN), idError(0, ValidationCode.MISSING, "is required")),
+            ),
+            Arguments.of(
+                "a refused id, also when the type is missing",
+                listOf(null to "abc:123"),
+                listOf(typeError(0, ValidationCode.MISSING, "is required"), idError(0, ValidationCode.INVALID_FORMAT, "must not contain a colon")),
+            ),
+            Arguments.of(
+                "one type twice",
+                listOf("urn:kv:geonorge" to "dataset", "urn:kv:geonorge" to "service"),
+                listOf(
+                    FieldError("resourceAttributes[0].type", ValidationCode.CONFLICTING, "send each type only once"),
+                    FieldError("resourceAttributes[1].type", ValidationCode.CONFLICTING, "send each type only once"),
+                ),
+            ),
+            Arguments.of(
+                "several refused attributes, each on its own index",
+                listOf(
+                    "urn:kv:geonorge" to "dataset",
+                    null to "abc:123",
+                    "urn:altinn:resource" to "other-resource",
+                    "urn:kv:geonorge" to "service",
+                ),
+                listOf(
+                    FieldError("resourceAttributes[0].type", ValidationCode.CONFLICTING, "send each type only once"),
+                    typeError(1, ValidationCode.MISSING, "is required"),
+                    idError(1, ValidationCode.INVALID_FORMAT, "must not contain a colon"),
+                    typeError(2, ValidationCode.INVALID_FORMAT, UNDER_URN_ALTINN),
+                    FieldError("resourceAttributes[3].type", ValidationCode.CONFLICTING, "send each type only once"),
+                ),
+            ),
         )
     }
 }

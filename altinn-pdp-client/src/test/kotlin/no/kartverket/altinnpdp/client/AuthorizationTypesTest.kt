@@ -37,6 +37,7 @@ class AuthorizationTypesTest {
     @ValueSource(strings = ["urn:geonorge", "urn:kv-geo:data_set"])
     fun `a ResourceAttribute takes a type of one or two names`(type: String) {
         assertEquals(type, ResourceAttribute.parse(type, "dataset").type)
+        assertEquals(type, ResourceAttribute.requireValidType(type))
     }
 
     @ParameterizedTest(name = "{1}")
@@ -62,12 +63,19 @@ class AuthorizationTypesTest {
     )
     fun `a ResourceAttribute refuses a type outside urn or inside urn altinn`(type: String, why: String) {
         assertFailsWith<IllegalArgumentException>(why) { ResourceAttribute.parse(type, "dataset") }
+        assertFailsWith<IllegalArgumentException>(why) { ResourceAttribute.requireValidType(type) }
     }
 
     @ParameterizedTest(name = "\"{0}\"")
     @ValueSource(strings = ["", " ", "abc:123"])
     fun `a ResourceAttribute refuses a blank id or one with a colon`(id: String) {
         assertFailsWith<IllegalArgumentException> { ResourceAttribute.parse("urn:kv:geonorge", id) }
+        assertFailsWith<IllegalArgumentException> { ResourceAttribute.requireValidId(id) }
+    }
+
+    @Test
+    fun `a ResourceAttribute's id can be checked without a type`() {
+        assertEquals("dataset", ResourceAttribute.requireValidId("dataset"))
     }
 
     @Test
@@ -88,9 +96,26 @@ class AuthorizationTypesTest {
         @JvmStatic
         fun parsers(): List<Arguments> = listOf(
             Arguments.of("systemuserId", { value: String -> SystemUserId.parse(value).value }, "1725580F-70F4-4ACE-A748-4F912497A0D7", "1-1-1-1-1"),
+            Arguments.of(
+                "systemuserId without dashes",
+                { value: String -> SystemUserId.parse(value).value },
+                "1725580f-70f4-4ace-a748-4f912497a0d7",
+                "1725580f70f44acea7484f912497a0d7",
+            ),
             Arguments.of("pid", { value: String -> PersonId.parse(value).value }, "01817012309", "0181701230"),
+            Arguments.of("pid of 12 digits", { value: String -> PersonId.parse(value).value }, "01817012309", "018170123090"),
+            Arguments.of("pid with a letter", { value: String -> PersonId.parse(value).value }, "01817012309", "0181701230a"),
             Arguments.of("resourceId", { value: String -> ResourceId.parse(value).value }, "kartverket-eiendom", "ABC"),
+            Arguments.of("resourceId under 4 characters", { value: String -> ResourceId.parse(value).value }, "app_ttd_apps-test", "abc"),
+            Arguments.of("resourceId in uppercase", { value: String -> ResourceId.parse(value).value }, "fleks-pdp-demo", "FLEKS-PDP-DEMO"),
+            Arguments.of("resourceId with a space", { value: String -> ResourceId.parse(value).value }, "fleks-pdp-demo", "fleks pdp demo"),
             Arguments.of("customerOrganizationNumber", { value: String -> OrganizationNumber.parse(value).value }, "923609016", "923609017"),
+            Arguments.of(
+                "customerOrganizationNumber of 8 digits",
+                { value: String -> OrganizationNumber.parse(value).value },
+                "923609016",
+                "92360901",
+            ),
             Arguments.of("action", { value: String -> ActionId.parse(value).value }, "custom-action", " "),
         )
     }

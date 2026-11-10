@@ -20,7 +20,9 @@ public value class PersonId private constructor(public val value: String) : PdpS
     override fun toString(): String = "PersonId(***********)"
 
     public companion object {
-        private val PID = Regex("[0-9]{11}")
+        public const val PATTERN: String = "^[0-9]{11}$"
+
+        private val PID = Regex(PATTERN)
 
         /** Only the length, since NoCommons' switch for synthetic persons is global and belongs to the app */
         public fun parse(value: String): PersonId {
@@ -33,7 +35,9 @@ public value class PersonId private constructor(public val value: String) : PdpS
 @JvmInline
 public value class ResourceId private constructor(public val value: String) {
     public companion object {
-        private val RESOURCE_ID = Regex("[a-z0-9_-]{4,}")
+        public const val PATTERN: String = "^[a-z0-9_-]{4,}$"
+
+        private val RESOURCE_ID = Regex(PATTERN)
 
         public fun parse(value: String): ResourceId {
             require(RESOURCE_ID.matches(value)) {
@@ -47,7 +51,10 @@ public value class ResourceId private constructor(public val value: String) {
 @JvmInline
 public value class OrganizationNumber private constructor(public val value: String) {
     public companion object {
-        private val ORGANIZATION_NUMBER = Regex("[0-9]{9}")
+        /** The format that [parse] checks, to describe it elsewhere. [parse] also checks the MOD11 check digit. */
+        public const val PATTERN: String = "^[0-9]{9}$"
+
+        private val ORGANIZATION_NUMBER = Regex(PATTERN)
 
         public fun parse(value: String): OrganizationNumber {
             require(ORGANIZATION_NUMBER.matches(value) && OrganisasjonsnummerValidator.isValid(value)) {
@@ -71,14 +78,32 @@ public value class ActionId private constructor(public val value: String) {
 @ConsistentCopyVisibility
 public data class ResourceAttribute private constructor(public val type: String, public val id: String) {
     public companion object {
-        private val TYPE = Regex("urn:[a-z_-]+(:[a-z_-]+)?")
+        /**
+         * The format of `type` that [parse] checks, to describe it elsewhere. [parse] also refuses a type under
+         * `urn:altinn:`, other than `urn:altinn:subresource`.
+         */
+        public const val TYPE_PATTERN: String = "^urn:[a-z_-]+(:[a-z_-]+)?$"
+
+        /** The format of `id` that [parse] checks, to describe it elsewhere. [parse] also refuses a blank id. */
+        public const val ID_PATTERN: String = "^[^:]+$"
+
+        private val TYPE = Regex(TYPE_PATTERN)
+
+        private val ID = Regex(ID_PATTERN)
 
         private const val ALTINN_NAMESPACE = "urn:altinn:"
 
         private const val ALTINN_SUBRESOURCE = "urn:altinn:subresource"
 
-        /** urn:altinn:resource and the customer come from their own parameters, and the rest of the namespace is Altinn's */
-        public fun parse(type: String, id: String): ResourceAttribute {
+        /** Each of [type] and [id] is checked on its own, as [requireValidType] and [requireValidId] do */
+        public fun parse(type: String, id: String): ResourceAttribute = ResourceAttribute(requireValidType(type), requireValidId(id))
+
+        /**
+         * Gives [type], or throws [IllegalArgumentException] if [parse] would refuse it, to tell which of the two is
+         * wrong. urn:altinn:resource and the customer come from their own parameters, and the rest of the namespace is
+         * Altinn's.
+         */
+        public fun requireValidType(type: String): String {
             require(TYPE.matches(type)) {
                 "Expected a resource attribute type of urn:<name> or urn:<name>:<name>, with names of a-z, _ and -, " +
                     "but was \"$type\""
@@ -87,10 +112,15 @@ public data class ResourceAttribute private constructor(public val type: String,
                 "Expected a resource attribute type outside $ALTINN_NAMESPACE, other than $ALTINN_SUBRESOURCE, " +
                     "but was \"$type\""
             }
-            require(id.isNotBlank() && ':' !in id) {
+            return type
+        }
+
+        /** Gives [id], or throws [IllegalArgumentException] if [parse] would refuse it, to tell which of the two is wrong */
+        public fun requireValidId(id: String): String {
+            require(id.isNotBlank() && ID.matches(id)) {
                 "Expected a resource attribute id that is not blank and has no colon, but was \"$id\""
             }
-            return ResourceAttribute(type, id)
+            return id
         }
     }
 }
