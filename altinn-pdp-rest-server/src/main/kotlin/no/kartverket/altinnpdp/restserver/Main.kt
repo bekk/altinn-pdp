@@ -21,6 +21,7 @@ import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.http.JavaOutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.restserver.authorize.authorize
+import no.kartverket.altinnpdp.restserver.authorize.authorizeErrorResponses
 import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
 import no.kartverket.altinnpdp.restserver.authorize.cache.PdpDecisionCache
 import no.kartverket.altinnpdp.restserver.authorize.configurePidValidation
@@ -53,7 +54,10 @@ fun Application.module(
 ) {
     installCallLogging(accessLog)
     install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
-    install(StatusPages) { errorResponses() }
+    install(StatusPages) {
+        errorResponses()
+        authorizeErrorResponses()
+    }
     monitor.subscribe(ApplicationStopped) { decisionCache.close() }
 
     val spec by lazy { openApiSpec() }
