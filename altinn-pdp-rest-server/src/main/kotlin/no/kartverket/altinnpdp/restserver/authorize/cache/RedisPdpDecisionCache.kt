@@ -69,6 +69,8 @@ class RedisPdpDecisionCache(
 
     private val available = AtomicBoolean(true)
 
+    private val writable = AtomicBoolean(true)
+
     override suspend fun get(
         key: AuthorizeRequest.Parsed,
         maxAge: Duration?,
@@ -97,10 +99,12 @@ class RedisPdpDecisionCache(
         val authorization = load()
         if (!readFailed) {
             if (authorization.decision == PdpDecision.INDETERMINATE) {
-                write("removed from") { redis.del(redisKey) }
+                write { redis.del(redisKey) }
             } else {
                 val value = Json.encodeToString(CachedDecision.of(authorization, startedAt))
-                write("saved in") { redis.set(redisKey, value, SetParams().px(timeToLive.toMillis())) }
+                val saved = write { redis.set(redisKey, value, SetParams().px(timeToLive.toMillis())) }
+                // Only a save shows that Redis takes decisions again. A full Redis still allows DEL.
+                if (saved && writable.compareAndSet(false, true)) log.info("The decision cache saves decisions again")
             }
         }
         return AuthorizationWithAge(authorization, ageSince(startedAt))
@@ -118,12 +122,14 @@ class RedisPdpDecisionCache(
         null
     }
 
-    private suspend fun write(action: String, command: () -> Unit) {
-        try {
-            withContext(Dispatchers.IO) { command() }
-        } catch (e: JedisException) {
-            log.debug("A decision could not be $action the decision cache: ${e.message}")
+    private suspend fun write(command: () -> Unit): Boolean = try {
+        withContext(Dispatchers.IO) { command() }
+        true
+    } catch (e: JedisException) {
+        if (writable.compareAndSet(true, false)) {
+            log.warn("The decision cache cannot save decisions until Redis accepts them again: ${e.message}")
         }
+        false
     }
 
     private fun markAvailable() {

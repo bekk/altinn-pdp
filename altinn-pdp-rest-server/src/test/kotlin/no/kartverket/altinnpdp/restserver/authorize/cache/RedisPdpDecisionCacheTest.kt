@@ -5,6 +5,9 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.github.fppt.jedismock.RedisServer
+import com.github.fppt.jedismock.operations.server.MockExecutor
+import com.github.fppt.jedismock.server.Response
+import com.github.fppt.jedismock.server.ServiceOptions
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import no.kartverket.altinnpdp.client.AltinnEnvironment
@@ -25,6 +28,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -328,10 +332,7 @@ class RedisPdpDecisionCacheTest {
 
     @Test
     fun `logs once when Redis becomes unavailable, and once when it is back`() = runBlocking {
-        val logger = LoggerFactory.getLogger(RedisPdpDecisionCache::class.java) as Logger
-        val appender = ListAppender<ILoggingEvent>().apply { start() }
-        logger.addAppender(appender)
-        try {
+        val levels = logLevels {
             val port = unusedPort()
             val cache = cache(url = "redis://localhost:$port")
             repeat(3) { cache.get(key(), maxAge = null, load = permit) }
@@ -342,10 +343,43 @@ class RedisPdpDecisionCacheTest {
             } finally {
                 late.stop()
             }
-        } finally {
-            logger.detachAppender(appender)
         }
-        assertEquals(listOf(Level.WARN, Level.INFO), appender.list.map { it.level })
+        assertEquals(listOf(Level.WARN, Level.INFO), levels)
+    }
+
+    @Test
+    fun `logs once when Redis refuses to save decisions, and once when it saves them again`() = runBlocking {
+        val refuseWrites = AtomicBoolean(true)
+        val full = RedisServer.newRedisServer()
+            .setOptions(
+                ServiceOptions.withInterceptor { state, command, params ->
+                    if (refuseWrites.get() && command.equals("set", ignoreCase = true)) {
+                        Response.error("OOM command not allowed when used memory > 'maxmemory'.")
+                    } else {
+                        MockExecutor.proceed(state, command, params)
+                    }
+                },
+            )
+            .start()
+        val indeterminate: suspend () -> PdpAuthorization = {
+            loads.incrementAndGet()
+            PdpAuthorization(PdpDecision.INDETERMINATE)
+        }
+        val levels = try {
+            logLevels {
+                val cache = cache(url = "redis://${full.host}:${full.bindPort}")
+                cache.get(key(), maxAge = null, load = permit)
+                cache.get(key(), maxAge = null, load = indeterminate)
+                cache.get(key(), maxAge = null, load = permit)
+
+                refuseWrites.set(false)
+                repeat(3) { cache.get(key(), maxAge = null, load = permit) }
+            }
+        } finally {
+            full.stop()
+        }
+        assertEquals(listOf(Level.WARN, Level.INFO), levels)
+        assertEquals(4, loads.get(), "three while Redis refused to save, then one that was saved")
     }
 
     @Test
@@ -395,6 +429,18 @@ class RedisPdpDecisionCacheTest {
         action = action,
         resourceAttributes = resourceAttributes.map { (type, id) -> AuthorizeRequest.ResourceAttribute(type, id) },
     ).parse()
+
+    private suspend fun logLevels(block: suspend () -> Unit): List<Level> {
+        val logger = LoggerFactory.getLogger(RedisPdpDecisionCache::class.java) as Logger
+        val appender = ListAppender<ILoggingEvent>().apply { start() }
+        logger.addAppender(appender)
+        try {
+            block()
+        } finally {
+            logger.detachAppender(appender)
+        }
+        return appender.list.map { it.level }
+    }
 
     private fun overwriteEveryValue(value: String) {
         Jedis(redis.host, redis.bindPort).use { jedis -> jedis.keys("*").forEach { jedis.set(it, value) } }
