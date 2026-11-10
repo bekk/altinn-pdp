@@ -1,12 +1,13 @@
 package no.kartverket.altinnpdp.restserver.config
 
+import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.MapApplicationConfig
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.support.testJwk
 import no.kartverket.altinnpdp.restserver.authorize.cache.InMemoryPdpDecisionCache
 import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
 import no.kartverket.altinnpdp.restserver.authorize.cache.RedisPdpDecisionCache
-import no.kartverket.altinnpdp.restserver.authorize.cache.decisionCache
+import no.kartverket.altinnpdp.restserver.authorize.cache.toDecisionCache
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
@@ -230,6 +231,8 @@ class ConfigTest {
         assertContains(e.message!!, ".yaml or .yml")
     }
 }
+
+private fun ApplicationConfig.decisionCache() = decisionCacheSettings().toDecisionCache()
 
 // The length of `openssl rand -base64 32`, as .env.example suggests.
 private val KEY_SECRET = "k".repeat(44)

@@ -16,6 +16,7 @@ import no.kartverket.altinnpdp.client.support.SAMPLE_PID
 import no.kartverket.altinnpdp.client.support.SAMPLE_SYSTEMUSER_ID
 import no.kartverket.altinnpdp.restserver.authorize.AuthorizeRequest
 import no.kartverket.altinnpdp.restserver.authorize.configurePidValidation
+import no.kartverket.altinnpdp.restserver.config.DecisionCacheFailureMode
 import org.slf4j.LoggerFactory
 import redis.clients.jedis.Jedis
 import java.lang.reflect.Modifier

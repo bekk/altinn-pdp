@@ -4,8 +4,6 @@ import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.yaml.YamlConfig
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.MaskinportenKey
-import no.kartverket.altinnpdp.restserver.authorize.cache.PdpDecisionCache
-import no.kartverket.altinnpdp.restserver.authorize.cache.decisionCache
 import java.io.File
 
 internal class AppConfig(
@@ -15,7 +13,7 @@ internal class AppConfig(
     val altinnSubscriptionKey: String,
     val maskinportenClientId: String,
     val maskinportenKey: MaskinportenKey,
-    val decisionCache: PdpDecisionCache,
+    val decisionCache: DecisionCacheSettings,
 ) {
     companion object {
         fun load(config: ApplicationConfig = loadApplicationConfig()): AppConfig = AppConfig(
@@ -25,7 +23,7 @@ internal class AppConfig(
             altinnSubscriptionKey = config.required("altinn.subscriptionKey"),
             maskinportenClientId = config.required("maskinporten.clientId"),
             maskinportenKey = MaskinportenKey.parse(config.required("maskinporten.clientJwk")),
-            decisionCache = config.decisionCache(),
+            decisionCache = config.decisionCacheSettings(),
         )
     }
 }

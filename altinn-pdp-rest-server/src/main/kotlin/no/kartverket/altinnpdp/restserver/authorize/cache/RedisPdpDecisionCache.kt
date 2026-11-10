@@ -12,6 +12,7 @@ import no.kartverket.altinnpdp.client.PdpStatus
 import no.kartverket.altinnpdp.client.PersonId
 import no.kartverket.altinnpdp.client.SystemUserId
 import no.kartverket.altinnpdp.restserver.authorize.AuthorizeRequest
+import no.kartverket.altinnpdp.restserver.config.DecisionCacheFailureMode
 import org.slf4j.LoggerFactory
 import redis.clients.jedis.ConnectionPoolConfig
 import redis.clients.jedis.DefaultJedisClientConfig
@@ -29,8 +30,6 @@ import java.util.HexFormat
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
-
-enum class DecisionCacheFailureMode { BYPASS, REJECT }
 
 class DecisionCacheUnavailableException(cause: Throwable) : RuntimeException("The decision cache is unavailable", cause)
 
