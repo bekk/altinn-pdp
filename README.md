@@ -190,7 +190,7 @@ The answer is a `PdpAuthorization`:
 > [!IMPORTANT]
 > `customerOrganizationNumber` is the customer: the organisation the system user or person acts
 > **on behalf of** when calling your API, not your own. For a system user it is
-> `authorization_details[].systemuser_org` in the Maskinporten token, **not** the `consumer`
+> `authorization_details[].systemuser_org.ID` in the Maskinporten token, **not** the `consumer`
 > claim, which holds the vendor's org number. For a person it is the organisation they chose when
 > logging in, `authorization_details[].authorized_parties[].orgno.ID` in the Ansattporten token.
 > Strip the ISO6523 prefix: send `311718371`, not `0192:311718371`.

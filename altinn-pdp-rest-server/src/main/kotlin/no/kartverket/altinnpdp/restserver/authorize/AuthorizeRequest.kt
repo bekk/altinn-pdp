@@ -48,10 +48,10 @@ data class AuthorizeRequest(
     @JsonSchema.Description(
         """The customer: the organisation the system user or person acts on behalf of when calling your API.
 
-- For a system user, it is the org number in `authorization_details[].systemuser_org` in the
+- For a system user, it is the org number in `authorization_details[].systemuser_org.ID` in the
   Maskinporten token. Do not use the `consumer` claim. That is the vendor's own org number.
 - For a person, it is the organisation they chose when logging in, in
-  `authorization_details[].authorized_parties[].orgno` in the Ansattporten token.
+  `authorization_details[].authorized_parties[].orgno.ID` in the Ansattporten token.
 
 Send the 9 digits without the `0192:` prefix: `311718371`, not `0192:311718371`. The last digit
 must be a valid check digit.""",
