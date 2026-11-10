@@ -231,7 +231,7 @@ class RedisPdpDecisionCacheTest {
     @Test
     fun `the key depends on the secret`() = runBlocking {
         lookup()
-        cache(keySecret = "another-secret").get(key(), maxAge = null, load = permit)
+        cache(keySecret = "b".repeat(32)).get(key(), maxAge = null, load = permit)
 
         assertEquals(2, loads.get())
         assertEquals(2, redisContents().lines().size)
@@ -368,7 +368,7 @@ class RedisPdpDecisionCacheTest {
 
     private fun cache(
         url: String = "redis://${redis.host}:${redis.bindPort}",
-        keySecret: String = "test-secret",
+        keySecret: String = "a".repeat(32),
         failureMode: DecisionCacheFailureMode = DecisionCacheFailureMode.BYPASS,
     ) = RedisPdpDecisionCache(
         url = url,
