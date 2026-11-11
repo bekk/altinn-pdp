@@ -2,6 +2,8 @@ package no.kartverket.altinnpdp.restserver
 
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
@@ -13,6 +15,7 @@ import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
 import no.kartverket.altinnpdp.restserver.authorize.cache.PdpDecisionCache
 import no.kartverket.altinnpdp.restserver.authorize.configurePidValidation
 import no.kartverket.altinnpdp.restserver.problem.ErrorResponse
+import kotlin.test.assertEquals
 
 internal fun testServer(
     altinn: OutgoingHttpClient = unexpectedCall,
@@ -38,5 +41,7 @@ internal fun testPdpClient(
 
 private val unexpectedCall = OutgoingHttpClient { error("unexpected call to ${it.url}") }
 
-internal suspend fun HttpResponse.errorResponse(): ErrorResponse =
-    Json.decodeFromString(ErrorResponse.serializer(), bodyAsText())
+internal suspend fun HttpResponse.errorResponse(): ErrorResponse {
+    assertEquals(ContentType.Application.ProblemJson, contentType()?.withoutParameters(), "$status")
+    return Json.decodeFromString(ErrorResponse.serializer(), bodyAsText())
+}

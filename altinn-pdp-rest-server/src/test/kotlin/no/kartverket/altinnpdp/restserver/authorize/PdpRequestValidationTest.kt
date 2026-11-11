@@ -1,6 +1,7 @@
 package no.kartverket.altinnpdp.restserver.authorize
 
 import no.kartverket.altinnpdp.client.AltinnEnvironment
+import no.kartverket.altinnpdp.restserver.problem.FieldError
 import no.kartverket.altinnpdp.restserver.problem.ValidationCode
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
@@ -74,7 +75,7 @@ class PdpRequestValidationTest {
         val errors = validate(pid = "01017012343")
 
         assertEquals(listOf("systemuserId", "pid"), errors.map { it.field })
-        assertTrue(errors.all { it.code == ValidationCode.CONFLICTING })
+        assertTrue(errors.all { it.code == ValidationCode.CONFLICTING && it.message == "send systemuserId or pid, not both" })
     }
 
     @ParameterizedTest(name = "{1}")
@@ -142,6 +143,37 @@ class PdpRequestValidationTest {
     @Test
     fun `accepts a resource attribute from the policy editor`() {
         assertTrue(PdpRequestValidation.validateResourceAttributes(listOf("urn:altinn:subresource" to "metadata")).isEmpty())
+    }
+
+    @Test
+    fun `each resource attribute is reported by its index`() {
+        val errors = PdpRequestValidation.validateResourceAttributes(
+            listOf(
+                "urn:kv:geonorge" to "dataset",
+                null to "abc:123",
+                "urn:altinn:resource" to "other-resource",
+                "urn:kv:geonorge" to "service",
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                FieldError("resourceAttributes[0].type", ValidationCode.CONFLICTING, "send each type only once"),
+                FieldError("resourceAttributes[1].type", ValidationCode.MISSING, "resourceAttributes[1].type is required"),
+                FieldError(
+                    "resourceAttributes[1].id",
+                    ValidationCode.INVALID_FORMAT,
+                    "resourceAttributes[1].id must not contain a colon",
+                ),
+                FieldError(
+                    "resourceAttributes[2].type",
+                    ValidationCode.INVALID_FORMAT,
+                    "resourceAttributes[2].type must not start with urn:altinn:, other than urn:altinn:subresource",
+                ),
+                FieldError("resourceAttributes[3].type", ValidationCode.CONFLICTING, "send each type only once"),
+            ),
+            errors,
+        )
     }
 
     @ParameterizedTest(name = "{0}")

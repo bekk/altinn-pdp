@@ -225,10 +225,6 @@ class ServerTest {
         )
     }
 
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("resourceAttributeCases")
-    fun `resource attributes are rejected per entry, with the index in the field`(case: ValidationCase) = assertRejected(case)
-
     @Test
     fun `a synthetic person is accepted against TT02, but only a real person in PROD`() {
         val synthetic = authorizeBody(systemuserId = null, pid = SAMPLE_PID)
@@ -309,30 +305,15 @@ class ServerTest {
     }
 
     @Test
-    fun `every error is sent as application problem+json`() {
-        authorizeTest {
-            assertEquals(ContentType.Application.ProblemJson, postAuthorize(malformedBody).contentType()?.withoutParameters())
-        }
-        authorizeTest(altinn = FakeAltinn(pdpStatus = 500)) {
-            assertEquals(ContentType.Application.ProblemJson, postAuthorize().contentType()?.withoutParameters())
-        }
-        testServer {
-            for (response in listOf(client.get("/authorise"), client.get("/authorize"))) {
-                assertEquals(ContentType.Application.ProblemJson, response.contentType()?.withoutParameters(), "${response.status}")
-            }
-        }
-    }
-
-    @Test
     fun `a malformed body never echoes the request or kotlinx's own advice back`() = authorizeTest {
         val response = postAuthorize(malformedBody)
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
-        val text = response.bodyAsText()
         assertEquals(
             ErrorResponse.of(ProblemType.MALFORMED_REQUEST, HttpStatusCode.BadRequest, "Malformed request body"),
-            Json.decodeFromString(ErrorResponse.serializer(), text),
+            response.errorResponse(),
         )
+        val text = response.bodyAsText()
         assertFalse(text.contains("coerceInputValues"), "leaks kotlinx advice: $text")
         assertFalse(text.contains("JSON input"), "echoes the caller's body: $text")
         assertFalse(text.contains("923609016"), "echoes the caller's values: $text")
@@ -454,41 +435,7 @@ class ServerTest {
         )
 
         @JvmStatic
-        fun resourceAttributeCases(): List<ValidationCase> = listOf(
-            ValidationCase(
-                why = "a missing type and an id with a colon",
-                body = authorizeBody(resourceAttributesJson = """[{"type":"urn:kv:geonorge","id":"dataset"},{"id":"abc:123"}]"""),
-                errors = listOf(
-                    FieldError("resourceAttributes[1].type", ValidationCode.MISSING, "resourceAttributes[1].type is required"),
-                    FieldError(
-                        "resourceAttributes[1].id",
-                        ValidationCode.INVALID_FORMAT,
-                        "resourceAttributes[1].id must not contain a colon",
-                    ),
-                ),
-            ),
-            ValidationCase(
-                why = "a type that this API sends itself",
-                body = authorizeBody(resourceAttributesJson = """[{"type":"urn:altinn:resource","id":"other-resource"}]"""),
-                errors = listOf(
-                    FieldError(
-                        "resourceAttributes[0].type",
-                        ValidationCode.INVALID_FORMAT,
-                        "resourceAttributes[0].type must not start with urn:altinn:, other than urn:altinn:subresource",
-                    ),
-                ),
-            ),
-            ValidationCase(
-                why = "one type twice",
-                body = authorizeBody(
-                    resourceAttributesJson = """[{"type":"urn:kv:geonorge","id":"dataset"},""" +
-                        """{"type":"urn:altinn:subresource","id":"metadata"},{"type":"urn:kv:geonorge","id":"service"}]""",
-                ),
-                errors = listOf(
-                    FieldError("resourceAttributes[0].type", ValidationCode.CONFLICTING, "send each type only once"),
-                    FieldError("resourceAttributes[2].type", ValidationCode.CONFLICTING, "send each type only once"),
-                ),
-            ),
+        fun rejectedRequestCases(): List<ValidationCase> = listOf(
             ValidationCase(
                 why = "an invalid resource attribute next to a missing field",
                 body = authorizeBody(action = null, resourceAttributesJson = """[{"type":"geonorge","id":"dataset"}]"""),
@@ -500,31 +447,6 @@ class ServerTest {
                         "resourceAttributes[0].type must be urn:<name> or urn:<name>:<name>, with names of lowercase letters, hyphen or underscore",
                     ),
                 ),
-            ),
-        )
-
-        @JvmStatic
-        fun rejectedRequestCases(): List<ValidationCase> = listOf(
-            ValidationCase(
-                why = "neither systemuserId nor pid",
-                body = authorizeBody(systemuserId = null),
-                errors = listOf(
-                    FieldError("systemuserId", ValidationCode.MISSING, "systemuserId or pid is required"),
-                    FieldError("pid", ValidationCode.MISSING, "systemuserId or pid is required"),
-                ),
-            ),
-            ValidationCase(
-                why = "both systemuserId and pid",
-                body = authorizeBody(pid = SAMPLE_PID),
-                errors = listOf(
-                    FieldError("systemuserId", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
-                    FieldError("pid", ValidationCode.CONFLICTING, "send systemuserId or pid, not both"),
-                ),
-            ),
-            ValidationCase(
-                why = "a pid with a bad check digit",
-                body = authorizeBody(systemuserId = null, pid = "31827012312"),
-                errors = listOf(FieldError("pid", ValidationCode.INVALID_FORMAT, "pid must be a valid fødselsnummer or D number")),
             ),
             ValidationCase(
                 why = "an explicit null",
