@@ -21,8 +21,10 @@ import no.kartverket.altinnpdp.client.PdpClient
 import no.kartverket.altinnpdp.client.http.JavaOutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.restserver.authorize.authorize
+import no.kartverket.altinnpdp.restserver.authorize.authorizeErrorResponses
 import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
 import no.kartverket.altinnpdp.restserver.authorize.cache.PdpDecisionCache
+import no.kartverket.altinnpdp.restserver.authorize.cache.toDecisionCache
 import no.kartverket.altinnpdp.restserver.authorize.configurePidValidation
 import no.kartverket.altinnpdp.restserver.config.AppConfig
 import no.kartverket.altinnpdp.restserver.config.file
@@ -35,13 +37,14 @@ import java.time.Duration
 
 fun main() {
     val applicationConfig = loadApplicationConfig()
-    // Logback reads this when the first logger is created, so it is set before AppConfig builds anything that logs.
+    // Logback reads this when the first logger is created, so it is set before anything that logs is built.
     applicationConfig.file("logback.configFile")?.let { System.setProperty("logback.configurationFile", it) }
     val config = AppConfig.load(applicationConfig)
     configurePidValidation(config.altinnEnvironment)
+    val decisionCache = config.decisionCache.toDecisionCache()
 
     embeddedServer(Netty, port = config.port) {
-        module(pdpClient = pdpClient(config), accessLog = config.accessLog, decisionCache = config.decisionCache)
+        module(pdpClient = pdpClient(config), accessLog = config.accessLog, decisionCache = decisionCache)
     }.start(wait = true)
 }
 
@@ -53,7 +56,10 @@ fun Application.module(
 ) {
     installCallLogging(accessLog)
     install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
-    install(StatusPages) { errorResponses() }
+    install(StatusPages) {
+        errorResponses()
+        authorizeErrorResponses()
+    }
     monitor.subscribe(ApplicationStopped) { decisionCache.close() }
 
     val spec by lazy { openApiSpec() }

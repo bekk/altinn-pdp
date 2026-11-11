@@ -1,7 +1,6 @@
 package no.kartverket.altinnpdp.restserver.problem
 
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.JsonConvertException
 import io.ktor.server.application.ApplicationCall
@@ -13,30 +12,14 @@ import io.ktor.server.response.respondText
 import kotlinx.serialization.json.Json
 import no.kartverket.altinnpdp.client.AltinnPdpException
 import no.kartverket.altinnpdp.client.PdpException
-import no.kartverket.altinnpdp.restserver.authorize.InvalidCacheControlException
-import no.kartverket.altinnpdp.restserver.authorize.InvalidRequestException
-import no.kartverket.altinnpdp.restserver.authorize.cache.DecisionCacheUnavailableException
 
 internal fun StatusPagesConfig.errorResponses() {
     exception<JsonConvertException> { call, cause -> call.respondMalformedBody(cause) }
     exception<ContentTransformationException> { call, cause -> call.respondMalformedBody(cause) }
     exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
-    exception<InvalidRequestException> { call, cause ->
-        call.respondProblem(ProblemType.VALIDATION_ERROR, HttpStatusCode.BadRequest, errors = cause.errors)
-    }
-    exception<InvalidCacheControlException> { call, _ ->
-        call.respondProblem(
-            ProblemType.VALIDATION_ERROR,
-            HttpStatusCode.BadRequest,
-            errors = listOf(FieldError(HttpHeaders.CacheControl, ValidationCode.INVALID_FORMAT, "max-age in Cache-Control must be a whole number of seconds, 0 or more")),
-        )
-    }
     exception<AltinnPdpException> { call, cause ->
         call.application.log.error("Call to Maskinporten or Altinn failed: statusCode=${cause.statusCode}", cause)
         call.respondUpstream(cause)
-    }
-    exception<DecisionCacheUnavailableException> { call, _ ->
-        call.respondProblem(ProblemType.DECISION_CACHE_UNAVAILABLE, HttpStatusCode.ServiceUnavailable)
     }
     exception<Throwable> { call, cause ->
         call.application.log.error("Unhandled exception", cause)
@@ -64,7 +47,7 @@ private suspend fun ApplicationCall.respondUpstream(cause: AltinnPdpException) {
     }
 }
 
-private suspend fun ApplicationCall.respondProblem(
+internal suspend fun ApplicationCall.respondProblem(
     type: ProblemType,
     status: HttpStatusCode,
     detail: String? = null,

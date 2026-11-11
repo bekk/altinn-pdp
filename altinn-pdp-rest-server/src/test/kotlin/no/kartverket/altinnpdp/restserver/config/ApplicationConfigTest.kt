@@ -2,8 +2,6 @@ package no.kartverket.altinnpdp.restserver.config
 
 import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.yaml.YamlConfig
-import no.kartverket.altinnpdp.restserver.authorize.cache.NoPdpDecisionCache
-import no.kartverket.altinnpdp.restserver.authorize.cache.decisionCache
 import kotlin.test.Test
 import kotlin.test.assertFails
 import kotlin.test.assertSame
@@ -23,7 +21,7 @@ class ApplicationConfigTest {
 
     @Test
     fun `the decision cache is off by default`() {
-        assertSame(NoPdpDecisionCache, loadConfig().decisionCache())
+        assertSame(DecisionCacheSettings.Off, loadConfig().decisionCacheSettings())
     }
 
     private fun loadConfig(without: String? = null): ApplicationConfig {
