@@ -103,3 +103,7 @@ jib {
         user = "1000:1000"
     }
 }
+
+tasks.matching { it.name.startsWith("jib") }.configureEach {
+    notCompatibleWithConfigurationCache("Jib's tasks hold on to the Gradle project")
+}
