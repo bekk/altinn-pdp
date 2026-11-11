@@ -9,8 +9,8 @@ import no.kartverket.altinnpdp.client.PdpDecision
 import no.kartverket.altinnpdp.client.PdpException
 import no.kartverket.altinnpdp.client.PdpObligation
 import no.kartverket.altinnpdp.client.PdpStatus
-import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.OutgoingResponse
+import no.kartverket.altinnpdp.client.internal.http.Http
 
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable

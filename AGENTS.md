@@ -7,7 +7,7 @@ person has access to a resource. See [README.md](README.md) for the background, 
 
 - `altinn-pdp-client`: the library. It talks to Maskinporten and the Altinn PDP. It uses Kotlin's explicit API
   mode and is meant for other teams, so keep its public API small and deliberate. The public API is in `client`
-  and `client.http`. The rest is in `client.internal`: `maskinporten`, `token` and `xacml`.
+  and `client.http`. The rest is in `client.internal`: `http`, `maskinporten`, `token` and `xacml`.
 - `altinn-pdp-rest-server`: a Ktor server that offers a simple JSON API on top of the client. The code is grouped by
   feature: `authorize` (with `authorize.cache`), `problem`, `observability` and `config`. `Main.kt` only wires them
   together.

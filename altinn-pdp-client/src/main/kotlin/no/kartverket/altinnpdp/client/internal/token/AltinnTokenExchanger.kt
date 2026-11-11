@@ -2,10 +2,10 @@ package no.kartverket.altinnpdp.client.internal.token
 
 import com.nimbusds.jwt.JWTParser
 import no.kartverket.altinnpdp.client.AltinnException
-import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.HttpMethod
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
+import no.kartverket.altinnpdp.client.internal.http.Http
 import java.net.URI
 import java.text.ParseException
 import java.time.Instant

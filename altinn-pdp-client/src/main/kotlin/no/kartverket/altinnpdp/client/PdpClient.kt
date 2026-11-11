@@ -1,9 +1,9 @@
 package no.kartverket.altinnpdp.client
 
-import no.kartverket.altinnpdp.client.http.Http
 import no.kartverket.altinnpdp.client.http.HttpMethod
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
+import no.kartverket.altinnpdp.client.internal.http.Http
 import no.kartverket.altinnpdp.client.internal.maskinporten.MaskinportenConfig
 import no.kartverket.altinnpdp.client.internal.token.AccessTokenProvider
 import no.kartverket.altinnpdp.client.internal.token.MaskinportenAltinnTokenProvider
