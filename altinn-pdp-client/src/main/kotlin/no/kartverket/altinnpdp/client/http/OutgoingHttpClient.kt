@@ -2,6 +2,11 @@ package no.kartverket.altinnpdp.client.http
 
 import java.net.URI
 
+/**
+ * Must not follow redirects, since the calls carry tokens, and must throw an [java.io.IOException] when a call
+ * fails. Any other exception reaches the caller as it is, instead of as an
+ * [no.kartverket.altinnpdp.client.AltinnPdpException].
+ */
 public fun interface OutgoingHttpClient {
     public suspend fun send(request: OutgoingRequest): OutgoingResponse
 }
