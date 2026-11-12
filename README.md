@@ -268,6 +268,7 @@ person, only in `TT02`. In `PROD`, only real persons pass.
 | `ALTINN_SUBSCRIPTION_KEY`                     | yes          | -           | The subscription key for Altinn's API gateway                                        |
 | `PORT`                                        | no           | `8080`      | The port the server listens on                                                       |
 | `ACCESS_LOG_ENABLED`                          | no           | `true`      | Whether the server logs one line per call                                            |
+| `ACCESS_LOG_HEALTH_ENABLED`                   | no           | `false`     | Whether the access log also has the calls to `/health/...`                           |
 | `DECISION_CACHE_ENABLED`                      | no           | `false`     | Whether the server caches decisions                                                  |
 | `DECISION_CACHE_TYPE`                         | no           | `IN_MEMORY` | Where decisions are cached: `IN_MEMORY` (per pod) or `REDIS` (shared)                |
 | `DECISION_CACHE_TIME_TO_LIVE_SECONDS`         | no           | `60`        | How long a cached decision is kept                                                   |

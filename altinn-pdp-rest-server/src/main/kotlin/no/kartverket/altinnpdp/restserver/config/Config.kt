@@ -9,6 +9,7 @@ import java.io.File
 internal class AppConfig(
     val port: Int,
     val accessLog: Boolean,
+    val accessLogHealth: Boolean,
     val altinnEnvironment: AltinnEnvironment,
     val altinnSubscriptionKey: String,
     val maskinportenClientId: String,
@@ -19,6 +20,7 @@ internal class AppConfig(
         fun load(config: ApplicationConfig = loadApplicationConfig()): AppConfig = AppConfig(
             port = config.port("server.port"),
             accessLog = config.boolean("accessLog.enabled", default = true),
+            accessLogHealth = config.boolean("accessLog.healthEnabled", default = false),
             altinnEnvironment = config.enum("altinn.environment"),
             altinnSubscriptionKey = config.required("altinn.subscriptionKey"),
             maskinportenClientId = config.required("maskinporten.clientId"),
