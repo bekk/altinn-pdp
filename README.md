@@ -57,7 +57,7 @@ this project is for.
 
 | Module                                             | What it is                                                            | Published as                                                                  |
 | :------------------------------------------------- | :-------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
-| [`altinn-pdp-client`](altinn-pdp-client)           | Kotlin library that talks to Maskinporten and the Altinn PDP directly | a package, for other services to depend on                                    |
+| [`altinn-pdp-client`](altinn-pdp-client)           | Kotlin library that talks to Maskinporten and the Altinn PDP directly | nothing yet, as only the server uses it                                       |
 | [`altinn-pdp-rest-server`](altinn-pdp-rest-server) | Ktor server exposing a simplified REST/JSON API over the client       | a Docker image, built with [Jib](https://github.com/GoogleContainerTools/jib) |
 
 `altinn-pdp-rest-server` is the intended consumer of `altinn-pdp-client`, so other systems can ask
