@@ -64,18 +64,27 @@ class ConfigTest {
         assertContains(e.message!!, "server.port")
     }
 
+    private val required = arrayOf(
+        "server.port" to "8080",
+        "altinn.environment" to "TT02",
+        "altinn.subscriptionKey" to "key",
+        "maskinporten.clientId" to "client",
+        "maskinporten.clientJwk" to testJwk,
+    )
+
     @Test
     fun `the access log is on unless switched off`() {
-        val required = arrayOf(
-            "server.port" to "8080",
-            "altinn.environment" to "TT02",
-            "altinn.subscriptionKey" to "key",
-            "maskinporten.clientId" to "client",
-            "maskinporten.clientJwk" to testJwk,
-        )
-
         assertEquals(true, AppConfig.load(MapApplicationConfig(*required)).accessLog)
         assertEquals(false, AppConfig.load(MapApplicationConfig(*required, "accessLog.enabled" to "false")).accessLog)
+    }
+
+    @Test
+    fun `the access log leaves out the health checks unless they are switched on`() {
+        assertEquals(false, AppConfig.load(MapApplicationConfig(*required)).accessLogHealth)
+        assertEquals(
+            true,
+            AppConfig.load(MapApplicationConfig(*required, "accessLog.healthEnabled" to "true")).accessLogHealth,
+        )
     }
 
     @Test

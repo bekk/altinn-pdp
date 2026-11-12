@@ -6,6 +6,7 @@ import io.ktor.server.application.install
 import io.ktor.server.plugins.callid.CallId
 import io.ktor.server.plugins.callid.callIdMdc
 import io.ktor.server.plugins.calllogging.CallLogging
+import io.ktor.server.request.path
 import org.slf4j.LoggerFactory
 import java.util.UUID
 internal const val CLIENT_CERTIFICATE_HEADER = "X-Forwarded-Client-Cert"
@@ -23,7 +24,7 @@ private val safeRequestId = Regex("[A-Za-z0-9._:-]{1,128}")
 
 internal fun isSafeRequestId(requestId: String): Boolean = safeRequestId.matches(requestId)
 
-internal fun Application.installCallLogging(accessLog: Boolean) {
+internal fun Application.installCallLogging(accessLog: Boolean, accessLogHealth: Boolean) {
     install(CallId) {
         header(HttpHeaders.XRequestId)
         generate { UUID.randomUUID().toString() }
@@ -35,6 +36,6 @@ internal fun Application.installCallLogging(accessLog: Boolean) {
 
         logger = LoggerFactory.getLogger("access")
         disableDefaultColors()
-        filter { accessLog }
+        filter { accessLog && (accessLogHealth || !it.request.path().startsWith("/health/")) }
     }
 }

@@ -44,7 +44,12 @@ fun main() {
     val decisionCache = config.decisionCache.toDecisionCache()
 
     embeddedServer(Netty, port = config.port) {
-        module(pdpClient = pdpClient(config), accessLog = config.accessLog, decisionCache = decisionCache)
+        module(
+            pdpClient = pdpClient(config),
+            accessLog = config.accessLog,
+            accessLogHealth = config.accessLogHealth,
+            decisionCache = decisionCache,
+        )
     }.start(wait = true)
 }
 
@@ -52,9 +57,10 @@ fun main() {
 fun Application.module(
     pdpClient: PdpClient,
     accessLog: Boolean = true,
+    accessLogHealth: Boolean = false,
     decisionCache: PdpDecisionCache = NoPdpDecisionCache,
 ) {
-    installCallLogging(accessLog)
+    installCallLogging(accessLog, accessLogHealth)
     install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
     install(StatusPages) {
         errorResponses()
