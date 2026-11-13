@@ -17,7 +17,7 @@ public class JavaOutgoingHttpClient(
         require(httpClient.followRedirects() == HttpClient.Redirect.NEVER) {
             "httpClient must not follow redirects, or a redirect would hand our tokens to another host"
         }
-        require(!requestTimeout.isNegative && !requestTimeout.isZero) {
+        require(requestTimeout.isPositive) {
             "requestTimeout must be positive, but was $requestTimeout"
         }
     }
