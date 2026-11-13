@@ -64,11 +64,8 @@ internal fun authorizationOf(response: OutgoingResponse): PdpAuthorization {
     }
     val result = results.firstOrNull()
     val decision = result?.decision ?: throw unusable("The PDP response had no Response entries with a decision")
-    val parsedDecision = try {
-        PdpDecision.fromXacmlValue(decision)
-    } catch (e: IllegalArgumentException) {
-        throw unusable("Unknown XACML decision \"$decision\" in PDP response", e)
-    }
+    val parsedDecision = PdpDecision.fromXacmlValue(decision)
+        ?: throw unusable("Unknown XACML decision \"$decision\" in PDP response")
     return PdpAuthorization(
         decision = parsedDecision,
         status = result.status?.statusCode?.value?.let(PdpStatus::of),

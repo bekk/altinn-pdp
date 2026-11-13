@@ -10,7 +10,6 @@ public enum class PdpDecision(internal val xacmlValue: String) {
     public val isPermit: Boolean get() = this == PERMIT
 
     internal companion object {
-        fun fromXacmlValue(value: String): PdpDecision =
-            entries.find { it.xacmlValue == value } ?: throw IllegalArgumentException("Unknown XACML decision \"$value\"")
+        fun fromXacmlValue(value: String): PdpDecision? = entries.find { it.xacmlValue == value }
     }
 }
