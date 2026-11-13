@@ -1,7 +1,8 @@
-package no.kartverket.altinnpdp.client.internal.token
+package no.kartverket.altinnpdp.client.internal.maskinporten
 
 import kotlinx.coroutines.runBlocking
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
+import no.kartverket.altinnpdp.client.internal.token.AltinnTokenExchanger
 import no.kartverket.altinnpdp.client.support.NOW
 import no.kartverket.altinnpdp.client.support.TOKEN_PATH
 import no.kartverket.altinnpdp.client.support.bothTokens

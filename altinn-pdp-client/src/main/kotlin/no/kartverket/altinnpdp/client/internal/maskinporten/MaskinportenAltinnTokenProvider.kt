@@ -1,8 +1,11 @@
-package no.kartverket.altinnpdp.client.internal.token
+package no.kartverket.altinnpdp.client.internal.maskinporten
 
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
-import no.kartverket.altinnpdp.client.internal.maskinporten.MaskinportenClient
-import no.kartverket.altinnpdp.client.internal.maskinporten.MaskinportenConfig
+import no.kartverket.altinnpdp.client.internal.token.AccessToken
+import no.kartverket.altinnpdp.client.internal.token.AccessTokenProvider
+import no.kartverket.altinnpdp.client.internal.token.AltinnToken
+import no.kartverket.altinnpdp.client.internal.token.AltinnTokenExchanger
+import no.kartverket.altinnpdp.client.internal.token.TokenCache
 import java.time.Clock
 import java.time.Duration
 

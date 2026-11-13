@@ -3,10 +3,10 @@ package no.kartverket.altinnpdp.client.support
 import no.kartverket.altinnpdp.client.http.OutgoingHttpClient
 import no.kartverket.altinnpdp.client.http.OutgoingRequest
 import no.kartverket.altinnpdp.client.http.OutgoingResponse
+import no.kartverket.altinnpdp.client.internal.maskinporten.MaskinportenAltinnTokenProvider
 import no.kartverket.altinnpdp.client.internal.maskinporten.MaskinportenClient
 import no.kartverket.altinnpdp.client.internal.maskinporten.MaskinportenConfig
 import no.kartverket.altinnpdp.client.internal.token.AltinnTokenExchanger
-import no.kartverket.altinnpdp.client.internal.token.MaskinportenAltinnTokenProvider
 import java.time.Clock
 import java.time.Duration
 
