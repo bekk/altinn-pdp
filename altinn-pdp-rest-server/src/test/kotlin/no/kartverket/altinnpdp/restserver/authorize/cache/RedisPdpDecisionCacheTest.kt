@@ -37,6 +37,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.measureTimedValue
 
 class RedisPdpDecisionCacheTest {
 
@@ -395,6 +397,30 @@ class RedisPdpDecisionCacheTest {
         }
     }
 
+    @Test
+    fun `a lookup does not wait longer than the timeout while it connects to a slow Redis`() = runBlocking {
+        val port = unusedPort()
+        val cache = cache(url = "redis://localhost:$port", timeout = Duration.ofMillis(500))
+        // Every answer comes within the timeout, but connecting takes several answers before the read,
+        // just as looking up the hostname, which Jedis does not bound, comes before the connection.
+        val slow = RedisServer.newRedisServer(port)
+            .setOptions(
+                ServiceOptions.withInterceptor { state, command, params ->
+                    Thread.sleep(400)
+                    MockExecutor.proceed(state, command, params)
+                },
+            )
+            .start()
+        try {
+            val (authorization, elapsed) = measureTimedValue { cache.get(key(), maxAge = null, load = permit) }
+
+            assertEquals(PdpDecision.PERMIT, authorization.authorization.decision)
+            assertTrue(elapsed < 1.seconds, "the lookup took $elapsed")
+        } finally {
+            slow.stop()
+        }
+    }
+
     private suspend fun lookup(
         maxAge: Duration? = null,
         key: AuthorizeRequest.Parsed = key(),
@@ -405,12 +431,13 @@ class RedisPdpDecisionCacheTest {
         url: String = "redis://${redis.host}:${redis.bindPort}",
         keySecret: String = "a".repeat(32),
         failureMode: DecisionCacheFailureMode = DecisionCacheFailureMode.BYPASS,
+        timeout: Duration = Duration.ofSeconds(1),
     ) = RedisPdpDecisionCache(
         url = url,
         keySecret = keySecret,
         timeToLive = timeToLive,
         defaultMaxAge = defaultMaxAge,
-        timeout = Duration.ofSeconds(1),
+        timeout = timeout,
         failureMode = failureMode,
         clock = clock,
     ).also { caches += it }
