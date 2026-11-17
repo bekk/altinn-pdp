@@ -1,7 +1,12 @@
 package no.kartverket.altinnpdp.restserver.authorize.cache
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -18,6 +23,7 @@ import redis.clients.jedis.ConnectionPoolConfig
 import redis.clients.jedis.DefaultJedisClientConfig
 import redis.clients.jedis.RedisClient
 import redis.clients.jedis.SslOptions
+import redis.clients.jedis.exceptions.JedisConnectionException
 import redis.clients.jedis.exceptions.JedisException
 import redis.clients.jedis.params.SetParams
 import redis.clients.jedis.util.JedisURIHelper
@@ -38,9 +44,10 @@ class RedisPdpDecisionCache(
     keySecret: String,
     private val timeToLive: Duration,
     private val defaultMaxAge: Duration,
-    timeout: Duration,
+    private val timeout: Duration,
     private val failureMode: DecisionCacheFailureMode,
     private val clock: Clock = Clock.systemUTC(),
+    dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : PdpDecisionCache {
 
     init {
@@ -63,6 +70,8 @@ class RedisPdpDecisionCache(
             .poolConfig(ConnectionPoolConfig().apply { setMaxWait(timeout) })
             .build()
     }
+
+    private val commandScope = CoroutineScope(SupervisorJob() + dispatcher)
 
     private val keySpec = SecretKeySpec(keySecret.toByteArray(), HMAC_ALGORITHM)
 
@@ -98,10 +107,10 @@ class RedisPdpDecisionCache(
         val authorization = load()
         if (!readFailed) {
             if (authorization.decision == PdpDecision.INDETERMINATE) {
-                write { redis.del(redisKey) }
+                write { del(redisKey) }
             } else {
                 val value = Json.encodeToString(CachedDecision.of(authorization, startedAt))
-                val saved = write { redis.set(redisKey, value, SetParams().px(timeToLive.toMillis())) }
+                val saved = write { set(redisKey, value, SetParams().px(timeToLive.toMillis())) }
                 // Only a save shows that Redis takes decisions again. A full Redis still allows DEL.
                 if (saved && writable.compareAndSet(false, true)) log.info("The decision cache saves decisions again")
             }
@@ -109,10 +118,13 @@ class RedisPdpDecisionCache(
         return AuthorizationWithAge(authorization, ageSince(startedAt))
     }
 
-    override fun close() = redis.close()
+    override fun close() {
+        commandScope.cancel()
+        redis.close()
+    }
 
     private suspend fun read(redisKey: String): CachedDecision? =
-        withContext(Dispatchers.IO) { redis.get(redisKey) }.also { markAvailable() }?.let(::decode)
+        withRedis { get(redisKey) }.also { markAvailable() }?.let(::decode)
 
     private fun decode(value: String): CachedDecision? = try {
         Json.decodeFromString<CachedDecision>(value)
@@ -121,8 +133,8 @@ class RedisPdpDecisionCache(
         null
     }
 
-    private suspend fun write(command: () -> Unit): Boolean = try {
-        withContext(Dispatchers.IO) { command() }
+    private suspend fun write(command: RedisClient.() -> Unit): Boolean = try {
+        withRedis(command)
         true
     } catch (e: JedisException) {
         if (writable.compareAndSet(true, false)) {
@@ -130,6 +142,25 @@ class RedisPdpDecisionCache(
         }
         false
     }
+
+    // Jedis's timeouts each bound one step: the wait for a free connection, the connect, and each read from
+    // the socket. Connecting sends commands of its own, so it can take several timeouts, and looking up the
+    // hostname is not bounded at all. This timeout covers the whole call. A call that has started goes on in the
+    // background after it, still bounded by Jedis's timeouts, so a connection it makes is kept in the pool for the
+    // next call. A call that is still waiting for a thread is dropped, so calls no one waits for do not pile up.
+    private suspend fun <T> withRedis(command: RedisClient.() -> T): T {
+        val call = commandScope.async { redis.command() }
+        try {
+            val answer = withTimeoutOrNull(timeout.toMillis()) { Answer(call.await()) }
+                ?: throw JedisConnectionException("Redis did not answer within ${timeout.toMillis()} ms")
+            return answer.value
+        } finally {
+            // Jedis cannot be interrupted, so this only stops a call that has not started.
+            call.cancel()
+        }
+    }
+
+    private class Answer<T>(val value: T)
 
     private fun markAvailable() {
         if (available.compareAndSet(false, true)) log.info("The decision cache is available again")
