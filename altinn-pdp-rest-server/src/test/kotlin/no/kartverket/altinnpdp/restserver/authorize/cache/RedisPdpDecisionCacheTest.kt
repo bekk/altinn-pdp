@@ -8,7 +8,11 @@ import com.github.fppt.jedismock.RedisServer
 import com.github.fppt.jedismock.operations.server.MockExecutor
 import com.github.fppt.jedismock.server.Response
 import com.github.fppt.jedismock.server.ServiceOptions
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import no.kartverket.altinnpdp.client.AltinnEnvironment
 import no.kartverket.altinnpdp.client.PdpAuthorization
@@ -29,6 +33,8 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.AfterTest
@@ -421,6 +427,41 @@ class RedisPdpDecisionCacheTest {
         }
     }
 
+    @Test
+    fun `a Redis call that has not started when the lookup stops waiting is never made`() = runBlocking {
+        val reads = AtomicInteger()
+        val counting = RedisServer.newRedisServer()
+            .setOptions(
+                ServiceOptions.withInterceptor { state, command, params ->
+                    if (command.equals("get", ignoreCase = true)) reads.incrementAndGet()
+                    MockExecutor.proceed(state, command, params)
+                },
+            )
+            .start()
+        // One busy thread stands in for an IO dispatcher whose threads are all taken.
+        val executor = Executors.newSingleThreadExecutor()
+        val busy = CountDownLatch(1)
+        executor.execute { busy.await() }
+        try {
+            val dispatcher = executor.asCoroutineDispatcher()
+            val cache = cache(
+                url = "redis://${counting.host}:${counting.bindPort}",
+                timeout = Duration.ofMillis(100),
+                dispatcher = dispatcher,
+            )
+            cache.get(key(), maxAge = null, load = permit)
+
+            busy.countDown()
+            // The thread runs its tasks in order, so the queued read has been made or skipped by now.
+            withContext(dispatcher) {}
+        } finally {
+            busy.countDown()
+            executor.shutdown()
+            counting.stop()
+        }
+        assertEquals(0, reads.get())
+    }
+
     private suspend fun lookup(
         maxAge: Duration? = null,
         key: AuthorizeRequest.Parsed = key(),
@@ -432,6 +473,7 @@ class RedisPdpDecisionCacheTest {
         keySecret: String = "a".repeat(32),
         failureMode: DecisionCacheFailureMode = DecisionCacheFailureMode.BYPASS,
         timeout: Duration = Duration.ofSeconds(1),
+        dispatcher: CoroutineDispatcher = Dispatchers.IO,
     ) = RedisPdpDecisionCache(
         url = url,
         keySecret = keySecret,
@@ -440,6 +482,7 @@ class RedisPdpDecisionCacheTest {
         timeout = timeout,
         failureMode = failureMode,
         clock = clock,
+        dispatcher = dispatcher,
     ).also { caches += it }
 
     private fun key(

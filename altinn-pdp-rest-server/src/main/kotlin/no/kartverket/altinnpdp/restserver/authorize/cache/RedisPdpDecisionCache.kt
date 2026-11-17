@@ -1,5 +1,6 @@
 package no.kartverket.altinnpdp.restserver.authorize.cache
 
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -46,6 +47,7 @@ class RedisPdpDecisionCache(
     private val timeout: Duration,
     private val failureMode: DecisionCacheFailureMode,
     private val clock: Clock = Clock.systemUTC(),
+    dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : PdpDecisionCache {
 
     init {
@@ -69,7 +71,7 @@ class RedisPdpDecisionCache(
             .build()
     }
 
-    private val commandScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val commandScope = CoroutineScope(SupervisorJob() + dispatcher)
 
     private val keySpec = SecretKeySpec(keySecret.toByteArray(), HMAC_ALGORITHM)
 
@@ -143,13 +145,19 @@ class RedisPdpDecisionCache(
 
     // Jedis's timeouts each bound one step: the wait for a free connection, the connect, and each read from
     // the socket. Connecting sends commands of its own, so it can take several timeouts, and looking up the
-    // hostname is not bounded at all. This timeout covers the whole call. The call goes on in the background
-    // after it, still bounded by Jedis's timeouts, so a connection it makes is kept in the pool for the next call.
+    // hostname is not bounded at all. This timeout covers the whole call. A call that has started goes on in the
+    // background after it, still bounded by Jedis's timeouts, so a connection it makes is kept in the pool for the
+    // next call. A call that is still waiting for a thread is dropped, so calls no one waits for do not pile up.
     private suspend fun <T> withRedis(command: RedisClient.() -> T): T {
         val call = commandScope.async { redis.command() }
-        val answer = withTimeoutOrNull(timeout.toMillis()) { Answer(call.await()) }
-            ?: throw JedisConnectionException("Redis did not answer within ${timeout.toMillis()} ms")
-        return answer.value
+        try {
+            val answer = withTimeoutOrNull(timeout.toMillis()) { Answer(call.await()) }
+                ?: throw JedisConnectionException("Redis did not answer within ${timeout.toMillis()} ms")
+            return answer.value
+        } finally {
+            // Jedis cannot be interrupted, so this only stops a call that has not started.
+            call.cancel()
+        }
     }
 
     private class Answer<T>(val value: T)
